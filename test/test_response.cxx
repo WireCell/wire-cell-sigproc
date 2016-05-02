@@ -24,8 +24,8 @@ int main()
     const int nticks = (end_us-begin_us)/tick_us;
 
     // exercise the generator
-    Waveform::signal_t res1 = ce1.generate(tick_us, begin_us, end_us);
-    Waveform::signal_t res2 = ce2.generate(tick_us, begin_us, end_us);
+    Waveform::timeseq_t res1 = ce1.generate(tick_us, begin_us, end_us);
+    Waveform::timeseq_t res2 = ce2.generate(tick_us, begin_us, end_us);
 
     TH1F resp1("resp1","Cold Electronics Response at 1us shaping", nticks, begin_us, end_us);
     TH1F resp2("resp2","Cold Electronics Response at 2us shaping", nticks, begin_us, end_us);

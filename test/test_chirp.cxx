@@ -1,4 +1,5 @@
 #include "WireCellSigProc/Diagnostics.h"
+#include "WireCellUtil/Waveform.h"
 #include "WireCellUtil/Testing.h"
 
 #include <iostream>
@@ -17,8 +18,9 @@ using namespace WireCellSigProc;
 
 int main(int argc, char* argv[])
 {
-    Waveform::signal_t wforig = Eigen::Map<Waveform::signal_t>(horig.data(), horig.size());
-    Waveform::signal_t wfwant = Eigen::Map<Waveform::signal_t>(hfilt.data(), hfilt.size());
+    // vectors are in example-chirp.h
+    Waveform::timeseq_t wforig = Waveform::std2eig(horig);
+    Waveform::timeseq_t wfwant = Waveform::std2eig(hfilt);
 
     int beg, end;
     Diagnostics::Chirp chirp;

@@ -30,6 +30,27 @@
 
 using namespace WireCellSigProc;
 
+
+Response::Generator::~Generator()
+{
+}
+
+WireCell::Waveform::timeseq_t Response::Generator::generate(double tick_us, double begin_us, double end_us)
+{
+    const int nticks = (end_us-begin_us)/tick_us;
+
+    WireCell::Waveform::timeseq_t ret(nticks);
+    for (int ind=0; ind < nticks; ++ind) {
+	double t = begin_us + ind*tick_us;
+	ret(ind) = (*this)(t);
+    }
+    return ret;
+}
+
+
+
+
+
 double Response::coldelec(double time_us, double gain_mVfC, double shaping_us)
 {
     if (time_us <=0 || time_us >= 10) { // range of validity
@@ -60,20 +81,31 @@ Response::ColdElec::ColdElec(double gain_mVfC, double shaping_us)
     , _s(shaping_us)
 {
 }
+Response::ColdElec::~ColdElec()
+{
+}
+
 double Response::ColdElec::operator()(double time_us) const
 {
     return coldelec(time_us, _g, _s);
 }
 
-WireCell::Waveform::signal_t Response::ColdElec::generate(double tick_us, double begin_us, double end_us)
-{
-    const int nticks = (end_us-begin_us)/tick_us;
 
-    WireCell::Waveform::signal_t ret(nticks);
-    for (int ind=0; ind < nticks; ++ind) {
-	double t = begin_us + ind*tick_us;
-	ret(ind) = coldelec(t, _g, _s);
+Response::SimpleRC::SimpleRC(double width_us, double offset_us)
+    : _width(width_us), _offset(offset_us)
+
+{
+}
+Response::SimpleRC::~SimpleRC()
+{
+}
+double Response::SimpleRC::operator()(double time_us) const
+{
+    double ret = -1.0/_width * exp(-(time_us-_offset)/_width);
+    if (time_us == _offset) {	// sketchy
+	ret += 1.0;		// delta function
     }
     return ret;
 }
+
 

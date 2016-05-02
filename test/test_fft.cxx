@@ -12,18 +12,16 @@ using namespace std;
 using namespace WireCell;
 using namespace WireCellSigProc;
 
-int main()
+void draw_time_freq(TCanvas& canvas, Waveform::timeseq_t& res, Waveform::freqseq_t& spec,
+		    const std::string& title,
+		    double tick=0.5, double tick0=0.0);
+void draw_time_freq(TCanvas& canvas, Waveform::timeseq_t& res, Waveform::freqseq_t& spec,
+		    const std::string& title,
+		    double tick, double tick0)
 {
-    const double gain_par = 7.8; // mV/fC
-    const double shaping_us = 1.0; // microsecond
-    Response::ColdElec ce(gain_par, shaping_us);
-    const double tick = 0.5;
-    const double maxt = 10.0;
-    Waveform::signal_t res = ce.generate(tick, 0, maxt);
-    Waveform::fourier_t spec = Waveform::fft(res);
-
     int nticks = res.size();
-    TH1F h_wave("response","Cold Electronics Response at 1us shaping", nticks, 0, 10.0);
+    TH1F h_wave("response",title.c_str(), nticks, tick0, nticks*tick + tick0);
+
     h_wave.SetXTitle("Time (microsecond)");
     h_wave.SetYTitle("Gain (mV/fC)");
 
@@ -48,7 +46,7 @@ int main()
 	h_phi.SetBinContent(ind+1, std::arg(c));
     }
 
-    TCanvas canvas("test_response","Response Functions", 500, 500);
+    canvas.Clear();
     canvas.Divide(2,1);
     auto pad = canvas.cd(1);
     pad->SetGridx();
@@ -67,6 +65,47 @@ int main()
     spad->SetGridx();
     spad->SetGridy();
     h_phi.Draw();
+    canvas.Print("test_fft.pdf",".pdf");
 
-    canvas.Print("test_fft.pdf");
+}
+
+int main()
+{
+    const std::vector<double> gains = {7.8, 14.0}; // mV/fC
+    const std::vector<double> shaping_us = {1.0, 2.0}; // microsecond
+    const double tick = 0.5;
+    const double maxt = 10.0;
+    const double tconst_us = 1000.0; // 1ms
+
+    TCanvas canvas("test_fft", "Response Functions", 500, 500);
+    canvas.Print("test_fft.pdf[",".pdf");
+
+    for (int ind=0; ind<gains.size(); ++ind) {
+	Response::ColdElec ce(gains[ind], shaping_us[ind]);
+	Waveform::timeseq_t res = ce.generate(tick, 0, maxt);
+	Waveform::freqseq_t spec = Waveform::fft(res);
+
+	draw_time_freq(canvas, res, spec,
+		       Form("Cold Electronics Response at %.0fus shaping", shaping_us[ind]), tick);
+    }
+
+
+    {
+	Response::SimpleRC rc(tconst_us);
+	Waveform::timeseq_t res = rc.generate(tick, 0.0, maxt);
+	Waveform::freqseq_t spec = Waveform::fft(res);
+	
+	draw_time_freq(canvas, res, spec,
+		       "RC Response at 1ms time constant", tick);
+    }
+    {
+	Response::SimpleRC rc(tconst_us); 
+	Waveform::timeseq_t res = rc.generate(tick, tick, 1000*maxt+tick); // miss the delta
+	Waveform::freqseq_t spec = Waveform::fft(res);
+	
+	draw_time_freq(canvas, res, spec,
+		       "RC Response at 1ms time constant (suppress delta)", tick);
+    }
+
+    canvas.Print("test_fft.pdf]",".pdf");
 }
