@@ -14,21 +14,21 @@ int main()
 {
     const double gain_par1 = 7.8; // mV/fC
     const double gain_par2 = 14.0;// mV/fC
-    const double shaping_us1 = 1.0; // microsecond
-    const double shaping_us2 = 2.0; // microsecond
+    const double shaping1 = 1.0; // microsecond
+    const double shaping2 = 2.0; // microsecond
+    const Waveform::Domain domain(0.0,10.0); // microsecond
+    const double tick=0.05; // microsecond
+    const int nticks = (domain.second-domain.first)/tick;
 
-    Response::ColdElec ce1(gain_par1, shaping_us1);
-    Response::ColdElec ce2(gain_par2, shaping_us2);
-
-    const double tick_us=0.05, begin_us=0.0, end_us=10.0;
-    const int nticks = (end_us-begin_us)/tick_us;
+    Response::ColdElec ce1(gain_par1, shaping1);
+    Response::ColdElec ce2(gain_par2, shaping2);
 
     // exercise the generator
-    Waveform::timeseq_t res1 = ce1.generate(tick_us, begin_us, end_us);
-    Waveform::timeseq_t res2 = ce2.generate(tick_us, begin_us, end_us);
+    Waveform::realseq_t res1 = ce1.generate(domain, nticks);
+    Waveform::realseq_t res2 = ce2.generate(domain, nticks);
 
-    TH1F resp1("resp1","Cold Electronics Response at 1us shaping", nticks, begin_us, end_us);
-    TH1F resp2("resp2","Cold Electronics Response at 2us shaping", nticks, begin_us, end_us);
+    TH1F resp1("resp1","Cold Electronics Response at 1us shaping", nticks, domain.first, domain.second);
+    TH1F resp2("resp2","Cold Electronics Response at 2us shaping", nticks, domain.first, domain.second);
     resp1.SetLineColor(2);
     resp2.SetLineColor(4);
     for (int ind=0; ind<res1.size(); ++ind) {

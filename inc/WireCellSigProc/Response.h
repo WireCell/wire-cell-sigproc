@@ -8,39 +8,51 @@ namespace WireCellSigProc {
     namespace Response {
 
 	/// The cold electronics response function.
-	double coldelec(double time_us, double gain_mVfC=7.8, double shaping_us=1.0);
+	double coldelec(double time, double gain=7.8, double shaping=1.0);
 
 	class Generator {
 	public:
 	    virtual ~Generator();
-	    virtual double operator()(double time_us) const = 0;
+	    virtual double operator()(double time) const = 0;
 
 	    /// Lay down the function into a binned waveform.
-	    WireCell::Waveform::timeseq_t generate(double tick_us=0.5, double begin_us=0.0, double end_us=10.0);
+	    WireCell::Waveform::realseq_t generate(const WireCell::Waveform::Domain& domain, int nsamples);
 	};
 
 	/// A functional object caching gain and shape.
 	class ColdElec : public Generator {
 	    const double _g, _s;
 	public:
-	    ColdElec(double gain_mVfC=7.8, double shaping_us=1.0);
+	    // Create cold electronics response function.  Gain is an
+	    // arbitrary scale, typically in mV/fC and shaping time in
+	    // microsecond.  Shaping time in units consistent with
+	    // calling the function.
+	    ColdElec(double gain=7.8, double shaping=1.0);
 	    virtual ~ColdElec();
 
-	    // return the response at given time
-	    virtual double operator()(double time_us) const;
+	    // Return the response at given time.  Time in units consistent with shaping.
+	    virtual double operator()(double time) const;
 
 	};
 
-	/// A functional object giving the response as a function of time to a simple RC circuit.
+	/// A functional object giving the response as a function of
+	/// time to a simple RC circuit.
 	class SimpleRC : public Generator {
 	    const double _width, _offset;
 	public:
-	    //
-	    SimpleRC(double width_us, double offset_us=0.0);
+	    // Create (current) response function for a simple RC
+	    // circuit where a unit of charge is placed on the cap at
+	    // time offset and circuit has RC time constant of given
+	    // width.  Times are in units consistent with value used
+	    // to call the function.
+	    SimpleRC(double width, double offset=0.0);
 	    virtual ~SimpleRC();
 
-	    // return the response at a given time
-	    virtual double operator()(double time_us) const;
+	    // Return the response at a given time.  Time in units
+	    // consistent with width and offset.  Warning: to get the
+	    // delta function, one must call *exactly* at the offset
+	    // time.
+	    virtual double operator()(double time) const;
 
 	};
 

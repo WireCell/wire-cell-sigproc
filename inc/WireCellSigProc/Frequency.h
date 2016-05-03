@@ -7,14 +7,10 @@ namespace WireCellSigProc {
 
     namespace Frequency {
 
-	
-
-
-
-	
+	/// A filter applies a frequency sequence 
 
 	class MaskFilter {
-	    int beg, end;
+	    int _beg, _end;
 	public:
 	    MaskFilter(double minfreq, double maxfreq, double sampfreq = 2e6);
 	    

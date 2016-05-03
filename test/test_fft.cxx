@@ -12,31 +12,40 @@ using namespace std;
 using namespace WireCell;
 using namespace WireCellSigProc;
 
-void draw_time_freq(TCanvas& canvas, Waveform::timeseq_t& res, Waveform::freqseq_t& spec,
-		    const std::string& title,
-		    double tick=0.5, double tick0=0.0);
-void draw_time_freq(TCanvas& canvas, Waveform::timeseq_t& res, Waveform::freqseq_t& spec,
-		    const std::string& title,
-		    double tick, double tick0)
+void draw_time_freq(TCanvas& canvas,
+		    Waveform::realseq_t& res, 
+		    const std::string& title, 
+		    const Waveform::Domain& domain = Waveform::Domain(0.0,10.0));
+void draw_time_freq(TCanvas& canvas,
+		    Waveform::realseq_t& res, 
+		    const std::string& title, 
+		    const Waveform::Domain& domain)
 {
+    Waveform::compseq_t spec = Waveform::dft(res);
+    Waveform::realseq_t res2 = Waveform::idft(spec);
+
     int nticks = res.size();
-    TH1F h_wave("response",title.c_str(), nticks, tick0, nticks*tick + tick0);
+    TH1F h_wave("response",title.c_str(), nticks, domain.first, domain.second);
+    TH1F h_wave2("response2",title.c_str(), nticks, domain.first, domain.second);
+    h_wave2.SetLineColor(2);
 
     h_wave.SetXTitle("Time (microsecond)");
     h_wave.SetYTitle("Gain (mV/fC)");
 
     for (int ind=0; ind<nticks; ++ind) {
 	h_wave.SetBinContent(ind+1, res(ind));
+	h_wave2.SetBinContent(ind+1, res2(ind));
     }
 
     cerr << nticks << " " << spec.size() << endl;
 
-    const double nyquist = 1.0/(2*tick);
-    TH1F h_mag("mag","Magnitude of Fourier transform of response", nticks, 0, nyquist);
+    const double tick = (domain.second-domain.first)/nticks;
+
+    TH1F h_mag("mag","Magnitude of Fourier transform of response", nticks, 0, 1/tick);
     h_mag.SetYTitle("Power");
     h_mag.SetXTitle("MHz");
 
-    TH1F h_phi("phi","Phase of Fourier transform of response", nticks, 0, nyquist);
+    TH1F h_phi("phi","Phase of Fourier transform of response", nticks, 0, 1/tick);
     h_phi.SetYTitle("Power");
     h_phi.SetXTitle("MHz");
 
@@ -48,22 +57,23 @@ void draw_time_freq(TCanvas& canvas, Waveform::timeseq_t& res, Waveform::freqseq
 
     canvas.Clear();
     canvas.Divide(2,1);
+
     auto pad = canvas.cd(1);
     pad->SetGridx();
     pad->SetGridy();
     h_wave.Draw();
+    h_wave2.Draw("same");
 
-    pad = canvas.cd(2);
-    pad->Divide(1,2);
-
-    auto spad = pad->cd(1);
-    spad->SetGridx();
-    spad->SetGridy();
+    auto spad = canvas.cd(2);
+    spad->Divide(1,2);
+    pad = spad->cd(1);
+    pad->SetGridx();
+    pad->SetGridy();
     h_mag.Draw();
 
-    spad = pad->cd(2);
-    spad->SetGridx();
-    spad->SetGridy();
+    pad = spad->cd(2);
+    pad->SetGridx();
+    pad->SetGridy();
     h_phi.Draw();
     canvas.Print("test_fft.pdf",".pdf");
 
@@ -72,39 +82,44 @@ void draw_time_freq(TCanvas& canvas, Waveform::timeseq_t& res, Waveform::freqseq
 int main()
 {
     const std::vector<double> gains = {7.8, 14.0}; // mV/fC
-    const std::vector<double> shaping_us = {1.0, 2.0}; // microsecond
+    const std::vector<double> shapings = {1.0, 2.0}; // microsecond
+
+    const Waveform::Domain domain(0.0, 10.0);
     const double tick = 0.5;
-    const double maxt = 10.0;
-    const double tconst_us = 1000.0; // 1ms
+    const int nticks = Waveform::sample_count(domain, tick);
+    
+
+    const double tconst = 1000.0; // 1ms
 
     TCanvas canvas("test_fft", "Response Functions", 500, 500);
     canvas.Print("test_fft.pdf[",".pdf");
 
     for (int ind=0; ind<gains.size(); ++ind) {
-	Response::ColdElec ce(gains[ind], shaping_us[ind]);
-	Waveform::timeseq_t res = ce.generate(tick, 0, maxt);
-	Waveform::freqseq_t spec = Waveform::fft(res);
+	Response::ColdElec ce(gains[ind], shapings[ind]);
+	Waveform::realseq_t res = ce.generate(domain, nticks);
 
-	draw_time_freq(canvas, res, spec,
-		       Form("Cold Electronics Response at %.0fus shaping", shaping_us[ind]), tick);
+	draw_time_freq(canvas, res,
+		       Form("Cold Electronics Response at %.0fus shaping", shapings[ind]), domain);
     }
 
 
     {
-	Response::SimpleRC rc(tconst_us);
-	Waveform::timeseq_t res = rc.generate(tick, 0.0, maxt);
-	Waveform::freqseq_t spec = Waveform::fft(res);
+	Response::SimpleRC rc(tconst);
+	Waveform::realseq_t res = rc.generate(domain, nticks);
 	
-	draw_time_freq(canvas, res, spec,
-		       "RC Response at 1ms time constant", tick);
+	draw_time_freq(canvas, res,
+		       "RC Response at 1ms time constant", domain);
     }
     {
-	Response::SimpleRC rc(tconst_us); 
-	Waveform::timeseq_t res = rc.generate(tick, tick, 1000*maxt+tick); // miss the delta
-	Waveform::freqseq_t spec = Waveform::fft(res);
+	Waveform::Domain shifted = domain;
+	shifted.first += tick;	// intentionally miss delta function
+	shifted.second += tick;
+
+	Response::SimpleRC rc(tconst); 
+	Waveform::realseq_t res = rc.generate(shifted, nticks);
 	
-	draw_time_freq(canvas, res, spec,
-		       "RC Response at 1ms time constant (suppress delta)", tick);
+	draw_time_freq(canvas, res,
+		       "RC Response at 1ms time constant (suppress delta)", domain);
     }
 
     canvas.Print("test_fft.pdf]",".pdf");
