@@ -33,8 +33,8 @@ void draw_time_freq(TCanvas& canvas,
     h_wave.SetYTitle("Gain (mV/fC)");
 
     for (int ind=0; ind<nticks; ++ind) {
-	h_wave.SetBinContent(ind+1, res(ind));
-	h_wave2.SetBinContent(ind+1, res2(ind));
+	h_wave.SetBinContent(ind+1, res[ind]);
+	h_wave2.SetBinContent(ind+1, res2[ind]);
     }
 
     cerr << nticks << " " << spec.size() << endl;
@@ -50,7 +50,7 @@ void draw_time_freq(TCanvas& canvas,
     h_phi.SetXTitle("MHz");
 
     for (int ind=0; ind<nticks; ++ind) {
-	auto c = spec(ind);
+	auto c = spec[ind];
 	h_mag.SetBinContent(ind+1, std::abs(c));
 	h_phi.SetBinContent(ind+1, std::arg(c));
     }

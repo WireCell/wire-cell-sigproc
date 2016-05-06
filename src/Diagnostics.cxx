@@ -13,10 +13,10 @@ Diagnostics::Partial::Partial(int nfreqs, double maxpower)
 
 bool Diagnostics::Partial::operator()(const WireCell::Waveform::compseq_t& spec)
 {
-    const double mag0 = std::abs(spec(0));
+    const double mag0 = std::abs(spec[0]);
     double sum = mag0;
     for (int ind=1; ind<= nfreqs && ind < spec.size(); ++ind) {
-	const double magi = std::abs(spec(ind));
+	const double magi = std::abs(spec[ind]);
 	if (mag0 <= magi) {
 	    return false;
 	}
@@ -60,7 +60,7 @@ bool Diagnostics::Chirp::operator()(const WireCell::Waveform::realseq_t& sig, in
    
     for (int ibin = 0; ibin < numBins; ++ibin) {
 
-	double ADCval = sig(ibin);
+	double ADCval = sig[ibin];
 
 	runningAmpMean += ADCval;
 	runningAmpRMS += ADCval*ADCval;

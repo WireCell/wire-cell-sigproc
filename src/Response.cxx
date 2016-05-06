@@ -41,7 +41,7 @@ WireCell::Waveform::realseq_t Response::Generator::generate(const WireCell::Wave
     const double tick = (domain.second-domain.first)/nsamples;
     for (int ind=0; ind < nsamples; ++ind) {
 	double t = domain.first + ind*tick;
-	ret(ind) = (*this)(t);
+	ret[ind] = (*this)(t);
     }
     return ret;
 }

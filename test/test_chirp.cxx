@@ -19,18 +19,16 @@ using namespace WireCellSigProc;
 int main(int argc, char* argv[])
 {
     // vectors are in example-chirp.h
-    Waveform::realseq_t wforig = Waveform::std2eig(horig);
-    Waveform::realseq_t wfwant = Waveform::std2eig(hfilt);
 
-    int beg, end;
+    int beg=-1, end=-1;
     Diagnostics::Chirp chirp;
-    bool found = chirp(wforig, beg, end);
+    bool found = chirp(horig, beg, end);
     Assert(found);
 
     // the function should find something starting at the beginning.
     Assert(beg == 0);
     // and the chirp does not extend to the end
-    Assert(end !=0 && end != wforig.size());
+    Assert(end !=0 && end != horig.size());
 
     Assert (beg >= 0);
     Assert (end >= 0);
@@ -40,7 +38,7 @@ int main(int argc, char* argv[])
     Assert ((end-beg)%20 == 0);
 
     for (int ind=beg; ind<end; ++ind) {
-	Assert(wfwant[ind] == 0);
+	Assert(hfilt[ind] == 0);
     }
 
     cerr << "chirp at " << beg << " --> " << end << endl;
