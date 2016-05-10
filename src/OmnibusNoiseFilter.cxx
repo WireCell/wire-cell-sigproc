@@ -13,15 +13,26 @@ OmnibusNoiseFilter::OmnibusNoiseFilter(WireCell::Waveform::Period readout_window
     , m_nsamples(nsamples)
 {
 }
+OmnibusNoiseFilter::~OmnibusNoiseFilter()
+{
+}
+
+void OmnibusNoiseFilter::configure(const WireCell::Configuration& config)
+{
+}
+WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
+{
+}
+
 
 bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out)
 {
+    // NO HARD CODED MAGIC NUMBERS HERE!
+    //...
+    // (just hard coded magic functionality!)
+
     Diagnostics::Chirp check_chirp; // fixme, there are magic numbers hidden here
     Diagnostics::Partial check_partial; // fixme, here too.
-
-    auto rc1sig = Response::ColdElec( 7.8, 1.0).generate(m_period, m_samples)
-    auto rc2sig = Response::ColdElec(14.0, 2.0).generate(m_period, m_samples)
-
 
     auto traces = in->traces();
     for (auto trace : *traces.get()) {
@@ -30,12 +41,12 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 	// fixme: some channels are just bad can should be skipped.
 
 	// get signal with nominal baseline correction
-	float baseline = m_cqdb->baseline(ch);
+	float baseline = m_noisedb->nominal_baseline(ch);
 	auto signal = trace->charge(); // copy
-	Waveform::shift(signal, baseline);
+	Waveform::increase(signal, baseline);
 
 	// get signal with nominal gain correction 
-	float gc = m_cqdb->gain(ch);
+	float gc = m_noisedb->gain_correction(ch);
 	auto signal_gc = signal; // copy, need to keep original signal
 	Waveform::scale(signal_gc, gc);
 
@@ -47,12 +58,12 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 	bool is_partial = check_partial(spectrum); // Xin's "IS_RC()"
 
 	if (!is_partial) {
-	    Waveform::scale(spectrum, m_cqdb->electronics(ch));
+	    Waveform::scale(spectrum, m_noisedb->rcrc(ch));
 	}
 
-	Waveform::scale(spectrum, m_cqdb->adhoc(ch));
+	Waveform::scale(spectrum, m_noisedb->config(ch));
 
-	Waveform::scale(spectrum, m_cqdb->noise_filter(ch));
+	Waveform::scale(spectrum, m_noisedb->noise(ch));
 
 	signal = Waveform::idft(spectrum);
 
