@@ -11,7 +11,7 @@ Diagnostics::Partial::Partial(int nfreqs, double maxpower)
 {
 }
 
-bool Diagnostics::Partial::operator()(const WireCell::Waveform::compseq_t& spec)
+bool Diagnostics::Partial::operator()(const WireCell::Waveform::compseq_t& spec) const
 {
     const double mag0 = std::abs(spec[0]);
     double sum = mag0;
@@ -33,7 +33,7 @@ Diagnostics::Chirp::Chirp(int windowSize, double chirpMinRMS, double maxNormalNe
 {
 }
 
-bool Diagnostics::Chirp::operator()(const WireCell::Waveform::realseq_t& sig, int& beg, int& end)
+bool Diagnostics::Chirp::operator()(const WireCell::Waveform::realseq_t& sig, int& beg, int& end) const
 {
     beg = end = -1;
 

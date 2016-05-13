@@ -35,6 +35,9 @@ namespace WireCellSigProc {
 	virtual const filter_t& rcrc(int channel) const;
 	virtual const filter_t& config(int channel) const;
 	virtual const filter_t& noise(int channel) const;
+	virtual std::vector<channel_group_t> coherent_channels() const {
+	    return m_channel_groups;
+	}
 	
 
 	// concrete helper methods
@@ -52,32 +55,40 @@ namespace WireCellSigProc {
 
 	/// Set gain/shaping corrections for cnofig_correction.  Gains
 	/// are assumed to be in mV/fC.  Shaping times should be in
-	/// units of the digitization sampling time ("tick").
-	/// Defaults are microboone (but you need to give channels).
+	/// the system of units.  Defaults are microboone (but you
+	/// need to give channels).
 	void set_gains_shapings(const std::vector<int>& channels,
 				double from_gain_mVfC=7.8, double to_gain_mVfC=14.0,
-				double from_shaping=2.0, double to_shaping=4.0);
+				double from_shaping=1.0*units::us, double to_shaping=2.0*units::us);
 
 
-	/// Set the RC+RC time constant in units (multiples) of the
+	/// Set the RC+RC time constant in the system of units for the
 	/// digitization sample time ("tick").  Default is for microboone.
 	void set_rcrc_constant(const std::vector<int>& channels, double rcrc=2000.0);
 
 	
-	/// Add a constant scaling to the filter for the given
-	/// channels between the frequencies.  Frequencies are in
-	/// units (multiples) of frequency bin which is
-	/// 1.0/(nsamples*tick).  The frequency band is *inclusive* of
-	/// both min and max frequency bins.  Note, it's up to caller
-	/// to appropriately segment multiple masks across multiple
-	/// channels.  For any given channel, last setting wins.
+	/// Set a constant scaling to a band covering the given
+	/// frequency bins (inclusively) for the given channels.
+	/// Frequency bin "i" is from i*f to (i+1)*f where f is
+	/// 1.0/(nsamples*tick).  The largest meaningful frequency bin
+	/// is nsamples/2.  The frequency band is *inclusive* of both
+	/// min and max frequency bins.  Note, it's up to caller to
+	/// appropriately segment multiple masks across multiple
+	/// channels.  For any given channel, last call to this method
+	/// wins.
 	typedef std::tuple<double, int, int> mask_t;
 	typedef std::vector<mask_t> multimask_t;
 	void set_filter(const std::vector<int>& channels, const multimask_t& mask);
 
+	/// Set the channel groups
+	void set_channel_groups(const std::vector< channel_group_t >& channel_groups) {
+	    m_channel_groups = channel_groups;
+	}
+	    
+
     private:
-	int m_nsamples;
 	double m_tick;
+	int m_nsamples;
 
 	double m_default_baseline, m_default_gain;
 	std::vector<double> m_baseline, m_gain;
@@ -92,6 +103,8 @@ namespace WireCellSigProc {
 	int chind(int ch) const;
 
 	const IChannelNoiseDatabase::filter_t& get_filter(int channel, const filter_vector_t& fv) const;
+
+	std::vector< channel_group_t > m_channel_groups;
     };
 }
 

@@ -1,1 +1,1 @@
-bld.smplpkg('WireCellSigProc', use='WireCellIface ROOTSYS EIGEN')
+bld.smplpkg('WireCellSigProc', use='WireCellIface ROOTSYS EIGEN', test_use='WireCellSst')

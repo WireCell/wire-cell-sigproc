@@ -10,36 +10,58 @@
 #include "WireCellIface/IFrameFilter.h"
 #include "WireCellIface/IConfigurable.h"
 #include "WireCellIface/IChannelNoiseDatabase.h"
+#include "WireCellIface/IChannelFilter.h"
+
 #include "WireCellUtil/Waveform.h"
 
 #include <vector>
 #include <map>
 
 namespace WireCellSigProc {
+
+    /**
+       The Omnibus Noise Filter applies two series of IChannelFilter
+       objects. The first series is applied on a per-channel basis and
+       the second is applied on groups of channels as determined by
+       its channel grouping.
+    */
     class OmnibusNoiseFilter : public WireCell::IFrameFilter, public WireCell::IConfigurable {
     public:
+	typedef std::vector< std::vector<int> > grouped_channels_t;
+
 	/// Create an OmnibusNoiseFilter.
-	OmnibusNoiseFilter(WireCell::Waveform::Period readout_window = WireCell::Waveform::Period(0,10.0), 
-			   int nsamples = 9600); // fixme: these numbers need to be configurable
+	OmnibusNoiseFilter();
 	virtual ~OmnibusNoiseFilter();
 
-	/// WireCell node method.
+	/// IFrameFilter interface.
 	virtual bool operator()(const input_pointer& in, output_pointer& out);
 
-	/// Explicitly deliver a channel quality database before
-	/// running this node.  This may be done implicitly via configure().
-	void set_channel_quality(WireCell::IChannelNoiseDatabase::pointer noise_db) {
-	    m_noisedb = noise_db;
-	}
-
+	/// IConfigurable interface.
 	virtual void configure(const WireCell::Configuration& config);
 	virtual WireCell::Configuration default_configuration() const;
 
+
+	/// Explicitly inject required services
+
+	/// Set per-channel filters.
+	void set_channel_filters(std::vector<WireCell::IChannelFilter::pointer> filters) {
+	    m_perchan = filters;
+	}
+	/// Set the grouped channel filters.
+	void set_grouped_filters(std::vector<WireCell::IChannelFilter::pointer> filters) {
+	    m_grouped = filters;
+	}
+
+	/** Set the sampling used when digitizing the waveform. */
+	void set_channel_noisedb(WireCell::IChannelNoiseDatabase::pointer ndb) {
+	    m_noisedb = ndb;
+	}
+
     private:
 	
-	WireCell::Waveform::Period m_period;
-	int m_nsamples;
+	std::vector<WireCell::IChannelFilter::pointer> m_perchan, m_grouped;
 	WireCell::IChannelNoiseDatabase::pointer m_noisedb;
+
     };
 
 }

@@ -3,14 +3,14 @@
 #include "WireCellSigProc/Diagnostics.h"
 #include "WireCellSigProc/Response.h"
 
+#include "WireCellIface/SimpleFrame.h"
+#include "WireCellIface/SimpleTrace.h"
+
 using namespace WireCell;
 
 using namespace WireCellSigProc;
 
-OmnibusNoiseFilter::OmnibusNoiseFilter(WireCell::Waveform::Period readout_window,
-				       int nsamples)
-    : m_period(readout_window)
-    , m_nsamples(nsamples)
+OmnibusNoiseFilter::OmnibusNoiseFilter()
 {
 }
 OmnibusNoiseFilter::~OmnibusNoiseFilter()
@@ -27,48 +27,42 @@ WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
 
 bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out)
 {
-    // NO HARD CODED MAGIC NUMBERS HERE!
-    //...
-    // (just hard coded magic functionality!)
-
-    Diagnostics::Chirp check_chirp; // fixme, there are magic numbers hidden here
-    Diagnostics::Partial check_partial; // fixme, here too.
+    std::map<int, IChannelFilter::signal_t> bychan;
 
     auto traces = in->traces();
     for (auto trace : *traces.get()) {
 	int ch = trace->channel();
 
-	// fixme: some channels are just bad can should be skipped.
+	bychan[ch] = trace->charge(); // copy
+	IChannelFilter::signal_t& signal = bychan[ch]; // ref
 
-	// get signal with nominal baseline correction
-	float baseline = m_noisedb->nominal_baseline(ch);
-	auto signal = trace->charge(); // copy
-	Waveform::increase(signal, baseline);
-
-	// get signal with nominal gain correction 
-	float gc = m_noisedb->gain_correction(ch);
-	auto signal_gc = signal; // copy, need to keep original signal
-	Waveform::scale(signal_gc, gc);
-
-	// determine if chirping
-	Waveform::BinRange chirped_bins;
-	bool is_chirp = check_chirp(signal_gc, chirped_bins.first, chirped_bins.second);
-	
-	auto spectrum = Waveform::dft(signal);
-	bool is_partial = check_partial(spectrum); // Xin's "IS_RC()"
-
-	if (!is_partial) {
-	    Waveform::scale(spectrum, m_noisedb->rcrc(ch));
+	for (auto filter : m_perchan) {
+	    filter->apply(ch, signal);
 	}
+    }
+    for (auto group : m_noisedb->coherent_channels()) {
+	IChannelFilter::channel_signals_t chgrp;
+	for (auto ch : group) {	    // fix me: check if we don't actually have this channel
+	    chgrp[ch] = bychan[ch]; // copy...
+	}
+	for (auto filter : m_perchan) {
+	    filter->apply(chgrp);
+	}
+	for (auto cs : chgrp) {
+	    bychan[cs.first] = cs.second; // copy
+	}
+    }
 
-	Waveform::scale(spectrum, m_noisedb->config(ch));
-
-	Waveform::scale(spectrum, m_noisedb->noise(ch));
-
-	signal = Waveform::idft(spectrum);
-
-	//....
-
+    {
+	// pack up output
+	ITrace::vector itraces;
+	for (auto cs : bychan) {
+	    // fixme: that tbin though
+	    SimpleTrace *trace = new SimpleTrace(cs.first, 0, cs.second);
+	    itraces.push_back(ITrace::pointer(trace));
+	}
+	SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick());
+	out = IFrame::pointer(sframe);
     }
 }
 

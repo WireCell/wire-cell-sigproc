@@ -1,12 +1,13 @@
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
 #include "WireCellSigProc/Response.h"
+//#include <iostream> //debug
 
 using namespace WireCell;
 using namespace WireCellSigProc;
 
 SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
-    : m_nsamples(0)
-    , m_tick(0.0)
+    : m_tick(-1)
+    , m_nsamples(-1)
     , m_default_baseline(0.0)
     , m_default_gain(1.0)
 {
@@ -47,12 +48,19 @@ double SimpleChannelNoiseDB::gain_correction(int channel) const
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::get_filter(int channel, const filter_vector_t& fv) const
 {
     const int ind = chind(channel);
+    //std::cerr << "ch=" << channel << " ind=" << ind << " " << fv.size() << std::endl;
     if (0 <= ind && ind < fv.size()) {
 	const shared_filter_t sf = fv[ind];
+	if (sf == nullptr) {
+	    return *(m_default_filter.get());
+	}
+
 	const filter_t* filtp = sf.get();
 	return *filtp;
     }
-    return *(m_default_filter.get());
+    const filter_t* filtp = m_default_filter.get();
+    //std::cerr << "Filter: "<< (void*)filtp << std::endl;
+    return *filtp;
 }
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::rcrc(int channel) const
@@ -67,16 +75,19 @@ const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::config(int channel)
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::noise(int channel) const
 {
-    const int ind = chind(channel);
     return get_filter(channel, m_config);
 }
 	
 
 void SimpleChannelNoiseDB::set_sampling(double tick, int nsamples)
 {
+
     if (m_nsamples == nsamples && tick == m_tick) {
+	//std::cerr << "Sampling unchanged: " << nsamples << " @ " << m_tick/units::ms << " ms" << std::endl;
 	return;
     }
+    m_nsamples = nsamples;
+    m_tick = tick;
 
     m_rcrc.clear();
     m_config.clear();
