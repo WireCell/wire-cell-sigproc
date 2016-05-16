@@ -1,16 +1,7 @@
-/**
-   This tests the OmnibusNoiseFilter class outside of the context of
-   the DFP, Factory and Configurable patterns.  As such it is an
-   example of tightly coupling exact input through the SST FrameSource
-   to the exact OmnibusNoiseFilter class
 
- */
-
-#include "WireCellSigProc/OmnibusNoiseFilter.h"
 #include "WireCellSigProc/OneChannelNoise.h"
 #include "WireCellSigProc/CoherentNoiseSub.h"
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
-#include "WireCellSst/FrameSource.h"
 
 #include "WireCellUtil/Testing.h"
 #include "WireCellUtil/ExecMon.h"
@@ -27,8 +18,7 @@
 using namespace WireCell;
 using namespace std;
 
-const string url_alpha = "http://www.phy.bnl.gov/wire-cell/examples/celltree/3.0/celltree_alpha-new.root";
-const string url_cosmic = "http://www.phy.bnl.gov/wire-cell/examples/celltree/3.0/celltree-cosmic-new.root";
+const string url_test = "/data0/bviren/data/uboone/test_3455_0.root"; // big!
 
 void rms_plot(TCanvas& canvas, IFrame::pointer frame, const string& title)
 {
@@ -53,18 +43,48 @@ void rms_plot(TCanvas& canvas, IFrame::pointer frame, const string& title)
     canvas.Print("test_omnibus.pdf","pdf");
 }
 
+class XinFileIterator {
+    TH2* hist[3];		// per plane
+public:
+    XinFileIterator(const char* filename, const char* histtype="orig") {
+	file = TFile::Open(file.c_str());
+	for (auto c : {"u","v","w"} ) {
+	    hist[0] = (TH2*)file->Get(Form("h%c_%s", c, histtype));
+	}
+	file->Close();
+	delete file;
+    }
+
+    int plane(int ch) {
+	if (ch < 2400) return 0;
+	if (ch < 2400+2400) return 1;
+	return 2;
+    }
+    int index(int ch) {
+	if (ch < 2400) return ch;
+	if (ch < 2400+2400) return ch-2400;
+	return ch-2400-2400;
+    }
+
+
+    vector<float> at(int ch) {
+	TH2type* h = hist[chanplane(ch)];
+	int ind = index(ch);
+	vector<float> ret(9600);
+	for (int itick=0; itick<9600; ++itick) {
+	    ret[itick] = h->GetBinContent(ind+1, itick+1);
+	}
+	return ret;
+    }
+};
+
 
 int main(int argc, char* argv[])
 {
-    string url = url_alpha;	// small file
+    string url = url_test;
     if (argc > 1) {
 	url = argv[1];
     }
-
-    WireCellSst::FrameSource fs;
-    auto cfg = fs.default_configuration();
-    put(cfg, "filename", url);
-    fs.configure(cfg);
 
     // S&C microboone sampling parameter database
     const double tick = 0.5*units::microsecond;
@@ -112,6 +132,9 @@ int main(int argc, char* argv[])
 
     auto many = new WireCellSigProc::CoherentNoiseSub;
     shared_ptr<WireCell::IChannelFilter> many_sp(many);
+
+
+
 
     WireCellSigProc::OmnibusNoiseFilter bus;
     bus.set_channel_filters({one_sp});
