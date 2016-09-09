@@ -1,4 +1,7 @@
 
+#include "WireCellIface/SimpleFrame.h"
+#include "WireCellIface/SimpleTrace.h"
+#include "WireCellSigProc/OmnibusNoiseFilter.h"
 #include "WireCellSigProc/OneChannelNoise.h"
 #include "WireCellSigProc/CoherentNoiseSub.h"
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
@@ -14,6 +17,7 @@
 #include "TCanvas.h"
 #include "TProfile.h"
 #include "TH2F.h"
+#include "TFile.h"
 
 using namespace WireCell;
 using namespace std;
@@ -47,12 +51,16 @@ class XinFileIterator {
     TH2* hist[3];		// per plane
 public:
     XinFileIterator(const char* filename, const char* histtype="orig") {
-	file = TFile::Open(file.c_str());
-	for (auto c : {"u","v","w"} ) {
-	    hist[0] = (TH2*)file->Get(Form("h%c_%s", c, histtype));
+	TFile* file = TFile::Open(filename);
+	string uvw = "uvw";
+	for (int ind=0; ind<3; ++ind) {
+	    auto c = uvw[ind];
+	    std::string name = Form("h%c_%s", c, histtype);
+	    cerr << "Loading " << name << endl;
+	    hist[ind] = (TH2*)file->Get(name.c_str());
 	}
-	file->Close();
-	delete file;
+	//file->Close();
+	//delete file;
     }
 
     int plane(int ch) {
@@ -66,9 +74,8 @@ public:
 	return ch-2400-2400;
     }
 
-
     vector<float> at(int ch) {
-	TH2type* h = hist[chanplane(ch)];
+	TH2* h = hist[plane(ch)];
 	int ind = index(ch);
 	vector<float> ret(9600);
 	for (int itick=0; itick<9600; ++itick) {
@@ -76,6 +83,39 @@ public:
 	}
 	return ret;
     }
+
+    /// Return a frame, the one and only in the file.
+    IFrame::pointer frame() {
+	ITrace::vector traces;
+
+	int chindex=0;
+	for (int iplane=0; iplane<3; ++iplane) {
+	    TH2* h = hist[iplane];
+
+	    int nchannels = h->GetNbinsX();
+	    int nticks = h->GetNbinsY();
+
+	    cerr << "plane " << iplane << ": " << nchannels << " X " << nticks << endl;
+
+	    double qtot = 0.0;
+	    for (int ich = 1; ich <= nchannels; ++ich) {
+		ITrace::ChargeSequence charges;
+		for (int itick = 1; itick <= nticks; ++itick) {
+		    auto q = h->GetBinContent(ich, itick);
+		    charges.push_back(q);
+		    qtot += q;
+		}
+		SimpleTrace* st = new SimpleTrace(chindex, 0.0, charges);
+		traces.push_back(ITrace::pointer(st));
+		++chindex;
+		//cerr << "qtot in plane/ch/index "
+		//     << iplane << "/" << ich << "/" << chindex << " = " << qtot << endl;
+	    }
+	}
+	SimpleFrame* sf = new SimpleFrame(0, 0, traces);
+	return IFrame::pointer(sf);
+    }
+    
 };
 
 
@@ -85,6 +125,7 @@ int main(int argc, char* argv[])
     if (argc > 1) {
 	url = argv[1];
     }
+    XinFileIterator fs(url.c_str());
 
     // S&C microboone sampling parameter database
     const double tick = 0.5*units::microsecond;
@@ -134,8 +175,6 @@ int main(int argc, char* argv[])
     shared_ptr<WireCell::IChannelFilter> many_sp(many);
 
 
-
-
     WireCellSigProc::OmnibusNoiseFilter bus;
     bus.set_channel_filters({one_sp});
     bus.set_grouped_filters({many_sp});
@@ -148,25 +187,18 @@ int main(int argc, char* argv[])
     ExecMon em("starting");
 
     // This might be done in a DFP graph in a real app 
-    IFrame::pointer frame;
-    int count = 0;
-    while (fs(frame)) {
-	++count;
-	if (!frame) {
-	    cerr << "Hist end of stream, bye." << endl;
-	    break;
-	}
-	rms_plot(canvas, frame, Form("Raw frame #%d", count));
+    IFrame::pointer frame = fs.frame();
+    rms_plot(canvas, frame, "Raw frame");
 	
-	IFrame::pointer quiet;
+    IFrame::pointer quiet;
 
-	cerr << em(Form("Removing noise from %d....", count)) << endl;
-	bus(frame, quiet);
-	cerr << em("...done") << endl;
+    cerr << em("Removing noise") << endl;
+    bus(frame, quiet);
+    cerr << em("...done") << endl;
 
-	rms_plot(canvas, quiet, Form("Quiet frame #%d", count));
-	Assert(quiet);
-    }
+    rms_plot(canvas, quiet, "Quiet frame");
+    Assert(quiet);
+
     canvas.Print("test_omnibus.pdf]","pdf");
 
     cerr << em.summary() << endl;   
