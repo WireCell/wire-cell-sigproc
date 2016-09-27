@@ -18,23 +18,49 @@
 #include "TProfile.h"
 #include "TH2F.h"
 #include "TFile.h"
+#include "TTree.h"
 
 using namespace WireCell;
 using namespace std;
 
 const string url_test = "/data0/bviren/data/uboone/test_3455_0.root"; // big!
 
-void save_into_file(IFrame::pointer frame_orig,IFrame::pointer frame_raw, int nwire_u, int nwire_v, int nwire_w, int nticks){
+void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::pointer frame_raw, int nwire_u, int nwire_v, int nwire_w, int nticks){
+  TFile *file1 = new TFile(filename);
+
   TFile *file = new TFile("temp.root","RECREATE");
+  TTree *Trun = ((TTree*)file1->Get("Trun"))->CloneTree();
+  Trun->SetDirectory(file);
   
-  TH2F *hu_orig = new TH2F("hu_orig","hu_orig",nwire_u,0,nwire_u,nticks,0,nticks);
-  TH2F *hv_orig = new TH2F("hv_orig","hv_orig",nwire_u,0,nwire_u,nticks,0,nticks);
-  TH2F *hw_orig = new TH2F("hw_orig","hw_orig",nwire_u,0,nwire_u,nticks,0,nticks);
+  TH2I *hu_orig = new TH2I("hu_orig","hu_orig",nwire_u,0,nwire_u,nticks,0,nticks);
+  TH2I *hv_orig = new TH2I("hv_orig","hv_orig",nwire_u,0,nwire_u,nticks,0,nticks);
+  TH2I *hw_orig = new TH2I("hw_orig","hw_orig",nwire_u,0,nwire_u,nticks,0,nticks);
 
   TH2F *hu_raw = new TH2F("hu_raw","hu_raw",nwire_u,0,nwire_u,nticks,0,nticks);
   TH2F *hv_raw = new TH2F("hv_raw","hv_raw",nwire_u,0,nwire_u,nticks,0,nticks);
   TH2F *hw_raw = new TH2F("hw_raw","hw_raw",nwire_u,0,nwire_u,nticks,0,nticks);
+
+  TH2F *hu_decon = new TH2F("hu_decon","hu_decon",nwire_u,0,nwire_u,int(nticks/6.),0,nticks);
+  TH2F *hv_decon = new TH2F("hv_decon","hv_decon",nwire_u,0,nwire_u,int(nticks/6.),0,nticks);
+  TH2F *hw_decon = new TH2F("hw_decon","hw_decon",nwire_u,0,nwire_u,int(nticks/6.),0,nticks);
   
+  TH1F *hu_baseline = (TH1F*)file1->Get("hu_baseline");
+  TH1F *hv_baseline = (TH1F*)file1->Get("hv_baseline");
+  TH1F *hw_baseline = (TH1F*)file1->Get("hw_baseline");
+  
+  hu_baseline->SetDirectory(file);
+  hv_baseline->SetDirectory(file);
+  hw_baseline->SetDirectory(file);
+
+  TH1F *hu_threshold = (TH1F*)file1->Get("hu_threshold");
+  TH1F *hv_threshold = (TH1F*)file1->Get("hv_threshold");
+  TH1F *hw_threshold = (TH1F*)file1->Get("hw_threshold");
+  
+  hu_threshold->SetDirectory(file);
+  hv_threshold->SetDirectory(file);
+  hw_threshold->SetDirectory(file);
+
+
   auto traces = frame_orig->traces();
   for (auto trace : *traces.get()) {
     int tbin = trace->tbin();
@@ -86,6 +112,14 @@ void save_into_file(IFrame::pointer frame_orig,IFrame::pointer frame_raw, int nw
       }
     }
   }
+
+  TTree *T_bad = new TTree("T_bad","T_bad");
+  int chid, plane, start_time,end_time;
+  T_bad->Branch("chid",&chid,"chid/I");
+  T_bad->Branch("plane",&plane,"plane/I");
+  T_bad->Branch("start_time",&start_time,"start_time/I");
+  T_bad->Branch("end_time",&end_time,"end_time/I");
+  T_bad->SetDirectory(file);
 
 
   file->Write();
@@ -218,6 +252,15 @@ int main(int argc, char* argv[])
     for (int ind=2192; ind<= 2303; ++ind) { miscfgchan.push_back(ind); }
     for (int ind=2352; ind<= 2400; ++ind) { miscfgchan.push_back(ind); }
     
+    // hard-coded bad channels
+    vector<int> bad_channels;
+    for (int i=0;i!=wchans.size();i++){
+      if (i>=7136 - 4800 && i <=7263 - 4800){
+	if (i != 7200- 4800 && i!=7215 - 4800)
+	  bad_channels.push_back(i+4800);
+      }
+    }
+
     // Q&D RC+RC time constant - all have same.
     const double rcrc = 1.0*units::millisecond;
     vector<int> rcrcchans(nchans);
@@ -233,6 +276,7 @@ int main(int argc, char* argv[])
     //  noise->set_gains_shapings(miscfgchan, from_gain_mVfC, to_gain_mVfC, from_shaping, to_shaping);
     noise->set_sampling(tick, nsamples);
     //noise->set_rcrc_constant(rcrcchans, rcrc);
+    noise->set_bad_channels(bad_channels);
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 
     auto one = new WireCellSigProc::OneChannelNoise;
@@ -267,7 +311,7 @@ int main(int argc, char* argv[])
     // rms_plot(canvas, quiet, "Quiet frame");
     Assert(quiet);
 
-    save_into_file(frame,quiet,uchans.size(),vchans.size(),wchans.size(),nsamples);
+    save_into_file(url.c_str(),frame,quiet,uchans.size(),vchans.size(),wchans.size(),nsamples);
     //    canvas.Print("test_omnibus.pdf]","pdf");
 
     cerr << em.summary() << endl;   

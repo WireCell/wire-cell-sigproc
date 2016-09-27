@@ -43,7 +43,7 @@ void OneChannelNoise::apply(int ch, signal_t& signal) const
     // Waveform::BinRange chirped_bins;
     // bool is_chirp = m_check_chirp(signal_gc, chirped_bins.first, chirped_bins.second);
 	
-    // auto spectrum = Waveform::dft(signal);
+    auto spectrum = Waveform::dft(signal);
     // bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
 
     // if (!is_partial) {
@@ -54,7 +54,9 @@ void OneChannelNoise::apply(int ch, signal_t& signal) const
 
     // Waveform::scale(spectrum, m_noisedb->noise(ch));
 
-    // signal = Waveform::idft(spectrum);
+    // remove the DC component 
+    spectrum.front() = 0;
+    signal = Waveform::idft(spectrum);
 
     // fixme: still need to add final rebaselining and "still noisy finding"
 
