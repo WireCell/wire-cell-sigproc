@@ -40,18 +40,19 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 	    filter->apply(ch, signal);
 	}
     }
-    for (auto group : m_noisedb->coherent_channels()) {
-	IChannelFilter::channel_signals_t chgrp;
-	for (auto ch : group) {	    // fix me: check if we don't actually have this channel
-	    chgrp[ch] = bychan[ch]; // copy...
-	}
-	for (auto filter : m_perchan) {
-	    filter->apply(chgrp);
-	}
-	for (auto cs : chgrp) {
-	    bychan[cs.first] = cs.second; // copy
-	}
-    }
+
+    // for (auto group : m_noisedb->coherent_channels()) {
+    // 	IChannelFilter::channel_signals_t chgrp;
+    // 	for (auto ch : group) {	    // fix me: check if we don't actually have this channel
+    // 	    chgrp[ch] = bychan[ch]; // copy...
+    // 	}
+    // 	for (auto filter : m_perchan) {
+    // 	    filter->apply(chgrp);
+    // 	}
+    // 	for (auto cs : chgrp) {
+    // 	    bychan[cs.first] = cs.second; // copy
+    // 	}
+    // }
 
     {
 	// pack up output

@@ -24,6 +24,73 @@ using namespace std;
 
 const string url_test = "/data0/bviren/data/uboone/test_3455_0.root"; // big!
 
+void save_into_file(IFrame::pointer frame_orig,IFrame::pointer frame_raw, int nwire_u, int nwire_v, int nwire_w, int nticks){
+  TFile *file = new TFile("temp.root","RECREATE");
+  
+  TH2F *hu_orig = new TH2F("hu_orig","hu_orig",nwire_u,0,nwire_u,nticks,0,nticks);
+  TH2F *hv_orig = new TH2F("hv_orig","hv_orig",nwire_u,0,nwire_u,nticks,0,nticks);
+  TH2F *hw_orig = new TH2F("hw_orig","hw_orig",nwire_u,0,nwire_u,nticks,0,nticks);
+
+  TH2F *hu_raw = new TH2F("hu_raw","hu_raw",nwire_u,0,nwire_u,nticks,0,nticks);
+  TH2F *hv_raw = new TH2F("hv_raw","hv_raw",nwire_u,0,nwire_u,nticks,0,nticks);
+  TH2F *hw_raw = new TH2F("hw_raw","hw_raw",nwire_u,0,nwire_u,nticks,0,nticks);
+  
+  auto traces = frame_orig->traces();
+  for (auto trace : *traces.get()) {
+    int tbin = trace->tbin();
+    int ch = trace->channel();
+    auto charges = trace->charge();
+    if (ch < nwire_u){
+      int counter = 0;
+      for (auto q : charges) {
+	counter ++;
+	hu_orig->SetBinContent(ch+1,tbin+counter,q); 
+      }
+    }else if (ch < nwire_v + nwire_u){
+      int counter = 0;
+      for (auto q : charges) {
+	counter ++;
+	hv_orig->SetBinContent(ch+1-nwire_u,tbin+counter,q); 
+      }
+    }else{
+      int counter = 0;
+      for (auto q : charges) {
+	counter ++;
+	hw_orig->SetBinContent(ch+1-nwire_u-nwire_v,tbin+counter,q); 
+      }
+    }
+  }
+
+  traces = frame_raw->traces();
+  for (auto trace : *traces.get()) {
+    int tbin = trace->tbin();
+    int ch = trace->channel();
+    auto charges = trace->charge();
+    if (ch < nwire_u){
+      int counter = 0;
+      for (auto q : charges) {
+	counter ++;
+	hu_raw->SetBinContent(ch+1,tbin+counter,q); 
+      }
+    }else if (ch < nwire_v + nwire_u){
+      int counter = 0;
+      for (auto q : charges) {
+	counter ++;
+	hv_raw->SetBinContent(ch+1-nwire_u,tbin+counter,q); 
+      }
+    }else{
+      int counter = 0;
+      for (auto q : charges) {
+	counter ++;
+	hw_raw->SetBinContent(ch+1-nwire_u-nwire_v,tbin+counter,q); 
+      }
+    }
+  }
+
+
+  file->Write();
+  file->Close();
+}
 
 void rms_plot(TCanvas& canvas, IFrame::pointer frame, const string& title)
 {
@@ -130,7 +197,7 @@ int main(int argc, char* argv[])
 
     // S&C microboone sampling parameter database
     const double tick = 0.5*units::microsecond;
-    const int nsamples = 9600;
+    const int nsamples = 9594;
 
     // Q&D microboone channel map
     vector<int> uchans(2400), vchans(2400), wchans(3456);
@@ -163,9 +230,9 @@ int main(int argc, char* argv[])
     noise->set_nominal_baseline(uchans, unombl);
     noise->set_nominal_baseline(vchans, vnombl);
     noise->set_nominal_baseline(wchans, wnombl);
-    noise->set_gains_shapings(miscfgchan, from_gain_mVfC, to_gain_mVfC, from_shaping, to_shaping);
+    //  noise->set_gains_shapings(miscfgchan, from_gain_mVfC, to_gain_mVfC, from_shaping, to_shaping);
     noise->set_sampling(tick, nsamples);
-    noise->set_rcrc_constant(rcrcchans, rcrc);
+    //noise->set_rcrc_constant(rcrcchans, rcrc);
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 
     auto one = new WireCellSigProc::OneChannelNoise;
@@ -181,15 +248,15 @@ int main(int argc, char* argv[])
     bus.set_grouped_filters({many_sp});
     bus.set_channel_noisedb(noise_sp);
 
-    TCanvas canvas("c","canvas",500,500);
+    //TCanvas canvas("c","canvas",500,500);
 
-    canvas.Print("test_omnibus.pdf[","pdf");
+    //canvas.Print("test_omnibus.pdf[","pdf");
 
     ExecMon em("starting");
 
     // This might be done in a DFP graph in a real app 
     IFrame::pointer frame = fs.frame();
-    rms_plot(canvas, frame, "Raw frame");
+    // rms_plot(canvas, frame, "Raw frame");
 	
     IFrame::pointer quiet;
 
@@ -197,10 +264,11 @@ int main(int argc, char* argv[])
     bus(frame, quiet);
     cerr << em("...done") << endl;
 
-    rms_plot(canvas, quiet, "Quiet frame");
+    // rms_plot(canvas, quiet, "Quiet frame");
     Assert(quiet);
 
-    canvas.Print("test_omnibus.pdf]","pdf");
+    save_into_file(frame,quiet,uchans.size(),vchans.size(),wchans.size(),nsamples);
+    //    canvas.Print("test_omnibus.pdf]","pdf");
 
     cerr << em.summary() << endl;   
 
