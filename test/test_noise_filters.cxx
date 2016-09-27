@@ -166,6 +166,13 @@ int main(int argc, char* argv[])
     noise->set_gains_shapings(miscfgchan, from_gain_mVfC, to_gain_mVfC, from_shaping, to_shaping);
     noise->set_sampling(tick, nsamples);
     noise->set_rcrc_constant(rcrcchans, rcrc);
+
+    // these are made up numbers:
+    noise->set_bad_channels({1,42,69,3141});
+
+    // todo: group channels for coherent noise subtraction:
+    //noise->set_channel_groups(...);
+    
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 
     auto one = new WireCellSigProc::OneChannelNoise;

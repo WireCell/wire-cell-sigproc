@@ -38,7 +38,9 @@ namespace WireCellSigProc {
 	virtual std::vector<channel_group_t> coherent_channels() const {
 	    return m_channel_groups;
 	}
-	
+	virtual channel_group_t bad_channels() const {
+	    return m_bad_channels;
+	}
 
 	// concrete helper methods
 
@@ -85,6 +87,11 @@ namespace WireCellSigProc {
 	    m_channel_groups = channel_groups;
 	}
 	    
+	/// Set "bad" channels.
+	void set_bad_channels(const channel_group_t& bc) {
+	    m_bad_channels = bc;
+	}
+
 
     private:
 	double m_tick;
@@ -105,6 +112,7 @@ namespace WireCellSigProc {
 	const IChannelNoiseDatabase::filter_t& get_filter(int channel, const filter_vector_t& fv) const;
 
 	std::vector< channel_group_t > m_channel_groups;
+	channel_group_t m_bad_channels;
     };
 }
 
