@@ -27,6 +27,13 @@ WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
 
 bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out)
 {
+    // For now, just collect any and all masks and interpret them as "bad"
+    Waveform::ChannelMaskMap input_cmm = in->masks();
+    Waveform::ChannelMasks bad_regions;
+    for (auto const& it: input_cmm) {
+	bad_regions = Waveform::merge(bad_regions, it.second);
+    }
+
     std::map<int, IChannelFilter::signal_t> bychan;
 
     auto traces = in->traces();
@@ -37,9 +44,13 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 	IChannelFilter::signal_t& signal = bychan[ch]; // ref
 
 	for (auto filter : m_perchan) {
-	    filter->apply(ch, signal);
+	    auto masks = filter->apply(ch, signal);
+	    for (auto const& it: masks) {
+		bad_regions = Waveform::merge(bad_regions, it.second);
+	    }
 	}
     }
+
 
     // for (auto group : m_noisedb->coherent_channels()) {
     // 	IChannelFilter::channel_signals_t chgrp;
@@ -47,7 +58,10 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
     // 	    chgrp[ch] = bychan[ch]; // copy...
     // 	}
     // 	for (auto filter : m_perchan) {
-    // 	    filter->apply(chgrp);
+    // 	    auto masks = filter->apply(chgrp);
+    //      for (auto const& it: masks) {
+    //          bad_regions = Waveform::merge(bad_regions, it.second);
+    //      }
     // 	}
     // 	for (auto cs : chgrp) {
     // 	    bychan[cs.first] = cs.second; // copy
@@ -56,13 +70,16 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 
     {
 	// pack up output
+	Waveform::ChannelMaskMap cmm;
+	cmm["bad"] = bad_regions;
+
 	ITrace::vector itraces;
 	for (auto cs : bychan) {
 	    // fixme: that tbin though
 	    SimpleTrace *trace = new SimpleTrace(cs.first, 0, cs.second);
 	    itraces.push_back(ITrace::pointer(trace));
 	}
-	SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick());
+	SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick(), cmm);
 	out = IFrame::pointer(sframe);
     }
 }

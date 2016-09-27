@@ -14,12 +14,10 @@ namespace WireCellSigProc {
 	//// IChannelFilter interface
 
 	/** Filter in place the signal `sig` from given `channel`. */
-	virtual void apply(int channel, signal_t& sig) const {
-	    return ;		// not implemented / no-op
-	}
+	virtual WireCell::Waveform::ChannelMaskMap apply(int channel, signal_t& sig) const;
 
 	/** Filter in place a group of signals together. */
-	virtual void apply(channel_signals_t& chansig) const;
+	virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
 
     };
 
