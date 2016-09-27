@@ -9,9 +9,14 @@ CoherentNoiseSub::~CoherentNoiseSub()
 {
 }
 
-void CoherentNoiseSub::apply(channel_signals_t& chansig) const
+WireCell::Waveform::ChannelMaskMap
+CoherentNoiseSub::apply(channel_signals_t& chansig) const
 {
-    /// fixme: implement
+    return WireCell::Waveform::ChannelMaskMap();		// not implemented
 }
-
+WireCell::Waveform::ChannelMaskMap
+CoherentNoiseSub::apply(int channel, signal_t& sig) const
+{
+    return WireCell::Waveform::ChannelMaskMap();		// not implemented
+}
 
