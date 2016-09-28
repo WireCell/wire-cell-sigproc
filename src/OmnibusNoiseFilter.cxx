@@ -34,6 +34,22 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 	bad_regions = Waveform::merge(bad_regions, it.second);
     }
 
+    // Get the ones from database and then merge
+    int nsamples = m_noisedb->number_samples();
+    std::vector<int> bad_channels = m_noisedb->bad_channels();
+    Waveform::BinRange bad_bins;
+    bad_bins.first = 0;
+    bad_bins.second = nsamples;
+    Waveform::ChannelMasks temp;
+    for (int i = 0; i< bad_channels.size();i++){
+      temp[bad_channels.at(i)].push_back(bad_bins);
+      //std::cout << temp.size() << " " << temp[bad_channels.at(i)].size() << std::endl;
+    }
+    bad_regions = Waveform::merge(bad_regions, temp);
+    for (int i = 0; i< bad_channels.size();i++){
+      std::cout << bad_regions[bad_channels.at(i)].size() << std::endl;
+    }
+
     std::map<int, IChannelFilter::signal_t> bychan;
 
     auto traces = in->traces();
@@ -72,6 +88,8 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 	// pack up output
 	Waveform::ChannelMaskMap cmm;
 	cmm["bad"] = bad_regions;
+
+	//std::cout << "Xin: " << bad_regions.size() << std::endl;
 
 	ITrace::vector itraces;
 	for (auto cs : bychan) {

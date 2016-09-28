@@ -113,6 +113,7 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
     }
   }
 
+  // save bad channels 
   TTree *T_bad = new TTree("T_bad","T_bad");
   int chid, plane, start_time,end_time;
   T_bad->Branch("chid",&chid,"chid/I");
@@ -120,6 +121,27 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
   T_bad->Branch("start_time",&start_time,"start_time/I");
   T_bad->Branch("end_time",&end_time,"end_time/I");
   T_bad->SetDirectory(file);
+
+  Waveform::ChannelMaskMap input_cmm = frame_raw->masks();
+  for (auto const& it: input_cmm) {
+    //std::cout << "Xin1: " << it.first << " " << it.second.size() << std::endl;
+    for (auto const &it1 : it.second){
+      chid = it1.first;
+      if (chid < nwire_u){
+	plane = 0;
+      }else if (chid < nwire_v){
+	plane = 1;
+      }else{
+	plane = 2;
+      }
+      std::cout << "Xin1: " << chid << " " << plane << " " << it1.second.size() << std::endl;
+      for (int ind = 0; ind < it1.second.size(); ++ind){
+	start_time = it1.second[ind].first;
+	end_time = it1.second[ind].second;
+	T_bad->Fill();
+      }
+    }
+  }
 
 
   file->Write();
