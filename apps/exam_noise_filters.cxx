@@ -134,7 +134,7 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
       }else{
 	plane = 2;
       }
-      std::cout << "Xin1: " << chid << " " << plane << " " << it1.second.size() << std::endl;
+      //std::cout << "Xin1: " << chid << " " << plane << " " << it1.second.size() << std::endl;
       for (int ind = 0; ind < it1.second.size(); ++ind){
 	start_time = it1.second[ind].first;
 	end_time = it1.second[ind].second;
@@ -295,9 +295,9 @@ int main(int argc, char* argv[])
     noise->set_nominal_baseline(uchans, unombl);
     noise->set_nominal_baseline(vchans, vnombl);
     noise->set_nominal_baseline(wchans, wnombl);
-    //  noise->set_gains_shapings(miscfgchan, from_gain_mVfC, to_gain_mVfC, from_shaping, to_shaping);
+    noise->set_gains_shapings(miscfgchan, from_gain_mVfC, to_gain_mVfC, from_shaping, to_shaping);
     noise->set_sampling(tick, nsamples);
-    //noise->set_rcrc_constant(rcrcchans, rcrc);
+    noise->set_rcrc_constant(rcrcchans, rcrc);
     noise->set_bad_channels(bad_channels);
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 

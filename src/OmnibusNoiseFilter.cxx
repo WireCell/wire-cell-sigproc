@@ -46,9 +46,9 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
       //std::cout << temp.size() << " " << temp[bad_channels.at(i)].size() << std::endl;
     }
     bad_regions = Waveform::merge(bad_regions, temp);
-    for (int i = 0; i< bad_channels.size();i++){
-      std::cout << bad_regions[bad_channels.at(i)].size() << std::endl;
-    }
+    // for (int i = 0; i< bad_channels.size();i++){
+    //   std::cout << bad_regions[bad_channels.at(i)].size() << std::endl;
+    // }
 
     std::map<int, IChannelFilter::signal_t> bychan;
 
