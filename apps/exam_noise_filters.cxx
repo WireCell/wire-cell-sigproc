@@ -292,11 +292,11 @@ int main(int argc, char* argv[])
     // of factory + configurable and driven by user configuration.
 
     auto noise = new WireCellSigProc::SimpleChannelNoiseDB;
+    noise->set_sampling(tick, nsamples);
     noise->set_nominal_baseline(uchans, unombl);
     noise->set_nominal_baseline(vchans, vnombl);
     noise->set_nominal_baseline(wchans, wnombl);
     noise->set_gains_shapings(miscfgchan, from_gain_mVfC, to_gain_mVfC, from_shaping, to_shaping);
-    noise->set_sampling(tick, nsamples);
     noise->set_rcrc_constant(rcrcchans, rcrc);
     noise->set_bad_channels(bad_channels);
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);

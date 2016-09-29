@@ -65,7 +65,7 @@ const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::get_filter(int chan
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::rcrc(int channel) const
 {
-    return get_filter(channel, m_rcrc);
+  return get_filter(channel, m_rcrc);
 }
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::config(int channel) const
@@ -91,7 +91,10 @@ void SimpleChannelNoiseDB::set_sampling(double tick, int nsamples)
 
     m_rcrc.clear();
     m_config.clear();
-    m_default_filter = std::make_shared<filter_t>(nsamples);
+
+    Waveform::compseq_t spectrum;
+    spectrum.resize(nsamples,std::complex<float>(1,0));
+    m_default_filter = std::make_shared<filter_t>(spectrum);
 }
 	
 // set one thing in a vector at the index, resizing if needed, use def
@@ -144,15 +147,21 @@ void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,
 {
     const double gain_ratio = to_gain/from_gain;
     Response::ColdElec from_ce(from_gain, from_shaping);
-    Response::ColdElec to_ce(from_gain, from_shaping);
+    Response::ColdElec to_ce(to_gain, to_shaping);
     auto to_sig   =   to_ce.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
     auto from_sig = from_ce.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
+    
+    //std::cout << to_gain << " " << from_gain << " " << to_shaping << " " << from_shaping << " " << to_sig.at(1) << " " << from_sig.at(1) << std::endl;
+    
     auto to_filt   = Waveform::dft(to_sig);
     auto from_filt = Waveform::dft(from_sig);
     Waveform::shrink(to_filt, from_filt); // divide
     auto filt = std::make_shared<filter_t>(to_filt);
+    
+    //std::cout << to_filt.at(1) << " " << to_filt.at(2) << std::endl;
     for (auto ch : channels) {
 	int ind = chind(ch);
+	//	std::cout << ch << " " << ind << std::endl;
 	set_one(ind, filt, m_config, m_default_filter);
 	set_one(ind, gain_ratio, m_gain, m_default_gain);
     }

@@ -62,7 +62,10 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
       //std::cout << spectrum.front().real() << std::endl;
     }
 
-    // // Waveform::scale(spectrum, m_noisedb->config(ch));
+    // if (ch==2000) std::cout << "2000" << " " << m_noisedb->config(ch).at(1) << " " << m_noisedb->gain_correction(ch) << std::endl;
+    // if (ch==2016) std::cout << "2016" << " " << m_noisedb->config(ch).at(1) << " " << m_noisedb->gain_correction(ch) << std::endl;
+
+    Waveform::scale(spectrum, m_noisedb->config(ch));
 
     // // Waveform::scale(spectrum, m_noisedb->noise(ch));
 
