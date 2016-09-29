@@ -66,7 +66,6 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
     // if (ch==2016) std::cout << "2016" << " " << m_noisedb->config(ch).at(1) << " " << m_noisedb->gain_correction(ch) << std::endl;
 
     Waveform::scale(spectrum, m_noisedb->config(ch));
-
     Waveform::scale(spectrum, m_noisedb->noise(ch));
 
     // remove the DC component 
@@ -78,7 +77,21 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
     //correct baseline
     Waveform::increase(signal, baseline *(-1));
 
-    // fixme: still need to add final rebaselining and "still noisy finding"
+    // Now do adaptive baseline for the chirping channels
+    if (is_chirp){
+      Operations::Chirp_raise_baseline(signal,chirped_bins.first, chirped_bins.second);
+      Operations::SignalFilter(signal);
+      Operations::RawAdapativeBaselineAlg(signal);
+    }
+    // Now do the adaptive baseline for the bad RC channels
+    if (is_partial){
+      Operations::SignalFilter(signal);
+      Operations::RawAdapativeBaselineAlg(signal);
+    }
+    // Identify the Noisy channels ... 
+    Operations::SignalFilter(signal);
+    
+    Operations::RemoveFilterFlags(signal);
 
     return ret;
 }

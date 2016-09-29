@@ -35,6 +35,8 @@ namespace WireCellSigProc {
 	    bool operator()(const WireCell::Waveform::compseq_t& spec) const;
 	    
 	};
+
+	bool NoisyFilterAlg(const WireCell::Waveform::compseq_t& spec, int planeNum, int channel_no);
     }
 }
 

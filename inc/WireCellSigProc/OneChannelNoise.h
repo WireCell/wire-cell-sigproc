@@ -6,6 +6,7 @@
 #include "WireCellIface/IChannelFilter.h"
 
 #include "WireCellSigProc/Diagnostics.h"
+#include "WireCellSigProc/Operations.h"
 
 
 namespace WireCellSigProc {
@@ -38,6 +39,8 @@ namespace WireCellSigProc {
 
 	Diagnostics::Chirp m_check_chirp; // fixme, these should be done via service interfaces
 	Diagnostics::Partial m_check_partial; // at least need to expose them to configuration
+	
+
 	WireCell::IChannelNoiseDatabase::pointer m_noisedb;
     };
 
