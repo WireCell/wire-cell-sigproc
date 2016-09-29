@@ -67,7 +67,7 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
 
     Waveform::scale(spectrum, m_noisedb->config(ch));
 
-    // // Waveform::scale(spectrum, m_noisedb->noise(ch));
+    Waveform::scale(spectrum, m_noisedb->noise(ch));
 
     // remove the DC component 
     spectrum.front() = 0;

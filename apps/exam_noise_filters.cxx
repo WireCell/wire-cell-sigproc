@@ -287,18 +287,44 @@ int main(int argc, char* argv[])
     const double rcrc = 1.0*units::millisecond;
     vector<int> rcrcchans(nchans);
     std::iota(rcrcchans.begin(), rcrcchans.end(), 0);
+    
+    //harmonic noises
+    vector<int> harmonicchans(uchans.size() + vchans.size());
+    std::iota(harmonicchans.begin(), harmonicchans.end(), 0);
+    
+    vector<int> special_chans;
+    special_chans.push_back(2240);
+
+    WireCellSigProc::SimpleChannelNoiseDB::mask_t h36kHz(0,169,173);
+    WireCellSigProc::SimpleChannelNoiseDB::mask_t h108kHz(0,513,516);
+    WireCellSigProc::SimpleChannelNoiseDB::mask_t hspkHz(0,17,19);
+    WireCellSigProc::SimpleChannelNoiseDB::multimask_t hharmonic;
+    hharmonic.push_back(h36kHz);
+    hharmonic.push_back(h108kHz);
+    WireCellSigProc::SimpleChannelNoiseDB::multimask_t hspecial;
+    hspecial.push_back(h36kHz);
+    hspecial.push_back(h108kHz);
+    hspecial.push_back(hspkHz);
 
     // Load up components.  Note, in a real app this is done as part
     // of factory + configurable and driven by user configuration.
 
     auto noise = new WireCellSigProc::SimpleChannelNoiseDB;
+    // initialize
     noise->set_sampling(tick, nsamples);
+    // set nominal baseline
     noise->set_nominal_baseline(uchans, unombl);
     noise->set_nominal_baseline(vchans, vnombl);
     noise->set_nominal_baseline(wchans, wnombl);
+    // set misconfigured channels
     noise->set_gains_shapings(miscfgchan, from_gain_mVfC, to_gain_mVfC, from_shaping, to_shaping);
+    // do the RCRC
     noise->set_rcrc_constant(rcrcchans, rcrc);
+    // set initial bad channels
     noise->set_bad_channels(bad_channels);
+    // set the harmonic filter
+    noise->set_filter(harmonicchans,hharmonic);
+    noise->set_filter(special_chans,hspecial);
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 
     auto one = new WireCellSigProc::OneChannelNoise;

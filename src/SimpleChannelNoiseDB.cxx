@@ -75,7 +75,7 @@ const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::config(int channel)
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::noise(int channel) const
 {
-    return get_filter(channel, m_config);
+    return get_filter(channel, m_masks);
 }
 	
 
@@ -169,7 +169,10 @@ void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,
 
 void SimpleChannelNoiseDB::set_filter(const std::vector<int>& channels, const multimask_t& masks)
 {
-    auto filt = std::make_shared<filter_t>(m_nsamples);
+  Waveform::compseq_t spectrum;
+  spectrum.resize(m_nsamples,std::complex<float>(1,0));
+
+  auto filt = std::make_shared<filter_t>(spectrum);
     for (auto m : masks) {
 	for (int ind=get<1>(m); ind <= get<2>(m); ++ind) {
 	    filt->assign(ind, get<0>(m));
