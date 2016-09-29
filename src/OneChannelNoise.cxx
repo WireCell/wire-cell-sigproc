@@ -73,6 +73,11 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
     spectrum.front() = 0;
     signal = Waveform::idft(spectrum);
 
+    //Now calculate the baseline ...
+    baseline = Waveform::median(signal);
+    //correct baseline
+    Waveform::increase(signal, baseline *(-1));
+
     // fixme: still need to add final rebaselining and "still noisy finding"
 
     return ret;
