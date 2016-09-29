@@ -117,14 +117,16 @@ void SimpleChannelNoiseDB::set_rcrc_constant(const std::vector<int>& channels, d
     auto signal = rcres.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
     
     Waveform::compseq_t spectrum = Waveform::dft(signal);
-    // get the square of it
-    Waveform::compseq_t spectrum2;
-    for (auto it : spectrum){
-      float real_part = it.real();
-      float imag_part = it.imag();
-      std::complex<float> temp(real_part*real_part-imag_part*imag_part,2*real_part*imag_part);
-      spectrum2.push_back(temp);
-    }
+    
+    // get the square of it because there are two RC filters
+    Waveform::compseq_t spectrum2 = spectrum;
+    Waveform::scale(spectrum2,spectrum);
+    // for (auto it : spectrum){
+    //   float real_part = it.real();
+    //   float imag_part = it.imag();
+    //   std::complex<float> temp(real_part*real_part-imag_part*imag_part,2*real_part*imag_part);
+    //   spectrum2.push_back(temp);
+    // }
 
     auto filt = std::make_shared<filter_t>(spectrum2);
     
