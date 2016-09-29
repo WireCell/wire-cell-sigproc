@@ -172,15 +172,20 @@ void SimpleChannelNoiseDB::set_filter(const std::vector<int>& channels, const mu
   Waveform::compseq_t spectrum;
   spectrum.resize(m_nsamples,std::complex<float>(1,0));
 
+  for (auto m : masks) {
+    for (int ind=get<1>(m); ind <= get<2>(m); ++ind) {
+      //filt->assign(ind, get<0>(m));
+      spectrum.at(ind) = get<0>(m);
+    }
+    //std::cout << "Xin: " << get<1>(m) << " " << get<2>(m) << " " << get<0>(m) << " " << spectrum.at(0) << " " << spectrum.at(169) << " " << spectrum.at(170)<< std::endl;
+  }
   auto filt = std::make_shared<filter_t>(spectrum);
-    for (auto m : masks) {
-	for (int ind=get<1>(m); ind <= get<2>(m); ++ind) {
-	    filt->assign(ind, get<0>(m));
-	}
-    }
-    for (auto ch : channels) {
-	set_one(chind(ch), filt, m_masks, m_default_filter);
-    }
+  
+
+  for (auto ch : channels) {
+    set_one(chind(ch), filt, m_masks, m_default_filter);
+  }
+  
 }
 
 

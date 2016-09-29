@@ -6,9 +6,7 @@
 
 using namespace WireCellSigProc;
 
-bool Diagnostics::NoisyFilterAlg(const WireCell::Waveform::compseq_t& spec, int planeNum, int channel_no){
-  
-}
+
 
 Diagnostics::Partial::Partial(int nfreqs, double maxpower)
     : nfreqs(nfreqs)

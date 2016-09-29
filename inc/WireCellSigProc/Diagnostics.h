@@ -2,6 +2,7 @@
 #define WIRECELLSIGPROC_DIAGNOSTICS
 
 #include "WireCellUtil/Waveform.h"
+//#include "WireCellSigProc/Operations.h"
 
 namespace WireCellSigProc {
 
@@ -36,7 +37,7 @@ namespace WireCellSigProc {
 	    
 	};
 
-	bool NoisyFilterAlg(const WireCell::Waveform::compseq_t& spec, int planeNum, int channel_no);
+	
     }
 }
 

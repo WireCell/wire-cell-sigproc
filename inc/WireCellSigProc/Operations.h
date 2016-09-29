@@ -11,6 +11,7 @@ namespace WireCellSigProc {
     bool RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig);
 
     bool RemoveFilterFlags(WireCell::Waveform::realseq_t& sig);
+    bool NoisyFilterAlg(WireCell::Waveform::realseq_t& spec, int ch);
   }
 }
 

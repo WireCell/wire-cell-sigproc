@@ -88,10 +88,17 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
       Operations::SignalFilter(signal);
       Operations::RawAdapativeBaselineAlg(signal);
     }
+
     // Identify the Noisy channels ... 
     Operations::SignalFilter(signal);
-    
+    bool is_noisy = Operations::NoisyFilterAlg(signal,ch);
     Operations::RemoveFilterFlags(signal);
+
+    if (is_noisy){
+      chirped_bins.first = 0;
+      chirped_bins.second = signal.size();
+      ret["noisy"][ch].push_back(chirped_bins);
+    }
 
     return ret;
 }
