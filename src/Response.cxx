@@ -92,8 +92,8 @@ double Response::ColdElec::operator()(double time) const
 }
 
 
-Response::SimpleRC::SimpleRC(double width, double offset)
-    : _width(width), _offset(offset)
+Response::SimpleRC::SimpleRC(double width, double tick, double offset)
+  : _width(width), _tick(tick), _offset(offset)
 
 {
 }
@@ -102,7 +102,7 @@ Response::SimpleRC::~SimpleRC()
 }
 double Response::SimpleRC::operator()(double time) const
 {
-    double ret = -1.0/_width * exp(-(time-_offset)/_width);
+    double ret = -_tick/_width * exp(-(time-_offset)/_width);
     if (time == _offset) {	// this is a sketchy comparison
 	ret += 1.0;		// delta function
     }

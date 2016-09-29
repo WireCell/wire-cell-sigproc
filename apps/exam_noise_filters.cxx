@@ -32,17 +32,17 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
   TTree *Trun = ((TTree*)file1->Get("Trun"))->CloneTree();
   Trun->SetDirectory(file);
   
-  TH2I *hu_orig = new TH2I("hu_orig","hu_orig",nwire_u,0,nwire_u,nticks,0,nticks);
-  TH2I *hv_orig = new TH2I("hv_orig","hv_orig",nwire_u,0,nwire_u,nticks,0,nticks);
-  TH2I *hw_orig = new TH2I("hw_orig","hw_orig",nwire_u,0,nwire_u,nticks,0,nticks);
+  TH2I *hu_orig = new TH2I("hu_orig","hu_orig",nwire_u,-0.5,nwire_u-0.5,nticks,0,nticks);
+  TH2I *hv_orig = new TH2I("hv_orig","hv_orig",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,nticks,0,nticks);
+  TH2I *hw_orig = new TH2I("hw_orig","hw_orig",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,nticks,0,nticks);
 
-  TH2F *hu_raw = new TH2F("hu_raw","hu_raw",nwire_u,0,nwire_u,nticks,0,nticks);
-  TH2F *hv_raw = new TH2F("hv_raw","hv_raw",nwire_u,0,nwire_u,nticks,0,nticks);
-  TH2F *hw_raw = new TH2F("hw_raw","hw_raw",nwire_u,0,nwire_u,nticks,0,nticks);
+  TH2F *hu_raw = new TH2F("hu_raw","hu_raw",nwire_u,-0.5,nwire_u-0.5,nticks,0,nticks);
+  TH2F *hv_raw = new TH2F("hv_raw","hv_raw",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,nticks,0,nticks);
+  TH2F *hw_raw = new TH2F("hw_raw","hw_raw",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,nticks,0,nticks);
 
-  TH2F *hu_decon = new TH2F("hu_decon","hu_decon",nwire_u,0,nwire_u,int(nticks/6.),0,nticks);
-  TH2F *hv_decon = new TH2F("hv_decon","hv_decon",nwire_u,0,nwire_u,int(nticks/6.),0,nticks);
-  TH2F *hw_decon = new TH2F("hw_decon","hw_decon",nwire_u,0,nwire_u,int(nticks/6.),0,nticks);
+  TH2F *hu_decon = new TH2F("hu_decon","hu_decon",nwire_u,-0.5,nwire_u-0.5,int(nticks/6.),0,nticks);
+  TH2F *hv_decon = new TH2F("hv_decon","hv_decon",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,int(nticks/6.),0,nticks);
+  TH2F *hw_decon = new TH2F("hw_decon","hw_decon",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,int(nticks/6.),0,nticks);
   
   TH1F *hu_baseline = (TH1F*)file1->Get("hu_baseline");
   TH1F *hv_baseline = (TH1F*)file1->Get("hv_baseline");

@@ -56,17 +56,19 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
     //   std::cout << ch << std::endl;
     // }
     
-    // if (!is_partial) {
-    // 	Waveform::scale(spectrum, m_noisedb->rcrc(ch));
-    // }
+    if (!is_partial) {
+      //std::cout << "Xin: " << spectrum.front().real() << " " ;
+      Waveform::shrink(spectrum, m_noisedb->rcrc(ch));
+      //std::cout << spectrum.front().real() << std::endl;
+    }
 
     // // Waveform::scale(spectrum, m_noisedb->config(ch));
 
     // // Waveform::scale(spectrum, m_noisedb->noise(ch));
 
-    // // remove the DC component 
-    // spectrum.front() = 0;
-    // signal = Waveform::idft(spectrum);
+    // remove the DC component 
+    spectrum.front() = 0;
+    signal = Waveform::idft(spectrum);
 
     // fixme: still need to add final rebaselining and "still noisy finding"
 

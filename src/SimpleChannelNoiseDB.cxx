@@ -113,11 +113,14 @@ void SimpleChannelNoiseDB::set_nominal_baseline(const std::vector<int>& channels
 }
 void SimpleChannelNoiseDB::set_rcrc_constant(const std::vector<int>& channels, double rcrc)
 {
-    Response::SimpleRC rcres(rcrc);
+  Response::SimpleRC rcres(rcrc,m_tick);
     auto signal = rcres.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
+    
     
     Waveform::compseq_t spectrum = Waveform::dft(signal);
     
+    //std::cout << rcrc << " " << m_tick << " " << m_nsamples << " " << signal.front() << " " << signal.at(1) << " " << signal.at(2) << std::endl;
+
     // get the square of it because there are two RC filters
     Waveform::compseq_t spectrum2 = spectrum;
     Waveform::scale(spectrum2,spectrum);

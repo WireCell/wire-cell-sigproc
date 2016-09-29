@@ -2,6 +2,7 @@
 #define WIRECELLSIGPROC_RESPONSE
 
 #include "WireCellUtil/Waveform.h"
+#include "WireCellUtil/Units.h"
 
 namespace WireCellSigProc {
 
@@ -38,14 +39,14 @@ namespace WireCellSigProc {
 	/// A functional object giving the response as a function of
 	/// time to a simple RC circuit.
 	class SimpleRC : public Generator {
-	    const double _width, _offset;
+	  const double _width, _offset, _tick;
 	public:
 	    // Create (current) response function for a simple RC
 	    // circuit where a unit of charge is placed on the cap at
 	    // time offset and circuit has RC time constant of given
 	    // width.  Times are in units consistent with value used
 	    // to call the function.
-	    SimpleRC(double width, double offset=0.0);
+	    SimpleRC(double width, double tick=0.5*units::microsecond, double offset=0.0);
 	    virtual ~SimpleRC();
 
 	    // Return the response at a given time.  Time in units
