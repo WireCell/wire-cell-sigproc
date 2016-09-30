@@ -306,6 +306,17 @@ int main(int argc, char* argv[])
     hspecial.push_back(h108kHz);
     hspecial.push_back(hspkHz);
 
+    // do the coherent subtraction
+    
+    std::vector< std::vector<int> > channel_groups;
+    for (int i=0;i!=172;i++){
+      std::vector<int> channel_group;
+      for (int j=0;j!=48;j++){
+	channel_group.push_back(i*48+j);
+      }
+      channel_groups.push_back(channel_group);
+    }
+
     // Load up components.  Note, in a real app this is done as part
     // of factory + configurable and driven by user configuration.
 
@@ -325,6 +336,8 @@ int main(int argc, char* argv[])
     // set the harmonic filter
     noise->set_filter(harmonicchans,hharmonic);
     noise->set_filter(special_chans,hspecial);
+    noise->set_channel_groups(channel_groups);
+
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 
     auto one = new WireCellSigProc::OneChannelNoise;
