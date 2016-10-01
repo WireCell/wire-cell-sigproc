@@ -16,17 +16,16 @@ CoherentNoiseSub::apply(channel_signals_t& chansig) const
   // std::cout << "Xin2: " << std::endl;
   // find the median among all 
   WireCell::Waveform::realseq_t medians = Derivations::CalcMedian(chansig);
-
-  // calculate the RMS 
+  //  std::cout << medians.size() << " " << medians.at(0) << std::endl;
   
   // do the signal protection and adaptive baseline
+  Operations::SignalProtection(medians);
 
-  // calculate the scaling coefficient
-
-  // Subtract 
+  // calculate the scaling coefficient and subtract
+  Operations::Subtract_WScaling(chansig, medians);
   
-
-    return WireCell::Waveform::ChannelMaskMap();		// not implemented
+  
+  return WireCell::Waveform::ChannelMaskMap();		// not implemented
 }
 WireCell::Waveform::ChannelMaskMap
 CoherentNoiseSub::apply(int channel, signal_t& sig) const

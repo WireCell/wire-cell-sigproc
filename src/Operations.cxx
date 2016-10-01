@@ -1,10 +1,129 @@
 #include "WireCellSigProc/Operations.h"
+#include "WireCellSigProc/Derivations.h"
 
 #include <cmath>
 #include <complex>
 #include <iostream>
 
 using namespace WireCellSigProc;
+
+bool Operations::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& chansig, const WireCell::Waveform::realseq_t& medians){
+  double ave_coef = 0;
+  double_t ave_coef1 = 0;
+  std::map<int,double> coef_all;
+
+  int nbin = medians.size();
+
+  for (auto it: chansig){
+    int ch = it.first;
+    WireCell::IChannelFilter::signal_t& signal = it.second;
+    double sum2 = 0;
+    double sum3 = 0;
+    double coef = 0;
+    std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
+    
+    for (int j=0;j!=nbin;j++){
+      if (fabs(signal.at(j)) < 4 * temp.second){
+	sum2 += signal.at(j) * medians.at(j);
+	sum3 += medians.at(j) * medians.at(j);
+      }
+    }
+    if (sum3 >0)
+      coef = sum2/sum3;
+    coef_all[ch] = coef;
+    if (coef != 0){
+      ave_coef += coef;
+      ave_coef1 ++;
+    }
+  }
+  if (ave_coef1>0)
+    ave_coef = ave_coef / ave_coef1;
+
+  for (auto it: chansig){
+    int ch = it.first;
+    WireCell::IChannelFilter::signal_t& signal = it.second;
+    float scaling = coef_all[ch]/ave_coef;
+    for (int i=0;i!=nbin;i++){
+      signal.at(i) = signal.at(i) - medians.at(i) * scaling;
+    }
+  }
+  
+  return true;
+}
+
+bool Operations::SignalProtection(WireCell::Waveform::realseq_t& medians){
+  // calculate the RMS 
+  std::pair<double,double> temp = Derivations::CalcRMS(medians);
+  double mean = temp.first;
+  double rms = temp.second;
+  //  std::cout << temp.first << " " << temp.second << std::endl;
+  int nbin = medians.size();
+
+  int pad_window = 5;
+  int protection_factor = 5.0;
+
+  std::vector<int> signals;
+  std::vector<bool> signalsBool;
+  for (int j=0;j!=nbin;j++)
+    signalsBool.push_back(0);
+  
+  for (int j=0;j!=nbin;j++){
+    float content = medians.at(j);
+    if (fabs(content-mean)>protection_factor*rms){
+      medians.at(j) = 0; 
+      signalsBool.at(j) = 1;
+      // add the front and back padding
+      for (int k=0;k!=pad_window;k++){
+	int bin = j+k+1;
+	if (bin > nbin-1) bin = nbin-1;
+	signalsBool.at(bin) = 1;
+	bin = j-k-1;
+	if (bin <0) bin = 0;
+	signalsBool.at(bin) = 1;
+      }
+    }
+  }
+  
+  for (int j=0;j!=nbin;j++)
+    if( signalsBool.at(j) == 1 )
+      signals.push_back(j);
+  
+  
+  for (int j=0;j!=signals.size();j++){
+    int bin = signals.at(j);
+    int prev_bin=bin;
+    int next_bin=bin;
+    
+    int flag = 1;
+    while(flag){
+      prev_bin--;
+      if (find(signals.begin(),signals.end(),prev_bin)==signals.end() || prev_bin <=0){
+	flag = 0;
+      }
+    }
+    
+    flag =1;
+    while(flag){
+      next_bin++;
+      if (find(signals.begin(),signals.end(),next_bin)==signals.end() || next_bin >=nbin-1){
+	flag = 0;
+      }
+    }
+    
+    
+    float prev_content, next_content;
+    prev_content = medians.at(prev_bin);//h44->GetBinContent(prev_bin+1);
+    next_content = medians.at(next_bin);
+
+    float content = prev_content + (bin - prev_bin)/ (next_bin - prev_bin*1.0) 
+      * (next_content - prev_content);
+    medians.at(bin) = content;
+    //h44->SetBinContent(bin+1,content);
+  }
+  
+
+  return true;
+}
 
 bool Operations::NoisyFilterAlg(WireCell::Waveform::realseq_t& sig, int ch){
   double rmsVal = Operations::CalcRMSWithFlags(sig);

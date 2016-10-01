@@ -2,6 +2,7 @@
 #define WIRECELLSIGPROC_OPERATIONS
 
 #include "WireCellUtil/Waveform.h"
+#include  "WireCellIface/IChannelFilter.h"
 
 namespace WireCellSigProc {
   namespace Operations {
@@ -12,6 +13,9 @@ namespace WireCellSigProc {
 
     bool RemoveFilterFlags(WireCell::Waveform::realseq_t& sig);
     bool NoisyFilterAlg(WireCell::Waveform::realseq_t& spec, int ch);
+
+    bool SignalProtection(WireCell::Waveform::realseq_t& sig);
+    bool Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& chansig, const WireCell::Waveform::realseq_t& medians);
   }
 }
 

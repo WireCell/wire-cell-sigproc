@@ -59,12 +59,12 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
     	bychan[ch] = trace->charge(); // copy
     	IChannelFilter::signal_t& signal = bychan[ch]; // ref
 
-    	// for (auto filter : m_perchan) {
-    	//     auto masks = filter->apply(ch, signal);
-    	//     for (auto const& it: masks) {
-    	// 	bad_regions = Waveform::merge(bad_regions, it.second);
-    	//     }
-    	// }
+    	for (auto filter : m_perchan) {
+    	    auto masks = filter->apply(ch, signal);
+    	    for (auto const& it: masks) {
+    		bad_regions = Waveform::merge(bad_regions, it.second);
+    	    }
+    	}
     }
 
     

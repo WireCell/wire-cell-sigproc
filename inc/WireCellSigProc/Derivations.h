@@ -7,6 +7,7 @@
 namespace WireCellSigProc{
   namespace Derivations{
     WireCell::Waveform::realseq_t CalcMedian(const WireCell::IChannelFilter::channel_signals_t& chansig);
+    std::pair<double,double> CalcRMS(const WireCell::Waveform::realseq_t& signal);
   }
 }
 

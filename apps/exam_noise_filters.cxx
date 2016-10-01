@@ -337,7 +337,7 @@ int main(int argc, char* argv[])
     noise->set_filter(harmonicchans,hharmonic);
     noise->set_filter(special_chans,hspecial);
     noise->set_channel_groups(channel_groups);
-
+    
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 
     auto one = new WireCellSigProc::OneChannelNoise;
