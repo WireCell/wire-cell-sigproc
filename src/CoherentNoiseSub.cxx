@@ -24,6 +24,9 @@ CoherentNoiseSub::apply(channel_signals_t& chansig) const
   // calculate the scaling coefficient and subtract
   Operations::Subtract_WScaling(chansig, medians);
   
+  // for (auto it: chansig){
+  //   std::cout << "Xin3 " << it.second.at(0) << std::endl;
+  // }
   
   return WireCell::Waveform::ChannelMaskMap();		// not implemented
 }

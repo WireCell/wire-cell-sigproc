@@ -75,21 +75,24 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
       IChannelFilter::channel_signals_t chgrp;
       for (auto ch : group) {	    // fix me: check if we don't actually have this channel
        
-	chgrp[ch] = bychan[ch]; // copy...
+    	chgrp[ch] = bychan[ch]; // copy...
       }
       
-      // std::cout << "Xin1: " << m_perchan.size() << std::endl;
+      // std::cout << "Xin1: " << chgrp.size() << std::endl;
       for (auto filter : m_grouped) {
-	auto masks = filter->apply(chgrp);
-	
-	for (auto const& it: masks) {
-	  bad_regions = Waveform::merge(bad_regions, it.second);
-	}
+    	auto masks = filter->apply(chgrp);
+    	for (auto const& it: masks) {
+    	  bad_regions = Waveform::merge(bad_regions, it.second);
+    	}
       }
+
       for (auto cs : chgrp) {
-	bychan[cs.first] = cs.second; // copy
+    	//std::cout << bychan[cs.first].at(0) << " ";
+    	bychan[cs.first] = cs.second; // copy
+    	//std::cout << bychan[cs.first].at(0) << " " << cs.second.at(0) << std::endl;
       }
     }
+    
     
     {
       // pack up output

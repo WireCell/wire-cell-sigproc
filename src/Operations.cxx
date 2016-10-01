@@ -42,11 +42,26 @@ bool Operations::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
   for (auto it: chansig){
     int ch = it.first;
     WireCell::IChannelFilter::signal_t& signal = it.second;
-    float scaling = coef_all[ch]/ave_coef;
-    for (int i=0;i!=nbin;i++){
-      signal.at(i) = signal.at(i) - medians.at(i) * scaling;
+    float scaling;
+    if (ave_coef != 0 ){
+      scaling = coef_all[ch]/ave_coef;
+    }else{
+      scaling = 0;
     }
+    //std::cout << scaling << " " << signal.at(0) << " " << medians.at(0) << std::endl;
+    //scaling = 1.0;
+    for (int i=0;i!=nbin;i++){
+      if (fabs(signal.at(i)) > 0.001)
+	  signal.at(i) = signal.at(i) - medians.at(i) * scaling;
+    }
+    // std::cout << signal.at(0) << std::endl;
+    //std::cout << it.second.at(0) << std::endl;
+    chansig[ch] = signal;
   }
+
+  // for (auto it: chansig){
+  //   std::cout << "Xin2 " << it.second.at(0) << std::endl;
+  // }
   
   return true;
 }
@@ -56,7 +71,7 @@ bool Operations::SignalProtection(WireCell::Waveform::realseq_t& medians){
   std::pair<double,double> temp = Derivations::CalcRMS(medians);
   double mean = temp.first;
   double rms = temp.second;
-  //  std::cout << temp.first << " " << temp.second << std::endl;
+  //std::cout << temp.first << " " << temp.second << std::endl;
   int nbin = medians.size();
 
   int pad_window = 5;
@@ -84,10 +99,14 @@ bool Operations::SignalProtection(WireCell::Waveform::realseq_t& medians){
     }
   }
   
+  // std::cout << "haha" << std::endl;
+
   for (int j=0;j!=nbin;j++)
     if( signalsBool.at(j) == 1 )
       signals.push_back(j);
   
+  // std::cout << "haha" << " " << signals.size() << std::endl;
+
   
   for (int j=0;j!=signals.size();j++){
     int bin = signals.at(j);
@@ -109,8 +128,12 @@ bool Operations::SignalProtection(WireCell::Waveform::realseq_t& medians){
 	flag = 0;
       }
     }
+
+    //std::cout << bin << " " << std::endl;
+    if (prev_bin <0 ) prev_bin = 0;
+    if (next_bin > nbin - 1) next_bin = nbin - 1;
     
-    
+
     float prev_content, next_content;
     prev_content = medians.at(prev_bin);//h44->GetBinContent(prev_bin+1);
     next_content = medians.at(next_bin);
@@ -121,6 +144,7 @@ bool Operations::SignalProtection(WireCell::Waveform::realseq_t& medians){
     //h44->SetBinContent(bin+1,content);
   }
   
+  //std::cout << "haha" << std::endl;
 
   return true;
 }

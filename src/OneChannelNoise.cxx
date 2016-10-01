@@ -94,6 +94,10 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
     bool is_noisy = Operations::NoisyFilterAlg(signal,ch);
     Operations::RemoveFilterFlags(signal);
 
+    // if (is_noisy){
+    //   std::cout << "Xin: " << signal.at(1) << std::endl;
+    // }
+
     if (is_noisy){
       chirped_bins.first = 0;
       chirped_bins.second = signal.size();
