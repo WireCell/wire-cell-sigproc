@@ -2,6 +2,8 @@
 #define WIRECELLSIGPROC_COHERENTNOISESUB
 
 #include "WireCellIface/IChannelFilter.h"
+#include "WireCellSigProc/Derivations.h"
+#include "WireCellSigProc/Operations.h"
 
 namespace WireCellSigProc {
 

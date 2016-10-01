@@ -20,7 +20,7 @@ bool Operations::NoisyFilterAlg(WireCell::Waveform::realseq_t& sig, int ch){
     channel_no = ch - 4800;
   }
 
-  std::cout << rmsVal << " " << ch << std::endl;
+  //std::cout << rmsVal << " " << ch << std::endl;
   
   double maxRMSCut[3] = {10.0,10.0,5.0};
   double minRMSCut[3] = {2,2,2};
