@@ -55,9 +55,9 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
 
     auto spectrum = Waveform::dft(signal);
     bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
-    // if (is_partial){
-    //   std::cout << ch << std::endl;
-    // }
+    if (is_partial){
+      std::cout << ch << std::endl;
+    }
     
     if (!is_partial) {
       //std::cout << "Xin: " << spectrum.front().real() << " " ;
