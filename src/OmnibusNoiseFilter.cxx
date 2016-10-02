@@ -82,12 +82,19 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
     for (auto group : m_noisedb->coherent_channels()) {
       // std::cout << counter << " " << group.size() << std::endl;
       // counter ++;
-      
+
+      int flag = 1;
+
       IChannelFilter::channel_signals_t chgrp;
       for (auto ch : group) {	    // fix me: check if we don't actually have this channel
-       
-    	chgrp[ch] = bychan[ch]; // copy...
+    	if (bychan.find(ch)==bychan.end()) {
+	  flag = 0;
+	}else{
+	  chgrp[ch] = bychan[ch]; // copy...
+	}
       }
+      
+      if (flag == 0) continue;
       
       // std::cout << "Xin1: " << chgrp.size() << std::endl;
       for (auto filter : m_grouped) {

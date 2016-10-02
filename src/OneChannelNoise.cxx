@@ -55,9 +55,9 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
 
     auto spectrum = Waveform::dft(signal);
     bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
-    if (is_partial){
-      std::cout << ch << std::endl;
-    }
+    // if (is_partial){
+    //   std::cout << ch << std::endl;
+    // }
     
     if (!is_partial) {
       //std::cout << "Xin: " << spectrum.front().real() << " " ;
@@ -100,6 +100,8 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
     // if (is_noisy){
     //   std::cout << "Xin: " << signal.at(1) << std::endl;
     // }
+
+    std::cout << ch << " " << is_chirp << " " << is_partial << " " << is_noisy << std::endl;
 
     if (is_noisy){
       chirped_bins.first = 0;
