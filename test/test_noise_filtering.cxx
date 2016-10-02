@@ -33,6 +33,10 @@ int main(int argc, char* argv[])
   assert(horigs.at(0).size()==9594);
 #include "example-noisy-48.h"
   assert(horigs.size()==96);
+#include "example-misconfig-48.h"
+  assert(horigs.size()==144);
+#include "example-rcrc-48.h"
+  assert(horigs.size()==192);
   
   // std::cout << horigs.size() << " " << horigs.at(0).size() << std::endl;
   
@@ -58,7 +62,27 @@ int main(int argc, char* argv[])
     SimpleTrace *st = new SimpleTrace(chindex+ich,0.0,charges);
     traces.push_back(ITrace::pointer(st));
   }
-  
+  chindex = 2016;
+  for (int ich = 0; ich!=48; ich++){
+    ITrace::ChargeSequence charges;
+    for (int itick =0; itick!=9594;itick++){
+      auto q = horigs.at(ich+96).at(itick);
+      charges.push_back(q);
+    }
+    SimpleTrace *st = new SimpleTrace(chindex+ich,0.0,charges);
+    traces.push_back(ITrace::pointer(st));
+  }
+  chindex = 7728;
+  for (int ich = 0; ich!=48; ich++){
+    ITrace::ChargeSequence charges;
+    for (int itick =0; itick!=9594;itick++){
+      auto q = horigs.at(ich+144).at(itick);
+      charges.push_back(q);
+    }
+    SimpleTrace *st = new SimpleTrace(chindex+ich,0.0,charges);
+    traces.push_back(ITrace::pointer(st));
+  }
+
 
   SimpleFrame* sf = new SimpleFrame(0, 0, traces);
 
@@ -179,6 +203,10 @@ int main(int argc, char* argv[])
   assert(hfilts.at(0).size()==9594);
 #include "example-chirping-48-filtered.h"
   assert(hfilts.size()==96);
+#include "example-misconfig-48-filtered.h"
+  assert(hfilts.size()==144);
+#include "example-rcrc-48-filtered.h"
+  assert(hfilts.size()==192);
   // test ...
   auto traces1 = quiet->traces();
   int counter = 0;

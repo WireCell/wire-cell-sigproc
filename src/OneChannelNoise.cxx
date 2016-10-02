@@ -101,7 +101,7 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
     //   std::cout << "Xin: " << signal.at(1) << std::endl;
     // }
 
-    std::cout << ch << " " << is_chirp << " " << is_partial << " " << is_noisy << std::endl;
+    // std::cout << ch << " " << is_chirp << " " << is_partial << " " << is_noisy << std::endl;
 
     if (is_noisy){
       chirped_bins.first = 0;
