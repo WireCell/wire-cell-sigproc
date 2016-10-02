@@ -48,6 +48,9 @@ Waveform::ChannelMaskMap OneChannelNoise::apply(int ch, signal_t& signal) const
     bool is_chirp = m_check_chirp(signal_gc, chirped_bins.first, chirped_bins.second);
     if (is_chirp) {
       ret["chirp"][ch].push_back(chirped_bins);
+      // for (int i=chirped_bins.first;i!=chirped_bins.second;i++){
+      // 	signal.at(i) = 0;
+      // }
     }
 
     auto spectrum = Waveform::dft(signal);

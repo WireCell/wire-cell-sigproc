@@ -223,9 +223,9 @@ bool Operations::NoisyFilterAlg(WireCell::Waveform::realseq_t& sig, int ch){
 
 bool Operations::Chirp_raise_baseline(WireCell::Waveform::realseq_t& sig, int bin1, int bin2){
   if (bin1 < 0 ) bin1 = 0;
-  if (bin2 > sig.size()-1) bin2 = sig.size()-1;
-  for (int i=bin1; i<=bin2;i++){
-    sig.at(i) = sig.at(i) + 10000.0;
+  if (bin2 > sig.size()) bin2 = sig.size();
+  for (int i=bin1; i<bin2;i++){
+    sig.at(i) = 10000.0;
   }
   return true;
 }
