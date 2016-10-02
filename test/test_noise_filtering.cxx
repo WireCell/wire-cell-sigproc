@@ -27,13 +27,28 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
+  std::vector<std::vector<float>> horigs;
 #include "example-chirping-48.h"
   assert(horigs.size()==48);
   assert(horigs.at(0).size()==9594);
+#include "example-noisy-48.h"
+  assert(horigs.size()==96);
+  
   // std::cout << horigs.size() << " " << horigs.at(0).size() << std::endl;
   
   ITrace::vector traces;
-  int chindex = 720;
+  int chindex = 624;
+  for (int ich = 0; ich!=48; ich++){
+    ITrace::ChargeSequence charges;
+    for (int itick =0; itick!=9594;itick++){
+      auto q = horigs.at(ich+48).at(itick);
+      charges.push_back(q);
+    }
+    SimpleTrace *st = new SimpleTrace(chindex+ich,0.0,charges);
+    traces.push_back(ITrace::pointer(st));
+  }
+  
+  chindex = 720;
   for (int ich = 0; ich!=48; ich++){
     ITrace::ChargeSequence charges;
     for (int itick =0; itick!=9594;itick++){
@@ -43,6 +58,8 @@ int main(int argc, char* argv[])
     SimpleTrace *st = new SimpleTrace(chindex+ich,0.0,charges);
     traces.push_back(ITrace::pointer(st));
   }
+  
+
   SimpleFrame* sf = new SimpleFrame(0, 0, traces);
 
 
@@ -156,10 +173,12 @@ int main(int argc, char* argv[])
   bus(frame, quiet);
   Assert(quiet);
 
-  #include "example-chirping-48-filtered.h"
+  std::vector<std::vector<float>> hfilts;
+#include "example-noisy-48-filtered.h"
   assert(hfilts.size()==48);
   assert(hfilts.at(0).size()==9594);
-
+#include "example-chirping-48-filtered.h"
+  assert(hfilts.size()==96);
   // test ...
   auto traces1 = quiet->traces();
   int counter = 0;
@@ -168,9 +187,9 @@ int main(int argc, char* argv[])
     int tbin = trace->tbin();
     int ch = trace->channel();
     auto charges = trace->charge();
-    // std::cout << counter << " " << charges.size() << " " << hfilts.at(counter).size() << std::endl;
+    // std::cout << ch << " " << counter << " " << charges.size() << " " << hfilts.at(counter).size() << " " << charges.at(0) << " " << hfilts.at(counter).at(0) << std::endl;
     for (int i=0;i!=9594;i++){
-      assert( fabs(charges.at(i) - hfilts.at(counter).at(i)) < 0.1 );
+      assert( fabs(charges.at(i) - hfilts.at(counter).at(i)) < 1.0 );
     }
 
 
