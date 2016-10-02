@@ -16,8 +16,9 @@ CoherentNoiseSub::apply(channel_signals_t& chansig) const
   // std::cout << "Xin2: " << std::endl;
   // find the median among all 
   WireCell::Waveform::realseq_t medians = Derivations::CalcMedian(chansig);
-  //  std::cout << medians.size() << " " << medians.at(0) << std::endl;
+  //std::cout << medians.size() << " " << medians.at(0) << " " << medians.at(1) << std::endl;
   
+
   // do the signal protection and adaptive baseline
   Operations::SignalProtection(medians);
 

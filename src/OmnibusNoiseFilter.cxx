@@ -56,22 +56,33 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
     for (auto trace : *traces.get()) {
     	int ch = trace->channel();
 
-    	bychan[ch] = trace->charge(); // copy
+	if (find(bad_channels.begin(),bad_channels.end(),ch)!=bad_channels.end()){
+	  bychan[ch].resize(nsamples,0);
+	  //std::cout << "Xin3 " << bychan[ch].at(10) << std::endl;
+	}else{
+	  bychan[ch] = trace->charge(); // copy
+	}
+
     	IChannelFilter::signal_t& signal = bychan[ch]; // ref
 
-    	for (auto filter : m_perchan) {
+	//	if (ch>=7200 && ch<7200+48){
+	  //std::cout << "Xin1: " << ch << " " << signal.at(10) << std::endl;
+	  for (auto filter : m_perchan) {
     	    auto masks = filter->apply(ch, signal);
     	    for (auto const& it: masks) {
-    		bad_regions = Waveform::merge(bad_regions, it.second);
+	      bad_regions = Waveform::merge(bad_regions, it.second);
     	    }
-    	}
+	  }
+	  //std::cout << "Xin2: " << signal.at(10) << std::endl;
+	  //	}
     }
 
     
-    //int counter = 0;
+    // int counter = 0;
     for (auto group : m_noisedb->coherent_channels()) {
-      //std::cout << counter << " " << group.size() << std::endl;
-      //counter ++;
+      // std::cout << counter << " " << group.size() << std::endl;
+      // counter ++;
+      
       IChannelFilter::channel_signals_t chgrp;
       for (auto ch : group) {	    // fix me: check if we don't actually have this channel
        

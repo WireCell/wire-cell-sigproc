@@ -310,6 +310,7 @@ int main(int argc, char* argv[])
     
     std::vector< std::vector<int> > channel_groups;
     for (int i=0;i!=172;i++){
+    //for (int i=150;i!=151;i++){
       std::vector<int> channel_group;
       for (int j=0;j!=48;j++){
 	channel_group.push_back(i*48+j);

@@ -71,6 +71,16 @@ bool Operations::SignalProtection(WireCell::Waveform::realseq_t& medians){
   std::pair<double,double> temp = Derivations::CalcRMS(medians);
   double mean = temp.first;
   double rms = temp.second;
+  
+  // WireCell::Waveform::realseq_t temp1;
+  // for (int i=0;i!=medians.size();i++){
+  //   if (fabs(medians.at(i) - mean) < 4.5*rms)
+  //     temp1.push_back(medians.at(i));
+  // }
+  // temp = WireCell::Waveform::mean_rms(temp1);
+  // mean = temp.first;
+  // rms = temp.second;
+  
   //std::cout << temp.first << " " << temp.second << std::endl;
   int nbin = medians.size();
 
