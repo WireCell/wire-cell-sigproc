@@ -44,13 +44,13 @@ def parse_text_record(text):
     ret['group'] = int(lines[2].split()[1])
 
     wire = lines[3].split()
-    ret['wire'] = int(wire[1])
+    ret['wire_region'] = int(wire[1])
     ret['label'] = wire[4]
 
     pos = map(float, wire[6].split('=')[1][1:-1].split(','))
-    ret['wirepos'] = tuple([10.0*p for p in pos]) # save as mm
-    ret['wirepos_unit'] = 'mm'
-    ret['voltage'] = float(wire[9])
+    ret['wire_region_pos'] = tuple([10.0*p for p in pos]) # save as mm
+    ret['wire_region_pos_unit'] = 'mm'
+    ret['bias_voltage'] = float(wire[9])
 
     ret['nbins'] = nbins = int(lines[4].split()[4])
 
@@ -109,11 +109,26 @@ def load(source):
     '''
     Load Garfield data source (eg, tarball).
 
-    Return list of per-drift-path dictionaries holding response.
+    Return list dictionaries of field response functions.
+
+    Each dictionary has keys:
+
+        - plane :: a letter from {"u","v","w"} giving the plane from
+          which the wire-of-interest exists.
+
+        - region :: the wire region number in which the path
+          corresponding drift path exists with 0 indicating region
+          around the wire-of-interest.
+
+        - impact :: the distance in mm to the wire at the center of
+          the given region.
+
+        - response :: a Numpy array shaped (2, Nsamples).  First row
+          holds the time values (seconds), second row hold the
+          response function values (Ampere) for each sample.
     '''
     source = asgenerator(source)
 
-    ret = list()
     from collections import defaultdict
     uniq = defaultdict(dict)
     for filename, text in source:
@@ -129,7 +144,7 @@ def load(source):
         for rec in gen:
             dat = parse_text_record(rec)
 
-            key = tuple([filename] + [dat[k] for k in ['group', 'wire', 'label']])
+            key = tuple([filename] + [dat[k] for k in ['group', 'wire_region', 'label']])
 
             old = uniq.get(key, None)
             if old:             # sum up all signal types
@@ -140,39 +155,130 @@ def load(source):
             dat.update(fnamedat)
             uniq[key] = dat
 
-    return [u[1] for u in sorted(uniq.items())]
+    ret = list()
+    for plane in 'uvw':
+        byplane = [one for one in uniq.values() if one['plane'] == plane]
+        zeros = [one for one in byplane if one['wire_region_pos'][0] == 0.0 and one['impact'] == 0.0]
+        if len(zeros) != 1:
+            raise ValueError("got too many zeros: %d" % len(zeros))
+        zero_wire_region = zeros[0]['wire_region']
+        for one in byplane:
+            d = dict(plane=plane,
+                     region = one['wire_region']-zero_wire_region,
+                     impact = one['impact'],
+                     response = numpy.asarray((one['x'], one['y'])))
+            ret.append(d)
+    return ret
 
-def average(dat):
+
+def average(fine):
     '''
-    Return field response averaged over wire regions.
+    Average fine-grained responses over multiple impact positions.  
+
+    Return list dictionaries of field response functions with keys:
+
+        - plane :: a letter from {"u","v","w"} giving the plane from
+          which the wire-of-interest exists.
+
+        - region :: the wire region number in which the path
+          corresponding drift path exists with 0 indicating region
+          around the wire-of-interest.
+
+        - response :: a Numpy array shaped (2, Nsamples).  First row
+          holds the time values (seconds), second row hold the
+          response function values (Ampere) for each sample.
+    '''
+    ret = list()
+    for plane in 'uvw':
+        byplane = [d for d in fine if d['plane'] == plane]
+        for region in set([d['region'] for d in byplane]):
+            resp = list()
+            inregion = [d for d in byplane if d['region'] == region]
+            for d in inregion:
+                resp.append(d['response'])
+            tot = numpy.zeros_like(resp[0][1])
+            for one in resp:
+                tot += one[1];
+            tot *= 2.0        # flip responses onto other side of wire
+            tot -= 0.5*(resp[0][1] + resp[-1][1]) # don't double count edge paths
+            dat = dict(plane=plane,
+                       region = region,
+                       response = numpy.asarray((resp[0][0], tot)))
+            ret.append(dat)
+        continue
+    return ret
+
+def dumps(dat):
+    '''
+    Return JSON string for data.
+    '''
+    import json
+    tmp = list()
+    for d in dat:
+        d = dict(d)
+        d['response'] = d['response'].tolist()
+        tmp.append(d)
+    return json.dumps(tmp)
+
+
+def toarrays(dat):
+    '''
+    Return field response current waveforms as 3 2D arrays.
 
     Return as tuple (u,v,w) where each is a 2D array shape: (#regions, #responses).
 
-    No time array is returned.  Take it from, eg dat[0]['x'].
     '''
     ret = list()
     for plane in 'uvw':
         byplane = [d for d in dat if d['plane'] == plane]
-        responses = list()
-
         this_plane = list()
-        for wire in sorted(set([d['wire'] for d in byplane])):
-            bywire = [d for d in byplane if d['wire'] == wire]
-            res = list()
-            for impact, one in sorted([(d['impact'],d) for d in bywire]):
-                res.append(one['y'])
-            tot = numpy.zeros_like(res[0])
-            for one in res:
-                tot += one
-            tot *= 2.0          # flip responses onto other side of wire
-            tot -= 0.5*(res[0] + res[1]) # don't double count edge paths
-            this_plane.append(tot)
+        for region in sorted(set([d['region'] for d in byplane])):
+            byregion = [d for d in byplane if d['region'] == region]
+            if len(byregion) != 1:
+                raise ValueError("unexpected number of regions: %d" % len(byregion))
+            wave = byregion[0]['response'][1]
+            this_plane.append(wave)
         ret.append(numpy.vstack(this_plane))
     return tuple(ret)
 
-def plot_average(avgtriple, time):
+
+def plot_by_region(avgtriple, time):
     '''
-    Plot averages
+    Plot response functions as 1D graphs.
+    '''
+    nwires = avgtriple[0].shape[0]
+    nwireshalf = nwires//2
+    wire0 = nwires - nwireshalf - 1
+
+    central_collection = avgtriple[2][wire0]
+    central_sum = sum(central_collection)
+    time *= 1.0e6
+    
+    fig, axes = plt.subplots(nwireshalf+1, sharex=True)
+
+    for wire_offset in range(nwireshalf+1):
+        ax = axes[wire_offset]
+        ax.set_title('Wire region %d' % wire_offset);
+
+        iwirep = wire0 + wire_offset
+        iwirem = wire0 + wire_offset
+
+        for iplane in range(3):
+            plane = avgtriple[iplane]
+            wirep = plane[iwirep]
+            wirem = plane[iwirem]
+
+            wave = wirep
+            if wire_offset:
+                wave = 0.5*(wirep + wirem)
+            wave /= central_sum
+            ax.plot(time, wave)
+        
+
+
+def plot_average_colz(avgtriple, time):
+    '''
+    Plot averages as 2D colz type plot
     '''
     use_imshow = False
     mintbin=700
@@ -223,3 +329,24 @@ def plot_average(avgtriple, time):
     fig.colorbar(ims[0], ax=axes[0], cmap=cmap, cax=cbar_ax)
 
 
+def convert(inputfile, outputfile = "wire-cell-garfield-response.json.bz2"):
+    '''
+    Convert an input Garfield file pack into an output wire cell field response file.
+    '''
+    dat = load(inputfile)
+    avg = average(dat)
+    text = dumps(avg)
+    if outputfile.endswith(".json"):
+        open(outputfile,'w').write(text)
+        return
+    if outputfile.endswith(".json.bz2"):
+        import bz2
+        bz2.BZ2File(outputfile, 'w').write(text)
+        return
+    if outputfile.endswith(".json.gz"):
+        import gzip
+        gzip.open(outputfile, "wb").write(text)
+        return
+    raise ValueError("unknown file format: %s" % outputfile)
+
+    
