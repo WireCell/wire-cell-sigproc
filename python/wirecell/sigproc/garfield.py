@@ -2,6 +2,17 @@
 '''
 Process Garfield field response output files to produce Wire Cell
 field response input files.
+
+Garfield input is provided as a tar file.  Internal structure does not
+matter much but the files are assumed to be spelled in the form:
+
+<impact>_<plane>.dat
+
+where <impact> spells the impact position in mm and plane is from the
+set {"U","V","Y"}.
+
+Each .dat file may hold many records.  See parse_text_record() for
+details of assumptions.
 '''
 import os.path as osp
 
@@ -21,6 +32,9 @@ def fromtarfile(filename):
         yield (member.name, tf.extractfile(member).read())
 
 def split_text_records(text):
+    '''
+    Return a generator that splits text by record separators.
+    '''
     for maybe in text.split("\n% "):
         if maybe.startswith("Created"):
             yield maybe
@@ -33,6 +47,7 @@ def parse_text_record(text):
 
     ret = dict()
 
+    # Created 31/07/16 At 19.52.20 < none > SIGNAL   "Direct signal, group   1     "
     created = lines[0].split()
     ret['created'] = '%s %s' %(created[1], created[3])
     ret['signal'] = None
@@ -41,8 +56,10 @@ def parse_text_record(text):
     if 'Cross-talk' in lines[0]:
         ret['signal'] = 'induction'
 
+    #   Group 1 consists of:
     ret['group'] = int(lines[2].split()[1])
 
+    #      Wire 243 with label X at (x,y)=(-3,0.6) and at -110 V
     wire = lines[3].split()
     ret['wire_region'] = int(wire[1])
     ret['label'] = wire[4]
@@ -52,8 +69,10 @@ def parse_text_record(text):
     ret['wire_region_pos_unit'] = 'mm'
     ret['bias_voltage'] = float(wire[9])
 
+    #  Number of signal records:  1000
     ret['nbins'] = nbins = int(lines[4].split()[4])
 
+    #  Units used: time in micro second, current in micro Ampere.
     xunit, yunit = lines[5].split(":")[1].split(",")
     xunit = [x.strip() for x in xunit.split("in")]
     yunit = [y.strip() for y in yunit.split("in")]
@@ -73,6 +92,11 @@ def parse_text_record(text):
 
     xdata = list()
     ydata = list()
+    #  + (  0.00000000E+00   0.00000000E+00
+    #  +     0.10000000E+00   0.00000000E+00
+    # ...
+    #  +     0.99800003E+02   0.00000000E+00
+    #  +     0.99900002E+02   0.00000000E+00 )
     for line in lines[9:9+nbins]:
         xy = line[4:].split()
         xdata.append(float(xy[0]))
