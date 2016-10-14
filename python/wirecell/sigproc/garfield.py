@@ -329,13 +329,14 @@ def plot_average_colz(avgtriple, time):
     fig.colorbar(ims[0], ax=axes[0], cmap=cmap, cax=cbar_ax)
 
 
-def convert(inputfile, outputfile = "wire-cell-garfield-response.json.bz2"):
+def convert(inputfile, outputfile = "wire-cell-garfield-response.json.bz2", average=True):
     '''
     Convert an input Garfield file pack into an output wire cell field response file.
     '''
     dat = load(inputfile)
-    avg = average(dat)
-    text = dumps(avg)
+    if average:
+        dat = average(dat)
+    text = dumps(dat)
     if outputfile.endswith(".json"):
         open(outputfile,'w').write(text)
         return
