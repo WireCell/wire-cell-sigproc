@@ -14,16 +14,20 @@ set {"U","V","Y"}.
 Each .dat file may hold many records.  See parse_text_record() for
 details of assumptions.
 '''
-import os.path as osp
+import response
+import units
 
 import numpy
-import matplotlib.pyplot as plt
 import tarfile
 
+import os.path as osp
+
+# fixme: move to some util module
 def fromtarfile(filename):
     '''
     Iterate on tarfile, returning (name,text) pair of each file.
     '''
+
 
     tf = tarfile.open(filename, 'r')
     for name,member in sorted([(m.name,m) for m in tf.getmembers()]):
@@ -65,8 +69,7 @@ def parse_text_record(text):
     ret['label'] = wire[4]
 
     pos = map(float, wire[6].split('=')[1][1:-1].split(','))
-    ret['wire_region_pos'] = tuple([10.0*p for p in pos]) # save as mm
-    ret['wire_region_pos_unit'] = 'mm'
+    ret['wire_region_pos'] = tuple([p*units.cm for p in pos])
     ret['bias_voltage'] = float(wire[9])
 
     #  Number of signal records:  1000
@@ -79,13 +82,11 @@ def parse_text_record(text):
 
     xscale = 1.0 # float(lines[7].split("=")[1]);
     if "micro second" in xunit[1]:
-        xscale *= 1.0e-6
-    ret['x_unit'] = 's'
+        xscale = units.us
 
     yscale = 1.0 # float(lines[8].split("=")[1]);
     if "micro Ampere" in yunit[1]:
-        yscale = 1.0e-6
-    ret['y_unit'] = 'V'
+        yscale = units.microamp
 
     ret['xlabel'] = xunit[0]
     ret['ylabel'] = yunit[0]
@@ -107,6 +108,7 @@ def parse_text_record(text):
     ret['y'] = numpy.asarray(ydata)*yscale
     return ret
 
+# fixme: move to some util module
 def asgenerator(source):
     '''
     If string, assume file, open proper generator, o.w. just return
@@ -133,23 +135,7 @@ def load(source):
     '''
     Load Garfield data source (eg, tarball).
 
-    Return list dictionaries of field response functions.
-
-    Each dictionary has keys:
-
-        - plane :: a letter from {"u","v","w"} giving the plane from
-          which the wire-of-interest exists.
-
-        - region :: the wire region number in which the path
-          corresponding drift path exists with 0 indicating region
-          around the wire-of-interest.
-
-        - impact :: the distance in mm to the wire at the center of
-          the given region.
-
-        - response :: a Numpy array shaped (2, Nsamples).  First row
-          holds the time values (seconds), second row hold the
-          response function values (Ampere) for each sample.
+    Return list of response.ResponseFunction objects.
     '''
     source = asgenerator(source)
 
@@ -186,66 +172,21 @@ def load(source):
         if len(zeros) != 1:
             raise ValueError("got too many zeros: %d" % len(zeros))
         zero_wire_region = zeros[0]['wire_region']
+        this_plane = list()
         for one in byplane:
-            d = dict(plane=plane,
-                     region = one['wire_region']-zero_wire_region,
-                     impact = one['impact'],
-                     response = numpy.asarray((one['x'], one['y'])))
-            ret.append(d)
+            times = one['x']
+            ls = (times[0], times[-1], len(times))
+            rf = response.ResponseFunction(plane, one['wire_region'] - zero_wire_region, ls,
+                                           numpy.asarray(one['y']), one['impact'])
+            this_plane.append(rf)
+        this_plane.sort(key=lambda x: x.region * 10000 + x.impact)
+        ret += this_plane
     return ret
 
 
-def average(fine):
-    '''
-    Average fine-grained responses over multiple impact positions.  
-
-    Return list dictionaries of field response functions with keys:
-
-        - plane :: a letter from {"u","v","w"} giving the plane from
-          which the wire-of-interest exists.
-
-        - region :: the wire region number in which the path
-          corresponding drift path exists with 0 indicating region
-          around the wire-of-interest.
-
-        - response :: a Numpy array shaped (2, Nsamples).  First row
-          holds the time values (seconds), second row hold the
-          response function values (Ampere) for each sample.
-    '''
-    ret = list()
-    for plane in 'uvw':
-        byplane = [d for d in fine if d['plane'] == plane]
-        for region in set([d['region'] for d in byplane]):
-            resp = list()
-            inregion = [d for d in byplane if d['region'] == region]
-            for d in inregion:
-                resp.append(d['response'])
-            tot = numpy.zeros_like(resp[0][1])
-            for one in resp:
-                tot += one[1];
-            tot *= 2.0        # flip responses onto other side of wire
-            tot -= 0.5*(resp[0][1] + resp[-1][1]) # don't double count edge paths
-            dat = dict(plane=plane,
-                       region = region,
-                       response = numpy.asarray((resp[0][0], tot)))
-            ret.append(dat)
-        continue
-    return ret
-
-def dumps(dat):
-    '''
-    Return JSON string for data.
-    '''
-    import json
-    tmp = list()
-    for d in dat:
-        d = dict(d)
-        d['response'] = d['response'].tolist()
-        tmp.append(d)
-    return json.dumps(tmp)
 
 
-def toarrays(dat):
+def toarrays(rflist):
     '''
     Return field response current waveforms as 3 2D arrays.
 
@@ -253,104 +194,16 @@ def toarrays(dat):
 
     '''
     ret = list()
-    for plane in 'uvw':
-        byplane = [d for d in dat if d['plane'] == plane]
+    for byplane in response.group_by(rflist, 'plane'):
         this_plane = list()
-        for region in sorted(set([d['region'] for d in byplane])):
-            byregion = [d for d in byplane if d['region'] == region]
-            if len(byregion) != 1:
-                raise ValueError("unexpected number of regions: %d" % len(byregion))
-            wave = byregion[0]['response'][1]
-            this_plane.append(wave)
+        byregion = response.group_by(byplane, 'region')
+        if len(byregion) != 1:
+            raise ValueError("unexpected number of regions: %d" % len(byregion))
+        for region in byregion:
+            this_plane.append(region.response)
         ret.append(numpy.vstack(this_plane))
     return tuple(ret)
 
-
-def plot_by_region(avgtriple, time):
-    '''
-    Plot response functions as 1D graphs.
-    '''
-    nwires = avgtriple[0].shape[0]
-    nwireshalf = nwires//2
-    wire0 = nwires - nwireshalf - 1
-
-    central_collection = avgtriple[2][wire0]
-    central_sum = sum(central_collection)
-    time *= 1.0e6
-    
-    fig, axes = plt.subplots(nwireshalf+1, sharex=True)
-
-    for wire_offset in range(nwireshalf+1):
-        ax = axes[wire_offset]
-        ax.set_title('Wire region %d' % wire_offset);
-
-        iwirep = wire0 + wire_offset
-        iwirem = wire0 + wire_offset
-
-        for iplane in range(3):
-            plane = avgtriple[iplane]
-            wirep = plane[iwirep]
-            wirem = plane[iwirem]
-
-            wave = wirep
-            if wire_offset:
-                wave = 0.5*(wirep + wirem)
-            wave /= central_sum
-            ax.plot(time, wave)
-        
-
-
-def plot_average_colz(avgtriple, time):
-    '''
-    Plot averages as 2D colz type plot
-    '''
-    use_imshow = False
-    mintbin=700
-    maxtbin=850
-    nwires = avgtriple[0].shape[0]
-    maxwires = nwires//2    
-    minwires = -maxwires
-    mintime = time[mintbin]
-    maxtime = time[maxtbin-1]
-    ntime = maxtbin-mintbin
-    deltatime = (maxtime-mintime)/ntime
-
-    x,y = numpy.meshgrid(numpy.linspace(mintime, maxtime, ntime),
-                          numpy.linspace(minwires, maxwires, nwires))
-    x *= 1.0e6                  # put into us
-
-    print x.shape, mintbin, maxtbin, mintime, maxtime, nwires, minwires, maxwires
-
-    fig = plt.figure()
-    cmap = 'seismic'
-
-    toplot=list()
-    for iplane in range(3):
-        avg = avgtriple[iplane]
-        main = avg[:,mintbin:maxtbin]
-        edge = avg[:,maxtbin:]
-        ped = numpy.sum(edge) / (edge.shape[0] * edge.shape[1])
-        toplot.append(main - ped)
-
-    maxpix = max(abs(numpy.min(avgtriple)), numpy.max(avgtriple))
-    clim = (-maxpix/2.0, maxpix/2.0)
-
-    ims = list()
-    axes = list()
-
-    for iplane in range(3):
-        ax = fig.add_subplot(3,1,iplane+1) # two rows, one column, first plot
-        if use_imshow:
-            im = plt.imshow(toplot[iplane], cmap=cmap, clim=clim,
-                            extent=[mintime, maxtime, minwires, maxwires], aspect='auto')
-        else:
-            im = plt.pcolormesh(x,y, toplot[iplane], cmap=cmap, vmin=clim[0], vmax=clim[1])
-        ims.append(im)
-        axes.append(ax)
-
-    fig.subplots_adjust(right=0.8)
-    cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-    fig.colorbar(ims[0], ax=axes[0], cmap=cmap, cax=cbar_ax)
 
 
 def convert(inputfile, outputfile = "wire-cell-garfield-response.json.bz2", average=True):
@@ -360,18 +213,6 @@ def convert(inputfile, outputfile = "wire-cell-garfield-response.json.bz2", aver
     dat = load(inputfile)
     if average:
         dat = average(dat)
-    text = dumps(dat)
-    if outputfile.endswith(".json"):
-        open(outputfile,'w').write(text)
-        return
-    if outputfile.endswith(".json.bz2"):
-        import bz2
-        bz2.BZ2File(outputfile, 'w').write(text)
-        return
-    if outputfile.endswith(".json.gz"):
-        import gzip
-        gzip.open(outputfile, "wb").write(text)
-        return
-    raise ValueError("unknown file format: %s" % outputfile)
+    response.write(rflist, outputfile)
 
     
