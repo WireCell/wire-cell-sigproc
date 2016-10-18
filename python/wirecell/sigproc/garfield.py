@@ -176,8 +176,8 @@ def load(source):
         for one in byplane:
             times = one['x']
             ls = (times[0], times[-1], len(times))
-            rf = response.ResponseFunction(plane, one['wire_region'] - zero_wire_region, ls,
-                                           numpy.asarray(one['y']), one['impact'])
+            rf = response.ResponseFunction(plane, one['wire_region'] - zero_wire_region, one['wire_region_pos'],
+                                           ls, numpy.asarray(one['y']), one['impact'])
             this_plane.append(rf)
         this_plane.sort(key=lambda x: x.region * 10000 + x.impact)
         ret += this_plane
@@ -206,13 +206,15 @@ def toarrays(rflist):
 
 
 
-def convert(inputfile, outputfile = "wire-cell-garfield-response.json.bz2", average=True):
+def convert(inputfile, outputfile = "wire-cell-garfield-fine-response.json.bz2", average=False, shaped=False):
     '''
     Convert an input Garfield file pack into an output wire cell field response file.
     '''
-    dat = load(inputfile)
+    rflist = load(inputfile)
+    if shaped:
+        rflist = [d.shaped() for d in rflist]
     if average:
-        dat = average(dat)
+        rflist = response.average(rflist)
     response.write(rflist, outputfile)
 
     

@@ -6,56 +6,154 @@ import numpy
 import matplotlib.pyplot as plt
 
 
+def fine_response(rflist_fine, regions = None, shaped=False):
+    '''
+    Plot fine response functions
+    '''
+    if regions is None:
+        regions = sorted(set([x.region for x in rflist_fine]))
+    nregions = len(regions)
+    impacts = sorted(set([x.impact for x in rflist_fine]))
+    nimpacts = len(impacts)
+
+    fig, axes = plt.subplots(nregions, 3, sharex=True)
+
+    byplane = response.group_by(rflist_fine, 'plane')
+
+    for iplane, plane_rfs in enumerate(byplane):
+        print 'plane %d, %d regions' % (iplane, len(plane_rfs))
+        byregion = response.group_by(plane_rfs,'region')
+
+        byregion = [lst for lst in byregion if lst[0].region in regions]
+
+        for iregion, region_rfs in enumerate(byregion):
+            region_rfs.sort(key=lambda x: x.impact)
+            first = region_rfs[0]
+
+            ax = axes[iregion][iplane]
+            ax.set_title('region %d' % (first.region,))
+            print "plane=%s, region=%d, impacts: " % (first.plane,first.region),
+            for rf in region_rfs:
+                if shaped:
+                    rf = rf.shaped()
+                times = numpy.linspace(*rf.domainls)/units.us
+                ax.plot(times, rf.response)
+                print "[%f] " % rf.impact,
+            print
+    
+    
+def average_shaping(rflist_avg, gain_mVfC=14, shaping=2.0*units.us, nbins=5000):
+    '''
+    Plot average field responses and with electronics shaping.
+    '''
+    import electronics
+    from scipy.signal import fftconvolve
+
+    byplane = response.group_by(rflist_avg, 'plane')
+    nfields = len(byplane[0])
+    main_field = [rf for rf in byplane[2] if rf.region == 0][0]
+    main_field_sum = numpy.max(numpy.abs(main_field.response))
+    main_shaped = main_field.shaped(gain_mVfC, shaping, nbins)
+    main_shaped_sum = numpy.max(numpy.abs(main_shaped.response))
+    rat = main_shaped_sum / main_field_sum
+
+
+    fig, axes = plt.subplots(nfields, 3, sharex=True)
+
+    for iplane, plane_frs in enumerate(byplane):
+        plane_frs.sort(key=lambda x: x.region)
+
+        for ifr, fr in enumerate(plane_frs):
+            ax = axes[ifr][iplane]
+            ax.set_title('plane %s, region %d' % (fr.plane, fr.region,))
+
+            sh = fr.shaped(gain_mVfC, shaping, nbins)
+            ax.plot(fr.times/units.us, fr.response*rat)
+            ax.plot(sh.times/units.us, sh.response)
+        
+    
     
 
-def response_by_wire_region(rflist):
+
+def electronics():
+    '''
+    Plot electronics response functions
+    '''
+    fig, axes = plt.subplots(4,1, sharex=True)
+
+    want_gains = [1.0, 4.7, 7.8, 14.0, 25.0]
+
+    engs = numpy.vectorize(response.electronics_no_gain_scale) # by time
+    def engs_maximum(gain, shaping=2.0*units.us):
+        resp = engs(numpy.linspace(0,10*units.us, 100), gain, shaping)
+        return numpy.max(resp)
+    engs_maximum = numpy.vectorize(engs_maximum) # by gain
+                     
+    gainpar = numpy.linspace(0,300,6000)
+    for ishaping, shaping in enumerate([0.5, 1.0, 2.0, 3.0]):
+        gain = engs_maximum(gainpar, shaping*units.us)
+        slope, inter = numpy.polyfit(gainpar, gain, 1)
+        hits = list()
+        for wg in want_gains:
+            amin = numpy.argmin(numpy.abs(gain-wg))
+            hits.append((gainpar[amin], gain[amin]))
+        hits = numpy.asarray(hits).T
+
+        ax = axes[ishaping]
+        ax.set_title("shaping %.1f" % shaping)
+        ax.plot(gainpar, gain)
+        ax.scatter(hits[0], hits[1], alpha=0.5)
+        for hit in hits.T:
+            p,g = hit
+            ax.text(p,g, "%.2f"%p, verticalalignment='top', horizontalalignment='center')
+            ax.text(p,g, "%.2f"%g, verticalalignment='bottom', horizontalalignment='center')
+            ax.text(250,10, "%f slope" % slope, verticalalignment='top', horizontalalignment='center')
+            ax.text(250,10, "%f mV/fC/par" % (1.0/slope,), verticalalignment='bottom', horizontalalignment='center')
+
+
+
+#
+# stuff below may be bit rotted
+# 
+
+
+def response_by_wire_region(rflist_averages):
     '''
     Plot response functions as 1D graphs.
     '''
-    one = rflist[0]
-    byplane = response.group_by(rflist, 'plane')
+    one = rflist_averages[0]
+    byplane = response.group_by(rflist_averages, 'plane')
 
     nwires = map(len, byplane)
     print "%d planes, nwires: %s" % (len(nwires), str(nwires))
+    nwires = min(nwires)
 
-    nwireshalf = nwires[0]//2
-    wire0 = nwires[0] - nwireshalf - 1
+    region0s = response.by_region(rflist_averages)
+    shaped0s = [r.shaped() for r in region0s]
 
-    central_collection = byplane[2][wire0]
-    central_sum_field = sum(central_collection.response)
-    central_shaped = central_collection.shaped()
-    central_sum_shape = sum(central_shaped.response)
-    
-    print '#regions: %d' % (nwireshalf+1,)
-    fig, axes = plt.subplots(nwireshalf+1, 2, sharex=True)
-    print axes
+    central_sum_field = sum(region0s[2].response)
+    central_sum_shape = sum(shaped0s[2].response)
 
-    for wire_offset in range(nwireshalf+1):
-        axf = axes[wire_offset][0]
-        axf.set_title('Wire region %d (field)' % wire_offset);
-        axs = axes[wire_offset][1]
-        axs.set_title('Wire region %d (shaped)' % wire_offset);
 
-        iwirep = wire0 + wire_offset
-        iwirem = wire0 + wire_offset
+    fig, axes = plt.subplots(nwires, 2, sharex=True)
+
+    for wire_region in range(nwires):
+        axf = axes[wire_region][0]
+        axf.set_title('Wire region %d (field)' % wire_region)
+        axs = axes[wire_region][1]
+        axs.set_title('Wire region %d (shaped)' % wire_region)
 
         for iplane in range(3):
-            plane = byplane[iplane]
-            fieldp = plane[iwirep]
-            fieldm = plane[iwirem]
-            shapep = fieldp.shaped() # fixme, just taking
-            shapem = fieldm.shaped() # default shaping here....
-
-            field = fieldp.response
-            shape = shapep.response
-            if wire_offset:     # not central
-                field = 0.5*(fieldp.response + fieldm.response)
-                shape = 0.5*(shapep.response + shapem.response)
+            field_rf = byplane[iplane][wire_region]
+            shape_rf = field_rf.shaped()
+            
+            field = field_rf.response
+            shape = shape_rf.response
             field /= central_sum_field
             shape /= central_sum_shape
             
-            ftime = 1.0e6*numpy.linspace(*fieldp.domainls)
-            stime = 1.0e6*numpy.linspace(*shapep.domainls)
+            ftime = 1.0e6*numpy.linspace(*field_rf.domainls)
+            stime = 1.0e6*numpy.linspace(*shape_rf.domainls)
 
             axf.plot(ftime, field)
             axs.plot(stime, shape)
@@ -113,39 +211,3 @@ def response_averages_colz(avgtriple, time):
     cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
     fig.colorbar(ims[0], ax=axes[0], cmap=cmap, cax=cbar_ax)
 
-def all_elect_reponses():
-    '''
-    Plot all combos of gain and peaking times.
-    '''
-    from electronics import response
-    fig = plt.figure()
-    ax = fig.add_subplot(1,1,1)
-    times = numpy.linspace(0,10*units.us,5000)    
-    for gain in [4.7, 7.8, 14.0, 25.0]:
-        for peaking in [0.5, 1.0, 2.0, 3.0]:
-            peaking = peaking*units.us
-            resps  = response(times/units.ms, gain, peaking)
-            ax.plot(times, resps)
-    
-    
-def shaping_study(fields, gain=10.12, shaping=2.0*units.us, nbins=5000):
-    import electronics
-    from scipy.signal import fftconvolve
-
-    nfields = len(fields)
-
-    fig, axes = plt.subplots(nfields, 4, sharex=True)
-
-    for row, field in enumerate(fields):
-
-        newfrf = field.rebin(nbins)
-        elecrf = electronics.response(numpy.linspace(*newfrf.domainls), gain, shaping)
-        shaped = fftconvolve(newfrf.response, elecrf, "same")
-
-        axes[row][0].plot(field.times/units.us,  field.response)
-        axes[row][1].plot(newfrf.times/units.us, newfrf.response)
-        axes[row][2].plot(newfrf.times/units.us, elecrf)
-        axes[row][3].plot(newfrf.times/units.us, shaped)
-        
-    
-    
