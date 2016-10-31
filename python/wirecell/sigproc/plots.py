@@ -4,7 +4,7 @@ import response
 
 import numpy
 import matplotlib.pyplot as plt
-
+import matplotlib as mpl
 
 def fine_response(rflist_fine, regions = None, shaped=False):
     '''
@@ -46,7 +46,6 @@ def average_shaping(rflist_avg, gain_mVfC=14, shaping=2.0*units.us, nbins=5000):
     '''
     Plot average field responses and with electronics shaping.
     '''
-    import electronics
     from scipy.signal import fftconvolve
 
     byplane = response.group_by(rflist_avg, 'plane')
@@ -112,6 +111,128 @@ def electronics():
 
 
 
+def field_response_spectra(frses):
+    uvw='UVW'
+    fig, axes = plt.subplots(3, 2, sharex=True, sharey=True)
+
+    for ind,frs in enumerate(frses):
+        ax = axes[ind,0]
+        im1 = ax.imshow(numpy.absolute(frs), aspect='auto')
+        ax.set_title('%s response amp' % uvw[ind])
+
+        ax = axes[ind,1]
+        im2 = ax.imshow(numpy.angle(frs), aspect='auto')
+        ax.set_title('%s response phase' % uvw[ind])
+
+    fig.colorbar(im1, ax=axes[:,0].tolist())
+    fig.colorbar(im2, ax=axes[:,1].tolist())
+
+
+
+def plane_impact_blocks(pibs):
+    '''
+    Make a "contact sheet" of different responses on wires nearest a
+    path.  Wire 0 is the wire most nearest.  Each thumbnail shows
+    responses as a function of wire and time and thumbnails are
+    organized in rows of the same impact position and columns of the
+    same plane.
+
+    Note, for the upper-most and lower-most impacts each neighboring wires there are impacts which start at
+    the same point
+    '''
+
+    uvw='uvw'
+    times, regions = numpy.meshgrid(
+        numpy.linspace(pibs.tmin, pibs.tmax, pibs.ntbins),
+        numpy.linspace(pibs.region_keys[0], pibs.region_keys[-1], len(pibs.region_keys)))
+    times /= units.us
+
+    #xylim = (times.min(), times.max(), regions.min(), regions.max())
+    xylim = (60, 90, -10, 10)
+
+    impact_keys = list(pibs.impact_keys)
+    impact_keys.reverse()
+
+    fig, axes = plt.subplots(len(impact_keys), 3, sharex=True, sharey=True)
+    plt.subplots_adjust(left=0.05, right=0.95,
+                        bottom=0.02, top=0.98,
+                        wspace=0.2, hspace=0.2)
+
+    minres = [numpy.min(pibs.response(p, 0.0, 0)) for p in 'uvw']
+    maxres = [numpy.max(pibs.response(p, 0.0, 0)) for p in 'uvw']
+    print minres, maxres
+
+
+    for iplane, plane in enumerate(pibs.plane_keys):
+        plane_axes = list()
+        ims = list()
+        for iimpact, impact in enumerate(impact_keys):
+
+            block = pibs.region_block(plane, impact)
+            ax = axes[iimpact,iplane]
+            plane_axes.append(ax)
+            im = ax.pcolormesh(times, regions, block)
+            ims.append(im)
+
+            ax.set_title('%s-plane, impact %0.1f' % (plane, impact))
+            if impact == impact_keys[-1]:
+                ax.set_xlabel('time [us]')
+            ax.set_ylabel('wire')
+            ax.axis(xylim)
+
+            fig.colorbar(im, ax=[ax])
+    
+    
+def plane_impact_blocks_full(pibs):
+    '''
+    Make a plot for each plane of the response on its central wire due
+    to paths a all impacts running through the wire regions.
+
+    Note, the two impacts at the boundary between two wire regions are
+    explicitly shown.  Each can be considered epsilon over the line of
+    symmetry.
+    '''
+
+    region_keys = list(pibs.region_keys)
+    nregions = len(region_keys)
+    print '%d regions: %s' % (nregions, region_keys)
+
+    impact_keys = list(pibs.impact_keys) # put positive numbers on top
+    nimpacts = len(impact_keys)
+    print '%d impacts: %s' % (nimpacts, impact_keys)
+    
+    print "t=(%f,%f)" % (pibs.tmin, pibs.tmax)
+    times, regions = numpy.meshgrid(
+        numpy.linspace(pibs.tmin, pibs.tmax, pibs.ntbins),
+        numpy.linspace(impact_keys[0]+region_keys[0],
+                       impact_keys[-1]+region_keys[-1],
+                       nimpacts*nregions))
+    times /= units.us
+    xylim = (times.min(), times.max(), regions.min(), regions.max())
+    print 'limits: ', xylim
+
+    fig, axes = plt.subplots(3, 1, sharex=True, sharey=True)
+
+    for iplane, plane in enumerate(pibs.plane_keys):
+
+        block = numpy.zeros((nregions*nimpacts, pibs.ntbins))
+        print '%s-plane shapes: times=%s regions=%s block=%s ' % (plane, times.shape, regions.shape, block.shape)
+
+        for iregion, region in enumerate(region_keys):
+            for iimpact, impact in enumerate(impact_keys):
+                row = nimpacts * iregion + iimpact
+                block[row] = pibs.response(plane,impact,-region)
+
+        ax = axes[iplane]
+        im = ax.pcolormesh(times, regions, block)
+        #im = ax.imshow(block, extent=xylim, aspect='auto', interpolation="nearest")
+        ax.axis(xylim)
+        ax.set_title('%s-plane' % plane)
+        ax.set_xlabel('time [us]')
+        ax.set_ylabel('impact position [pitch]')
+        fig.colorbar(im, ax=[ax])
+    
+
 #
 # stuff below may be bit rotted
 # 
@@ -157,7 +278,6 @@ def response_by_wire_region(rflist_averages):
 
             axf.plot(ftime, field)
             axs.plot(stime, shape)
-
 
 def response_averages_colz(avgtriple, time):
     '''
@@ -210,4 +330,6 @@ def response_averages_colz(avgtriple, time):
     fig.subplots_adjust(right=0.8)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
     fig.colorbar(ims[0], ax=axes[0], cmap=cmap, cax=cbar_ax)
+
+
 

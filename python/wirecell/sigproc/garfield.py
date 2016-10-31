@@ -56,9 +56,9 @@ def parse_text_record(text):
     ret['created'] = '%s %s' %(created[1], created[3])
     ret['signal'] = None
     if 'Direct signal' in lines[0]:
-        ret['signal'] = 'collection'
+        ret['signal'] = 'direct'
     if 'Cross-talk' in lines[0]:
-        ret['signal'] = 'induction'
+        ret['signal'] = 'x-talk'
 
     #   Group 1 consists of:
     ret['group'] = int(lines[2].split()[1])
@@ -141,6 +141,7 @@ def load(source):
 
     from collections import defaultdict
     uniq = defaultdict(dict)
+
     for filename, text in source:
 
         fnamedat = parse_filename(filename)
@@ -155,6 +156,7 @@ def load(source):
             dat = parse_text_record(rec)
 
             key = tuple([filename] + [dat[k] for k in ['group', 'wire_region', 'label']])
+            print key, dat['signal'], sum(dat['y'])
 
             old = uniq.get(key, None)
             if old:             # sum up all signal types

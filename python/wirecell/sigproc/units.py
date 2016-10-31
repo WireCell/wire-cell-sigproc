@@ -25,5 +25,14 @@ milliamp = amp/1000.0
 microamp = milliamp/1000.0
 nanoamp = microamp/1000.0
 
+# voltage
+volt = 1.0
+millivolt = mV = volt/1000.0
+
+# charge
+coulomb = 1.0
+femtocoulomb = fC = coulomb * 1e-15
+
+
 # ... add more as needed.  See and keep consistent with
 # util/inc/WireCellUtil/Units.h.
