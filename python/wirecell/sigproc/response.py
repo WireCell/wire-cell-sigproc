@@ -79,6 +79,7 @@ class ResponseFunction(object):
         self.times = numpy.linspace(*self.domainls)
         self.impact = impact
 
+
     def __call__(self, time):
         return numpy.interp(time, self.times, self.response)
 
@@ -287,6 +288,7 @@ def plane_impact_blocks(rflist, eresp = None):
         ret.append(pib)
     return ret
 
+# pibs
 class PlaneImpactBlocks(object):
     '''
     Organize responses into per (plane,impact) and make available as
@@ -307,13 +309,17 @@ class PlaneImpactBlocks(object):
     and high-negative impact positions puts most response on wires 0
     and -1.
     '''
-    def __init__(self, rflist):
+    def __init__(self, rflist, xstart = 0.0*units.cm):
 
         onerf = rflist[0]
         self.ntbins = len(onerf.response)
         self.tmin = onerf.times[0]
-        self.trange = (onerf.times[1]-onerf.times[0])*self.ntbins
+        self.tbin = onerf.times[1]-onerf.times[0]
+        self.trange = self.tbin*self.ntbins
         self.tmax = self.trange + self.tmin
+
+        self.xstart = xstart # x position at start of field response drift
+
 
         self.plane_keys = sorted(set([rf.plane for rf in rflist]))
         self.region_keys = sorted(set([rf.region for rf in rflist]))
