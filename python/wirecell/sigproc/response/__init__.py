@@ -108,6 +108,7 @@ class ResponseFunction(object):
         return dict(plane=self.plane, region=self.region, pos=self.pos,
                     domainls=self.domainls, response=self.response.tolist(), impact=self.impact)
 
+
     def shaped(self, gain_mVfC=14, shaping=2.0*units.us, nbins=5000):
         '''
         Convolve electronics shaping/peaking response, returning a new ResponseFunction.
@@ -287,6 +288,7 @@ def plane_impact_blocks(rflist, eresp = None):
                 pib[impact_index, region_index] = inregion.response
         ret.append(pib)
     return ret
+
 
 # pibs
 class PlaneImpactBlocks(object):
