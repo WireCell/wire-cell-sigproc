@@ -32,7 +32,6 @@ in Amperes.  This differs from the Wire Cell system of units!
 from collections import namedtuple
 
 class FieldResponse(namedtuple("FieldResponse","planes axis origin tstart period")):
-    __slots__ = ()
     '''
     :param list planes: List of PlaneResponse objects.
     :param list axis: A normalized 3-vector giving direction of axis (anti)parallel to nominal drift direction.
@@ -40,21 +39,65 @@ class FieldResponse(namedtuple("FieldResponse","planes axis origin tstart period
     :param float tstart: time in microseconds at which drift paths begin.
     :param float period: the sampling period in microseconds.
     '''
-
-class PlaneResponse(namedtuple("PlaneResponse","paths planeid pitchdir wiredir")):
     __slots__ = ()
+
+
+
+
+class PlaneResponse(namedtuple("PlaneResponse","paths planeid pitch pitchdir wiredir")):
     '''
     :param list paths: List of PathResponse objects.
     :param int planeid: A numerical identifier for the plane.
+    :param float pitch: The wire pitch in millimeters.
     :param list pitchdir: A normalized 3-vector giving direction of the wire pitch.
     :param list wiredir: A normalized 3-vector giving direction of the wire run.
 
     Along with FieldResponse.axis, the following should hold: axis X wiredir = pitchdir
     '''
+    __slots__ = ()
     
 
-class PathResponse(namedtuple("PathResponse", "current regionid impact pitchpos wirepos")):
+class PathResponse(namedtuple("PathResponse", "current pitchpos wirepos")):
+    '''
+    :param array current: A Bumpy array holding the induced current for the path on the wire-of-interest.
+    :param float pitchpos: The position in the pitch direction to the starting point of the path, in millimeters.
+    :param float wirepos: The position along the wire direction to the starting point of the path, in millimeters.
+
+    Note: the path is in wire region: region = int(round(pitchpos/pitch)).
+
+    Note: the path is at the impact position relative to closest wire: impact = pitchpos-region*pitch.
+    '''
     __slots__ = ()
+
+
+import numpy
+
+def todict(obj):
     '''
-    :param:
+    Return a dictionary for the object which is marked up for type.
     '''
+    for typ in FieldResponse, PlaneResponse, PathResponse:
+        if isinstance(obj, typ):
+            return {obj.__class__.__name__: {k:todict(v) for k,v in obj._asdict().items()}}
+    if isinstance(obj, numpy.ndarray):
+        shape = list(obj.shape)
+        elements = obj.flatten().tolist()
+        return dict(array=dict(shape=shape,elements=elements))
+    if isinstance(obj, list):
+        return [todict(ele) for ele in obj]
+
+    return obj
+
+def fromdict(obj):
+    '''
+    Undo `todict()`.
+    '''
+    if isinstance(obj, dict):
+        if 'array' in obj:
+            return numpy.asarray(obj['array']['elements']).reshape(obj['array']['shape'])
+        for typ in FieldResponse, PlaneResponse, PathResponse:
+            if typ.__name__ in obj:
+                return typ(**{k:fromdict(v) for k,v in obj[typ.__name__].items()})
+    if isinstance(obj, list):
+        return [fromdict(ele) for ele in obj]
+    return obj
