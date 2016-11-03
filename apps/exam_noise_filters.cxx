@@ -268,7 +268,7 @@ int main(int argc, char* argv[])
 
     // Q&D miss-configured channel database
     vector<int> miscfgchan;
-    const double from_gain_mVfC=7.8, to_gain_mVfC=14.0,
+    const double from_gain_mVfC=4.7, to_gain_mVfC=14.0,
 	from_shaping=1.0*units::microsecond, to_shaping=2.0*units::microsecond;
     for (int ind=2016; ind<= 2095; ++ind) { miscfgchan.push_back(ind); }
     for (int ind=2192; ind<= 2303; ++ind) { miscfgchan.push_back(ind); }
