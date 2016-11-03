@@ -8,6 +8,31 @@ namespace WireCellSigProc {
 
     namespace Response {
 
+	/// The field response gives a measure of the current induced
+	/// by the passage of a unit charge past a wire sampled as a
+	/// function of time.  The charge starts at the given location
+	/// and time which is assumed to be near to the wire but in a
+	/// region where the drift field is approximately uniform. 
+	class FieldResponse {
+	public:
+	    FieldResponse(WireCell::Point& rstart, double tstart, double tsample,
+			  const WireCell::Waveform::realseq_t& samples);
+
+	    
+	};
+
+
+	/// This class provides the current vs time induced on a
+	/// wire-of-interest for a unit charge drifting along nearby
+	/// paths.
+	class FieldResponseSet {
+	public:
+	    
+	};
+
+
+
+
 	/// The cold electronics response function.
 	double coldelec(double time, double gain=7.8, double shaping=1.0);
 

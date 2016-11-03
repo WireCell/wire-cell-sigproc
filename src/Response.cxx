@@ -52,10 +52,9 @@ WireCell::Waveform::realseq_t Response::Generator::generate(const WireCell::Wave
 
 double Response::coldelec(double time, double gain, double shaping)
 {
-    // leave this up to caller.
-  if (time <=0 || time >= 10 * units::microsecond) { // range of validity
-    return 0.0;
-  }
+    if (time <=0 || time >= 10 * units::microsecond) { // range of validity
+	return 0.0;
+    }
 
     const double reltime = time/shaping;
 
