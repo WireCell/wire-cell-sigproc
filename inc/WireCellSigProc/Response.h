@@ -4,33 +4,71 @@
 #include "WireCellUtil/Waveform.h"
 #include "WireCellUtil/Units.h"
 
+#include "WireCellUtil/Point.h"
+
 namespace WireCellSigProc {
 
     namespace Response {
 
-	/// The field response gives a measure of the current induced
-	/// by the passage of a unit charge past a wire sampled as a
-	/// function of time.  The charge starts at the given location
-	/// and time which is assumed to be near to the wire but in a
-	/// region where the drift field is approximately uniform. 
-	class FieldResponse {
-	public:
-	    FieldResponse(WireCell::Point& rstart, double tstart, double tsample,
-			  const WireCell::Waveform::realseq_t& samples);
+	// Objects in the Schema correspond to objects defined in the
+	// Wire Cell field response transfer file format schema.
+	namespace Schema {
 
+	    /// Hold information about the induced current response
+	    /// due to passage of a charge along one drift path.
+	    struct PathResponse {
+		WireCell::Waveform::realseq_t current;
+		double pitchpos;
+		double wirepos;
+		PathResponse(const WireCell::Waveform::realseq_t& c, double p, double w)
+		    : current(c), pitchpos(p), wirepos(w) {}
+
+	    };
+
+
+	    /// Hold information about the collection of induced
+	    /// current responses on one wire plane.
+	    struct PlaneResponse {
+		std::vector<PathResponse> paths;
+		int planeid;
+		double pitch;
+		WireCell::Vector pitchdir;
+		WireCell::Vector wiredir;
+		PlaneResponse(const std::vector<PathResponse>& paths, int pid, double p,
+			      const WireCell::Vector& pdir, const WireCell::Vector& wdir)
+		    : paths(paths), planeid(pid), pitch(p), pitchdir(pdir), wiredir(wdir) {} 
+
+	    };
 	    
-	};
-
-
-	/// This class provides the current vs time induced on a
-	/// wire-of-interest for a unit charge drifting along nearby
-	/// paths.
-	class FieldResponseSet {
-	public:
+	    /// Hold info about multiple plane responses in the detector.
+	    struct FieldResponse {
+		std::vector<PlaneResponse> planes;
+		WireCell::Vector axis;
+		double origin;
+		double tstart;
+		double period;
+		FieldResponse(const std::vector<PlaneResponse>& planes, const WireCell::Vector& adir,
+			      double o, double t, double p)
+		    : planes(planes), axis(adir), origin(o), tstart(t), period(p) {}
+	    };
 	    
-	};
+	    FieldResponse load(const char* filename);
+	    void dump(const char* filename, const FieldResponse& fr);
+	}
 
 
+	/// Return a reduced FieldResponse structure where the
+	/// Path::Response::current arrays are reduced by averaging
+	/// over each wire region.
+	Schema::FieldResponse wire_region_average(const Schema::FieldResponse& fr);
+
+	/// Normalize all PathResponse::current arrays by the integral
+	/// of the wire0 current of the last plane.  This modifies the
+	/// FieldResponse structure in-place.
+	void normalize_by_collection_integral(Schema::FieldResponse& fr);
+
+
+	// some_matrix deconvolution(fr, ele, filter);
 
 
 	/// The cold electronics response function.
