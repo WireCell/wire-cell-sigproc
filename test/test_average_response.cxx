@@ -4,6 +4,8 @@
 #include "TCanvas.h"
 #include "TH2F.h"
 #include "TFile.h"
+#include "TGraph.h"
+#include "TFrame.h"
 
 #include <iostream>
 #include <string>
@@ -11,6 +13,7 @@
 
 
 using namespace WireCell::Waveform;
+using namespace WireCellSigProc::Response;
 using namespace WireCellSigProc::Response::Schema;
 using namespace std;
 
@@ -250,6 +253,73 @@ void plot_all_impact(MultiPdf& mpdf, const FieldResponse& fr, bool isavg)
     }
 }
 
+const std::vector<double> all_gains{4.7, 7.8, 14.0, 25.0};
+const std::vector<double> all_shapings{0.5*units::us, 1.0*units::us, 2.0*units::us, 3.0*units::us};
+
+typedef std::pair<int,int> GainShape;
+typedef std::map<GainShape, realseq_t> CerfMap;
+
+CerfMap make_cerf(double tmin=0, double tmax=100*units::us, int ntbins=1000);
+CerfMap make_cerf(double tmin, double tmax, int ntbins)
+{
+    const Domain dom(tmin,tmax);
+    CerfMap ret;
+    for (int igain=0; igain<4;++igain) {
+	for (int ishap=0; ishap<4;++ishap) {
+	    auto ele = WireCellSigProc::Response::ColdElec(all_gains[igain], all_shapings[ishap]);
+	    auto rf = ele.generate(dom, ntbins);
+	    ret[GainShape(igain,ishap)] = rf;
+	}
+    }
+    return ret;
+}
+
+void plot_cerf(MultiPdf& mpdf, CerfMap& cerf, double tmin=0, double tmax=100*units::us, int ntbins=1000);
+void plot_cerf(MultiPdf& mpdf, CerfMap& cerf, double tmin, double tmax, int ntbins)
+{
+    const double deltat = (tmax-tmin)/ntbins;
+
+    auto frame = mpdf.canvas.DrawFrame(0,0,10,25);
+    mpdf.canvas.SetGridx();
+    mpdf.canvas.SetGridy();
+    frame->SetTitle("Electronics Responses");
+    frame->SetXTitle("time [us]");
+    frame->SetYTitle("gain [mV/fC]");
+
+    int colors[] = {1,2,4,6};
+
+    std::vector<TGraph*> garbage_collection;
+    for (int igain=0; igain<4;++igain) {
+	for (int ishap=0; ishap<4;++ishap) {
+	    auto rf = cerf[GainShape(igain,ishap)];
+	    TGraph* g = new TGraph(ntbins);
+	    for (int ind=0; ind<ntbins; ++ind) {
+		g->SetPoint(ind, (tmin + ind*deltat)/units::us, rf[ind]);
+	    }
+	    g->Draw("L");
+	    g->SetLineColor(colors[ishap]);
+	    garbage_collection.push_back(g); 
+	}
+    }
+    mpdf();
+    for (auto g : garbage_collection) {
+	delete g;
+    }
+}
+
+// convolve teh electronics response with each path response, returning a new one.
+// FieldResponse convolve_many(FieldResponse fr, const realseq_t& cerf)
+// {
+//     auto cerf_spec = dft(cerf);
+
+//     for (auto plane : fr.planes) {
+// 	for (auto path : plane.paths) {
+// 	    auto resp_spec = dft(path.current);
+// 	    path.current = idft(
+// 	}
+//     }
+// }
+
 int main(int argc, const char* argv[])
 {
 
@@ -265,23 +335,32 @@ int main(int argc, const char* argv[])
     auto fravg = WireCellSigProc::Response::wire_region_average(fr);
     em("averaged");
 
+    auto all_cerf = make_cerf();
+
+    auto cerf = all_cerf[GainShape(2,2)];
+
+    auto convolved = convolve_many(fr, cerf);
+
     {
+
 	MultiPdf mpdf("test_response.pdf");
 	mpdf.canvas.SetRightMargin(.15);
 
-	for (int ind=0; ind<3; ++ind) {
-	    em("plot_plane");
-	    plot_plane_2d(mpdf, fr, ind, false);
-	}
-	plot_all_impact(mpdf, fr, false);
-	em("done with fine responses");
+	plot_cerf(mpdf, cerf);
 
-	for (int ind=0; ind<3; ++ind) {
-	    em("plot_plane avg");
-	    plot_plane_2d(mpdf, fravg, ind, true);
-	}
-	plot_all_impact(mpdf, fravg, true);
-	em("done with avg responses");
+	// for (int ind=0; ind<3; ++ind) {
+	//     em("plot_plane");
+	//     plot_plane_2d(mpdf, fr, ind, false);
+	// }
+	// plot_all_impact(mpdf, fr, false);
+	// em("done with fine responses");
+
+	// for (int ind=0; ind<3; ++ind) {
+	//     em("plot_plane avg");
+	//     plot_plane_2d(mpdf, fravg, ind, true);
+	// }
+	// plot_all_impact(mpdf, fravg, true);
+	// em("done with avg responses");
 
     }
 

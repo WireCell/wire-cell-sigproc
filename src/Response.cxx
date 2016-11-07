@@ -6,30 +6,6 @@
 
 
 
-/*
-  Cold Electronics response function.
-
-  How was this function derived?
-
-    1. Hucheng provided a transfer function of our electronics, which
-       is the Laplace transformation of the shaping function.
-
-    2. We did a anti-Laplace inverse of the shaping function
-
-    3. The one you saw in the code is basically the result of the inversion
-
-  - time_us is time in microsecond
-
-  - gain_par is proportional to the gain, basically at 7.8 mV/fC, the
-    peak of the shaping function should be at 7.8 mV/fC. In the code,
-    you can find what value that I set to reach 14 mV/fC.
-
-  - shaping_us is the shaping time (us)
-
-  - the hard-coded numbers are the result of the inverting the
-    Lapalace transformation in Mathematica.
-
- */
 
 
 using namespace WireCellSigProc;
@@ -197,6 +173,30 @@ WireCell::Waveform::realseq_t Response::Generator::generate(const WireCell::Wave
 
 
 
+/*
+  Cold Electronics response function.
+
+  How was this function derived?
+
+    1. Hucheng provided a transfer function of our electronics, which
+       is the Laplace transformation of the shaping function.
+
+    2. We did a anti-Laplace inverse of the shaping function
+
+    3. The one you saw in the code is basically the result of the inversion
+
+  - time_us is time in microsecond
+
+  - gain_par is proportional to the gain, basically at 7.8 mV/fC, the
+    peak of the shaping function should be at 7.8 mV/fC. In the code,
+    you can find what value that I set to reach 14 mV/fC.
+
+  - shaping_us is the shaping time (us)
+
+  - the hard-coded numbers are the result of the inverting the
+    Lapalace transformation in Mathematica.
+
+ */
 double Response::coldelec(double time, double gain, double shaping)
 {
     if (time <=0 || time >= 10 * units::microsecond) { // range of validity
@@ -206,6 +206,7 @@ double Response::coldelec(double time, double gain, double shaping)
     const double reltime = time/shaping;
 
     // a scaling is needed to make the anti-Lapalace peak match the expected gain
+    // fixme: this scaling is slightly dependent on shaping time.  See response.py
     gain *= 10*1.012;
 
     return 4.31054*exp(-2.94809*reltime)*gain

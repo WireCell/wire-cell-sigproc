@@ -10,8 +10,8 @@ namespace WireCellSigProc {
 
     namespace Response {
 
-	// Objects in the Schema correspond to objects defined in the
-	// Wire Cell field response transfer file format schema.
+	// These objects correspond to those defined in the Wire Cell
+	// field response transfer file format schema.  
 	namespace Schema {
 
 	    /// Hold information about the induced current response
