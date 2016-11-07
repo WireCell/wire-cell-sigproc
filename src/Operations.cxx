@@ -1,3 +1,7 @@
+/** FIXME: this file is full of magic numbers and likely totally not
+ * usable for detectors other than MicroBooNE. 
+ */
+
 #include "WireCellSigProc/Operations.h"
 #include "WireCellSigProc/Derivations.h"
 
@@ -7,12 +11,14 @@
 
 using namespace WireCellSigProc;
 
-bool Operations::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& chansig, const WireCell::Waveform::realseq_t& medians){
+bool Operations::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& chansig,
+				   const WireCell::Waveform::realseq_t& medians)
+{
   double ave_coef = 0;
   double_t ave_coef1 = 0;
   std::map<int,double> coef_all;
 
-  int nbin = medians.size();
+  const int nbin = medians.size();
 
   for (auto it: chansig){
     int ch = it.first;
@@ -28,17 +34,19 @@ bool Operations::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 	sum3 += medians.at(j) * medians.at(j);
       }
     }
-    if (sum3 >0)
+    if (sum3 >0) {
       coef = sum2/sum3;
+    }
     coef_all[ch] = coef;
     if (coef != 0){
       ave_coef += coef;
       ave_coef1 ++;
     }
   }
-  if (ave_coef1>0)
+  if (ave_coef1>0) {
     ave_coef = ave_coef / ave_coef1;
-
+  }
+  
   for (auto it: chansig){
     int ch = it.first;
     WireCell::IChannelFilter::signal_t& signal = it.second;
@@ -51,8 +59,9 @@ bool Operations::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
     //std::cout << scaling << " " << signal.at(0) << " " << medians.at(0) << std::endl;
     //scaling = 1.0;
     for (int i=0;i!=nbin;i++){
-      if (fabs(signal.at(i)) > 0.001)
-	  signal.at(i) = signal.at(i) - medians.at(i) * scaling;
+      if (fabs(signal.at(i)) > 0.001) {
+	signal.at(i) = signal.at(i) - medians.at(i) * scaling;
+      }
     }
     // std::cout << signal.at(0) << std::endl;
     //std::cout << it.second.at(0) << std::endl;
@@ -103,7 +112,7 @@ bool Operations::SignalProtection(WireCell::Waveform::realseq_t& medians){
 	if (bin > nbin-1) bin = nbin-1;
 	signalsBool.at(bin) = 1;
 	bin = j-k-1;
-	if (bin <0) bin = 0;
+	if (bin <0) { bin = 0; }
 	signalsBool.at(bin) = 1;
       }
     }
@@ -140,13 +149,12 @@ bool Operations::SignalProtection(WireCell::Waveform::realseq_t& medians){
     }
 
     //std::cout << bin << " " << std::endl;
-    if (prev_bin <0 ) prev_bin = 0;
-    if (next_bin > nbin - 1) next_bin = nbin - 1;
+    if (prev_bin <0 ) { prev_bin = 0; }
+    if (next_bin > nbin - 1) { next_bin = nbin - 1; }
     
 
-    float prev_content, next_content;
-    prev_content = medians.at(prev_bin);//h44->GetBinContent(prev_bin+1);
-    next_content = medians.at(next_bin);
+    float prev_content = medians.at(prev_bin);//h44->GetBinContent(prev_bin+1);
+    float next_content = medians.at(next_bin);
 
     float content = prev_content + (bin - prev_bin)/ (next_bin - prev_bin*1.0) 
       * (next_content - prev_content);
@@ -160,7 +168,7 @@ bool Operations::SignalProtection(WireCell::Waveform::realseq_t& medians){
 }
 
 bool Operations::NoisyFilterAlg(WireCell::Waveform::realseq_t& sig, int ch){
-  double rmsVal = Operations::CalcRMSWithFlags(sig);
+  const double rmsVal = Operations::CalcRMSWithFlags(sig);
   int planeNum,channel_no;
   if (ch < 2400){
     planeNum = 0;
@@ -328,15 +336,19 @@ bool Operations::RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig){
 	}
     }
 
-  if(windowBins == 0)
+  if(windowBins == 0) {
     baselineVec[0] = 0.0;
-  else
+  }
+  else {
     baselineVec[0] = baselineVal/((double) windowBins);
+  }
   
-  if(windowBins < minWindowBins)
+  if(windowBins < minWindowBins) {
     isFilledVec[0] = false;
-  else
+  }
+  else {
     isFilledVec[0] = true;
+  }
   
   int oldIndex;
   int newIndex;
@@ -364,15 +376,19 @@ bool Operations::RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig){
 	    }
 	}
       
-      if(windowBins == 0)
+      if(windowBins == 0) {
 	baselineVec[j] = 0.0;
-      else
+      }
+      else {
 	baselineVec[j] = baselineVal/windowBins;
+      }
       
-      if(windowBins < minWindowBins)
+      if(windowBins < minWindowBins) {
 	isFilledVec[j] = false;
-      else
+      }
+      else {
 	isFilledVec[j] = true;
+      }
     }
   
   int downIndex;
@@ -404,17 +420,22 @@ bool Operations::RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig){
 		  upIndex++;
 		}
 	      
-	      if(isFilledVec[upIndex] == false)
+	      if(isFilledVec[upIndex] == false) {
 		upFlag = true;
+	      }
 	      
-	      if((downFlag == false) && (upFlag == false))
+	      if((downFlag == false) && (upFlag == false)) {
 		baselineVec[j] = ((j-downIndex)*baselineVec[downIndex]+(upIndex-j)*baselineVec[upIndex])/((double) upIndex-downIndex);
-	      else if((downFlag == true) && (upFlag == false))
+	      }
+	      else if((downFlag == true) && (upFlag == false)) {
 		baselineVec[j] = baselineVec[upIndex];
-	      else if((downFlag == false) && (upFlag == true))
+	      }
+	      else if((downFlag == false) && (upFlag == true)) {
 		baselineVec[j] = baselineVec[downIndex];
-	      else
+	      }
+	      else {
 		baselineVec[j] = 0.0;
+	      }
 	    }
 	  
 	  sig.at(j) = ADCval -baselineVec[j];
@@ -434,10 +455,12 @@ bool Operations::RemoveFilterFlags(WireCell::Waveform::realseq_t& sig){
       ADCval = sig.at(i);
       if (ADCval > 4096.0)
 	{
-	  if(ADCval > 10000.0)
+	  if(ADCval > 10000.0) {
 	    sig.at(i) = ADCval-20000.0;
-	  else
+	  }
+	  else {
 	    sig.at(i) = 0.0;
+	  }
 
 	}
     }
@@ -445,3 +468,9 @@ bool Operations::RemoveFilterFlags(WireCell::Waveform::realseq_t& sig){
   
   return true;
 }
+
+
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:
