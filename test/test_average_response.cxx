@@ -307,19 +307,6 @@ void plot_cerf(MultiPdf& mpdf, CerfMap& cerf, double tmin, double tmax, int ntbi
     }
 }
 
-// convolve teh electronics response with each path response, returning a new one.
-// FieldResponse convolve_many(FieldResponse fr, const realseq_t& cerf)
-// {
-//     auto cerf_spec = dft(cerf);
-
-//     for (auto plane : fr.planes) {
-// 	for (auto path : plane.paths) {
-// 	    auto resp_spec = dft(path.current);
-// 	    path.current = idft(
-// 	}
-//     }
-// }
-
 int main(int argc, const char* argv[])
 {
 
@@ -337,16 +324,12 @@ int main(int argc, const char* argv[])
 
     auto all_cerf = make_cerf();
 
-    auto cerf = all_cerf[GainShape(2,2)];
-
-    auto convolved = convolve_many(fr, cerf);
-
     {
 
 	MultiPdf mpdf("test_response.pdf");
 	mpdf.canvas.SetRightMargin(.15);
 
-	plot_cerf(mpdf, cerf);
+	plot_cerf(mpdf, all_cerf);
 
 	// for (int ind=0; ind<3; ++ind) {
 	//     em("plot_plane");
