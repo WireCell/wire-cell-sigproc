@@ -78,6 +78,7 @@ void plot_plane_2d(MultiPdf& mpdf, const FieldResponse& fr, int planeind, bool i
 	minpitch = minregion * pitch - maximpact;
 	npitchbins = (maxpitch-minpitch) / dimpact;
     }
+    /*
     cerr << isavg
 	 << " tstart=" << tstart
 	 << " period=" << period
@@ -93,6 +94,7 @@ void plot_plane_2d(MultiPdf& mpdf, const FieldResponse& fr, int planeind, bool i
 	 << " npitchbins=" <<  npitchbins
 	 << " impacts:" << impacts[0] << " -> " << impacts[impacts.size()-1] 
 	 << endl;
+    */
 
     TH2F h("h", Form("%s %c-plane", type, uvw[pr.planeid]),
 	   ntbins, tstart, tstart + ntbins*period,
@@ -149,8 +151,6 @@ void plot_all_impact(MultiPdf& mpdf, const FieldResponse& fr, bool isavg)
 
     int plane_colors[] = {2,4,1};
 
-    const char* avglab = "Fine";
-    if (isavg) avglab = "Avg";
 
     int nimpacts = impacts.size();
     int nregions = regions.size();
@@ -160,8 +160,21 @@ void plot_all_impact(MultiPdf& mpdf, const FieldResponse& fr, bool isavg)
 	for (int imp=0; imp<nimpacts; ++imp) {
 	    for (int reg=0; reg<nregions; ++reg) {
 		int wire = reg - nregions/2;
+
+		char sign=' '; // be a bit anal
+		if (wire>0) { sign='+'; }
+		if (wire<0) { sign='-'; }
+
+		std::string title;
+		if (isavg) {
+		    title = Form("Avg Response wire:%c%d", sign, std::abs(wire));
+		}
+		else {
+		    title = Form("Fine Response wire:%c%d (impact=%.1f)", sign, std::abs(wire), impacts[imp]);
+		}
+
 		TH1F* h = new TH1F(Form("h_%d_%d_%d", iplane, imp, reg),
-				   Form("%s Response impact=%.1f wire%d", avglab, impacts[imp], wire),
+				   title.c_str(),
 				   ntbins, tstart, tstart + period*ntbins);
 		h->SetLineColor(plane_colors[iplane]);
 		hists[iplane][imp*nregions + reg] = h;
@@ -189,8 +202,8 @@ void plot_all_impact(MultiPdf& mpdf, const FieldResponse& fr, bool isavg)
 		    break;
 		}
 	    }
+	    //cerr << "plane="<<iplane<<" imp="<<imp<<" impact="<<impact<<" reg="<<reg<<" region="<<region<<endl;
 	    TH1F* hist = hists[iplane][imp*nregions + reg];
-
 	    for (int ind=0; ind<ntbins; ++ind) {
 		double value = response[ind];
 		hist->SetBinContent(ind+1, value);
@@ -202,13 +215,14 @@ void plot_all_impact(MultiPdf& mpdf, const FieldResponse& fr, bool isavg)
     for (int reg=0; reg<nregions; ++reg) {
 	mpdf.canvas.Divide(1,nimpacts);
 	for (int imp=0; imp<nimpacts; ++imp) {
-	    mpdf.canvas.cd(imp);
+	    mpdf.canvas.cd(imp+1);
 	    double minval = 999, maxval=-999;
 	    for (int iplane=0; iplane<3; ++iplane) {
 		TH1F* hist = hists[iplane][imp*nregions + reg];
 		minval = min(minval, hist->GetMinimum());
 		maxval = max(maxval, hist->GetMaximum());
 	    }
+	    //cerr << "imp="<<imp<<" reg="<<reg<<endl;
 	    double extraval = 0.01*(maxval-minval);
 	    for (int iplane=0; iplane<3; ++iplane) {
 		TH1F* hist = hists[iplane][imp*nregions + reg];
