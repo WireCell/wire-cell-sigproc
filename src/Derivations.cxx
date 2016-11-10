@@ -58,7 +58,7 @@ WireCell::Waveform::realseq_t Derivations::CalcMedian(const WireCell::IChannelFi
 	// if (i==10)
 	//   std::cout << temp.size() << std::endl;
 	if (temp.size()>0){
-	    medians.push_back(WireCell::Waveform::median(temp));
+	    medians.push_back(WireCell::Waveform::median_binned(temp));
 	}
 	else{
 	    medians.push_back(0);

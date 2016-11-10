@@ -579,7 +579,7 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     signal = WireCell::Waveform::idft(spectrum);
 
     //Now calculate the baseline ...
-    baseline = WireCell::Waveform::median(signal);
+    baseline = WireCell::Waveform::median_binned(signal);
     //correct baseline
     WireCell::Waveform::increase(signal, baseline *(-1));
 
