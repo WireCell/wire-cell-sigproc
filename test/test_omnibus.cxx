@@ -7,8 +7,8 @@
  */
 
 #include "WireCellSigProc/OmnibusNoiseFilter.h"
-#include "WireCellSigProc/OneChannelNoise.h"
-#include "WireCellSigProc/CoherentNoiseSub.h"
+#include "WireCellSigProc/Microboone.h"
+
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
 #include "WireCellSst/FrameSource.h"
 
@@ -106,11 +106,11 @@ int main(int argc, char* argv[])
     noise->set_rcrc_constant(rcrcchans, rcrc);
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 
-    auto one = new WireCellSigProc::OneChannelNoise;
+    auto one = new WireCellSigProc::Microboone::OneChannelNoise;
     one->set_channel_noisedb(noise_sp);
     shared_ptr<WireCell::IChannelFilter> one_sp(one);
 
-    auto many = new WireCellSigProc::CoherentNoiseSub;
+    auto many = new WireCellSigProc::Microboone::CoherentNoiseSub;
     shared_ptr<WireCell::IChannelFilter> many_sp(many);
 
     WireCellSigProc::OmnibusNoiseFilter bus;

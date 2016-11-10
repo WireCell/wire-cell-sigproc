@@ -2,7 +2,6 @@
 #define WIRECELLSIGPROC_DIAGNOSTICS
 
 #include "WireCellUtil/Waveform.h"
-//#include "WireCellSigProc/Operations.h"
 
 namespace WireCellSigProc {
 

@@ -2,8 +2,7 @@
 #include "WireCellIface/SimpleFrame.h"
 #include "WireCellIface/SimpleTrace.h"
 #include "WireCellSigProc/OmnibusNoiseFilter.h"
-#include "WireCellSigProc/OneChannelNoise.h"
-#include "WireCellSigProc/CoherentNoiseSub.h"
+#include "WireCellSigProc/Microboone.h"
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
 
 #include "WireCellUtil/Testing.h"
@@ -122,10 +121,13 @@ public:
 
 int main(int argc, char* argv[])
 {
-    string url = url_test;
-    if (argc > 1) {
-	url = argv[1];
+    if (argc < 2) {
+	cerr << "This test needs an input data file.  Legend has it that one is found at " << url_test << endl;
+	return 1;
     }
+
+    std::string url = argv[1];
+
     XinFileIterator fs(url.c_str());
 
     // S&C microboone sampling parameter database
@@ -175,11 +177,11 @@ int main(int argc, char* argv[])
     
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 
-    auto one = new WireCellSigProc::OneChannelNoise;
+    auto one = new WireCellSigProc::Microboone::OneChannelNoise;
     one->set_channel_noisedb(noise_sp);
     shared_ptr<WireCell::IChannelFilter> one_sp(one);
 
-    auto many = new WireCellSigProc::CoherentNoiseSub;
+    auto many = new WireCellSigProc::Microboone::CoherentNoiseSub;
     shared_ptr<WireCell::IChannelFilter> many_sp(many);
 
 

@@ -1,5 +1,5 @@
 #include "WireCellSigProc/Diagnostics.h"
-#include "WireCellSigProc/Operations.h"
+#include "WireCellSigProc/Microboone.h"
 #include "WireCellUtil/Waveform.h"
 #include "WireCellUtil/Testing.h"
 
@@ -20,8 +20,8 @@ using namespace WireCellSigProc;
 
 int main(int argc, char* argv[])
 {
-  int ch = 0;
-   Operations::SignalFilter(horig);
-   bool is_noisy = Operations::NoisyFilterAlg(horig,ch);
-   assert(is_noisy);
+    int ch = 0;
+    Microboone::SignalFilter(horig);
+    bool is_noisy = Microboone::NoisyFilterAlg(horig,ch);
+    assert(is_noisy);
 }
