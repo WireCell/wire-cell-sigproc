@@ -551,6 +551,7 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     // if (ch < 2400)
     //   std::cout << gc << " " << ch << std::endl;
     auto signal_gc = signal; // copy, need to keep original signal
+    
     WireCell::Waveform::scale(signal_gc, gc);
     
     // determine if chirping
@@ -578,7 +579,9 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     // if (ch==2000) std::cout << "2000" << " " << m_noisedb->config(ch).at(1) << " " << m_noisedb->gain_correction(ch) << std::endl;
     // if (ch==2016) std::cout << "2016" << " " << m_noisedb->config(ch).at(1) << " " << m_noisedb->gain_correction(ch) << std::endl;
 
+   
     WireCell::Waveform::scale(spectrum, m_noisedb->config(ch));
+    
     WireCell::Waveform::scale(spectrum, m_noisedb->noise(ch));
 
     // remove the DC component 
