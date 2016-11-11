@@ -101,9 +101,10 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians){
 
     std::vector<int> signals;
     std::vector<bool> signalsBool;
-    for (int j=0;j!=nbin;j++) {
-	signalsBool.push_back(0);
-    }
+    signalsBool.resize(nbin,0);
+    //    for (int j=0;j!=nbin;j++) {
+    //	signalsBool.push_back(0);
+    //}
   
     for (int j=0;j!=nbin;j++) {
 	float content = medians.at(j);
