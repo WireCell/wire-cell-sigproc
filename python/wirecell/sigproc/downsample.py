@@ -5,9 +5,8 @@ downsampling
 import response
 import units
 
-import math
 import numpy
-import scipy.signal
+#import scipy.signal
 import matplotlib.pyplot as plt
 
 

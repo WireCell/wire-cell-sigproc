@@ -14,8 +14,7 @@ set {"U","V","Y"}.
 Each .dat file may hold many records.  See parse_text_record() for
 details of assumptions.
 '''
-import response
-import units
+from wirecell.sigproc import response, units
 
 import numpy
 import tarfile
@@ -156,7 +155,7 @@ def load(source):
             dat = parse_text_record(rec)
 
             key = tuple([filename] + [dat[k] for k in ['group', 'wire_region', 'label']])
-            print key, dat['signal'], sum(dat['y'])
+            #print key, dat['signal'], sum(dat['y'])
 
             old = uniq.get(key, None)
             if old:             # sum up all signal types
@@ -220,3 +219,4 @@ def convert(inputfile, outputfile = "wire-cell-garfield-fine-response.json.bz2",
     response.write(rflist, outputfile)
 
     
+

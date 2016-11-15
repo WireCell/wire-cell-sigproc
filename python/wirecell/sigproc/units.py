@@ -32,7 +32,7 @@ millivolt = mV = volt/1000.0
 # charge
 coulomb = 1.0
 femtocoulomb = fC = coulomb * 1e-15
-
+electron_charge = 1.60217662e-19 * coulomb
 
 # ... add more as needed.  See and keep consistent with
 # util/inc/WireCellUtil/Units.h.

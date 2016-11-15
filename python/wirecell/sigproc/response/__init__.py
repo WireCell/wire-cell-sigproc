@@ -2,7 +2,8 @@
 '''
 Functions related to responses.
 '''
-import units
+from wirecell.sigproc import units
+
 import schema
 
 import math
@@ -62,6 +63,27 @@ def electronics(time, peak_gain=14*1e-3/1e-15, shaping=2.0*units.us):
 
 electronics = numpy.vectorize(electronics)
 
+def convolve(f1, f2):
+    '''
+    Return the simple convolution of the two arrays using FFT+mult+invFFT method.
+    '''
+    # fftconvolve adds an unwanted time shift
+    #from scipy.signal import fftconvolve
+    #return fftconvolve(field, elect, "same")
+    s1 = numpy.fft.fft(f1)
+    s2 = numpy.fft.fft(f2)
+    sig = numpy.fft.ifft(s1*s2)
+
+    return numpy.real(sig)
+
+def _convolve(f1, f2):
+    '''
+    Return the simple convolution of the two arrays using FFT+mult+invFFT method.
+    '''
+    from scipy.signal import fftconvolve
+    return fftconvolve(f1, f2, "same")
+
+
 
 class ResponseFunction(object):
     '''
@@ -110,15 +132,18 @@ class ResponseFunction(object):
                     domainls=self.domainls, response=self.response.tolist(), impact=self.impact)
 
 
-    def shaped(self, gain_mVfC=14, shaping=2.0*units.us, nbins=5000):
+    def shaped(self, gain_mVfC=14, shaping=2.0*units.us, nbins=None):
         '''
         Convolve electronics shaping/peaking response, returning a new ResponseFunction.
         '''
-        from scipy.signal import fftconvolve
-        newfr = self.resample(nbins)
+        ## use version defined above
+        #from scipy.signal import fftconvolve
+        if nbins is None:
+            newfr = self.dup()
+        else:
+            newfr = self.resample(nbins)
         elecr = electronics(newfr.times, gain_mVfC, shaping)
-        #newfr.response = fftconvolve(newfr.response, elecr, "same")
-        newfr.response = fftconvolve(elecr, newfr.response, "same")
+        newfr.response = convolve(elecr, newfr.response)
         return newfr
 
     def __str__(self):
@@ -542,16 +567,6 @@ def deconvolve(Mct, Rpf, Ff, Fp):
 
 
 
-def convolve(field, elect):
-    '''
-    Return the simple convolution of the two arrays using FFT+mult+invFFT method.
-    '''
-    # fftconvolve adds an unwanted time shift
-    #from scipy.signal import fftconvolve
-    #return fftconvolve(field, elect, "same")
-    field_spec = numpy.fft.fft(field)
-    elect_spec = numpy.fft.fft(elect)
-    return numpy.fft.ifft(elect_spec * field_spec)
 
 
 
@@ -611,3 +626,36 @@ def write(rflist, outputfile = "wire-cell-garfield-response.json.bz2"):
         return
     raise ValueError("unknown file format: %s" % outputfile)
 # fixme: implement read()
+
+def line(rflist, normalization=13700*units.electron_charge):
+    '''
+    Assuming an infinite track of `normalization` ionization electrons
+    per pitch which runs along the starting points of the response
+    function paths, calculate the average response on the central wire
+    of each plane.
+    '''
+    impacts = set([rf.impact for rf in rflist])
+    if len(impacts) > 1:
+        rflist = average(rflist)
+
+    byplane = group_by(rflist, 'plane')
+    
+    ret = list()
+    for inplane in byplane:
+        first = inplane[0]
+        tot = first.dup()
+        for rf in inplane:
+            factor = 1.0
+            if rf.region > 0:
+                factor = 2.0
+            tot.response += rf.response * factor
+        ret.append(tot)
+
+    # central collection response function
+    w = ret[-1]
+    rawtot = numpy.sum(w.response)
+    scale = normalization/rawtot
+    for rf in ret:
+        rf.response *= scale
+    return ret
+

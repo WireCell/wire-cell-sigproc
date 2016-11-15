@@ -3,7 +3,6 @@
 A simple drift simulation using response functions.   No diffusion.
 '''
 
-import response
 import units
 import numpy
 import collections

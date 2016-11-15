@@ -4,7 +4,6 @@ import response
 
 import numpy
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 
 def fine_response(rflist_fine, regions = None, shaped=False):
     '''
@@ -14,7 +13,6 @@ def fine_response(rflist_fine, regions = None, shaped=False):
         regions = sorted(set([x.region for x in rflist_fine]))
     nregions = len(regions)
     impacts = sorted(set([x.impact for x in rflist_fine]))
-    nimpacts = len(impacts)
 
     fig, axes = plt.subplots(nregions, 3, sharex=True)
 
@@ -46,8 +44,6 @@ def average_shaping(rflist_avg, gain_mVfC=14, shaping=2.0*units.us, nbins=5000):
     '''
     Plot average field responses and with electronics shaping.
     '''
-    from scipy.signal import fftconvolve
-
     byplane = response.group_by(rflist_avg, 'plane')
     nfields = len(byplane[0])
     main_field = [rf for rf in byplane[2] if rf.region == 0][0]
@@ -333,3 +329,57 @@ def response_averages_colz(avgtriple, time):
 
 
 
+def plot_digitized_line(uvw_rfs, gain_mVfC=14.7, shaping=2.0*units.us, tick=0.5*units.us, adc_per_mv = 1.1*4096/2000.0):
+    '''
+    Make plot of shaped and digitized response functions.
+
+    >>> dat = garfield.load("/home/bviren/projects/wire-cell/garfield-data/ub_10.tar.gz")
+    >>> uvw = response.line.responses(dat)
+    >>> plots.plot_digitized_line(uvw)
+
+    '''
+    u,v,w = uvw_rfs
+
+    # deal with some round off 
+    dt_hi = round(w.times[1]-w.times[0])
+    n_hi = len(w.times)
+    tmax = n_hi*dt_hi / units.us
+    times_hi = numpy.linspace(0, tmax, n_hi)
+    #start_hi = n_hi
+    #end_hi = n_hi
+
+    n_lo = int(round(dt_hi/tick * n_hi))
+    times_lo = numpy.linspace(0, tmax, n_lo)
+    start_lo = n_lo//2
+    end_lo = n_lo
+
+    colors = ['red','blue','black']
+    legends = ['U-wire','V-wire','Y-wire']
+
+    fig, axes = plt.subplots(1,1)
+
+    toffset = 50.0
+
+    print "Nbins: %d->%d dt: %.2f -> %.2f" % (n_hi, n_lo, times_hi[1]-times_hi[0], times_lo[1]-times_lo[0])
+
+    for ind,rf in enumerate(uvw_rfs):
+        print legends[ind], numpy.sum(rf.response)/units.electron_charge
+        
+        sig = rf.shaped(gain_mVfC, shaping)
+        samp = sig.resample(n_lo)
+        adcf = (samp.response / units.fC) * adc_per_mv
+        adc = numpy.array(adcf, dtype=int)
+        axes.plot(times_lo[start_lo:end_lo] - toffset,
+                  adc[start_lo:end_lo],
+                  ls='steps',
+                  color=colors[ind],
+                  label=legends[ind])
+
+        
+
+    axes.set_title('Simulated ADC Waveform (cross-pitch track)')
+    axes.set_xlabel('Sample time [$\mu$s]')
+    axes.set_ylabel('ADC (baseline subtracted)')
+    axes.legend()
+    return fig
+    
