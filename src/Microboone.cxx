@@ -23,11 +23,14 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
     for (auto it: chansig) {
 	int ch = it.first;
 	WireCell::IChannelFilter::signal_t& signal = it.second;
+	
+	
 	double sum2 = 0;
 	double sum3 = 0;
 	double coef = 0;
 	std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
-    
+	
+
 	for (int j=0;j!=nbin;j++){
 	    if (fabs(signal.at(j)) < 4 * temp.second){
 		sum2 += signal.at(j) * medians.at(j);
@@ -98,9 +101,10 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians){
 
     std::vector<int> signals;
     std::vector<bool> signalsBool;
-    for (int j=0;j!=nbin;j++) {
-	signalsBool.push_back(0);
-    }
+    signalsBool.resize(nbin,0);
+    //    for (int j=0;j!=nbin;j++) {
+    //	signalsBool.push_back(0);
+    //}
   
     for (int j=0;j!=nbin;j++) {
 	float content = medians.at(j);
@@ -259,9 +263,9 @@ float Microboone::CalcRMSWithFlags(const WireCell::Waveform::realseq_t& sig)
     }
     float par[3];
     if (temp.size()>0) {
-	par[0] = WireCell::Waveform::percentile(temp,0.5 - 0.34);
-	par[1] = WireCell::Waveform::percentile(temp,0.5);
-	par[2] = WireCell::Waveform::percentile(temp,0.5 + 0.34);
+	par[0] = WireCell::Waveform::percentile_binned(temp,0.5 - 0.34);
+	par[1] = WireCell::Waveform::percentile_binned(temp,0.5);
+	par[2] = WireCell::Waveform::percentile_binned(temp,0.5 + 0.34);
     
 	//    std::cout << par[0] << " " << par[1] << " " << par[2] << std::endl;
 
@@ -483,7 +487,7 @@ Microboone::CoherentNoiseSub::~CoherentNoiseSub()
 WireCell::Waveform::ChannelMaskMap
 Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
 {
-    // std::cout << "Xin2: " << std::endl;
+    //std::cout << "Xin2: " << std::endl;
     // find the median among all 
     WireCell::Waveform::realseq_t medians = Derivations::CalcMedian(chansig);
     //std::cout << medians.size() << " " << medians.at(0) << " " << medians.at(1) << std::endl;
@@ -491,10 +495,13 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
 
     // do the signal protection and adaptive baseline
     Microboone::SignalProtection(medians);
+    //std::cout <<"abc " << " " << chansig.size() << " " << medians.size() << std::endl;
 
     // calculate the scaling coefficient and subtract
     Microboone::Subtract_WScaling(chansig, medians);
-  
+
+    //std::cout <<"abc1 " << std::endl;
+
     // for (auto it: chansig){
     //   std::cout << "Xin3 " << it.second.at(0) << std::endl;
     // }
@@ -544,6 +551,7 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     // if (ch < 2400)
     //   std::cout << gc << " " << ch << std::endl;
     auto signal_gc = signal; // copy, need to keep original signal
+    
     WireCell::Waveform::scale(signal_gc, gc);
     
     // determine if chirping
@@ -571,7 +579,9 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     // if (ch==2000) std::cout << "2000" << " " << m_noisedb->config(ch).at(1) << " " << m_noisedb->gain_correction(ch) << std::endl;
     // if (ch==2016) std::cout << "2016" << " " << m_noisedb->config(ch).at(1) << " " << m_noisedb->gain_correction(ch) << std::endl;
 
+   
     WireCell::Waveform::scale(spectrum, m_noisedb->config(ch));
+    
     WireCell::Waveform::scale(spectrum, m_noisedb->noise(ch));
 
     // remove the DC component 
