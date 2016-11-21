@@ -362,6 +362,7 @@ def plot_digitized_line(uvw_rfs, gain_mVfC=14.7, shaping=2.0*units.us, tick=0.5*
 
     print "Nbins: %d->%d dt: %.2f -> %.2f" % (n_hi, n_lo, times_hi[1]-times_hi[0], times_lo[1]-times_lo[0])
 
+    data = list()
     for ind,rf in enumerate(uvw_rfs):
         print legends[ind], numpy.sum(rf.response)/units.electron_charge
         
@@ -369,17 +370,22 @@ def plot_digitized_line(uvw_rfs, gain_mVfC=14.7, shaping=2.0*units.us, tick=0.5*
         samp = sig.resample(n_lo)
         adcf = (samp.response / units.fC) * adc_per_mv
         adc = numpy.array(adcf, dtype=int)
-        axes.plot(times_lo[start_lo:end_lo] - toffset,
-                  adc[start_lo:end_lo],
+
+        x = times_lo[start_lo:end_lo] - toffset
+        y = adc[start_lo:end_lo]
+        axes.plot(x,
+                  y,
                   ls='steps',
                   color=colors[ind],
                   label=legends[ind])
-
+        if not data:
+            data.append(x)
+        data.append(y)
         
 
     axes.set_title('Simulated ADC Waveform (cross-pitch track)')
     axes.set_xlabel('Sample time [$\mu$s]')
     axes.set_ylabel('ADC (baseline subtracted)')
     axes.legend()
-    return fig
+    return fig, numpy.vstack(data).T
     
