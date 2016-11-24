@@ -96,7 +96,7 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians){
     //std::cout << temp.first << " " << temp.second << std::endl;
     int nbin = medians.size();
 
-    int pad_window = 5;
+    int pad_window = 10;
     int protection_factor = 5.0;
 
     std::vector<int> signals;
