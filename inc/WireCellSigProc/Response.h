@@ -1,3 +1,5 @@
+// fixme: this file needs to move to util so gen can also use it
+
 #ifndef WIRECELLSIGPROC_RESPONSE
 #define WIRECELLSIGPROC_RESPONSE
 
@@ -7,6 +9,7 @@
 #include "WireCellUtil/Point.h"
 
 namespace WireCellSigProc {
+
 
     namespace Response {
 
