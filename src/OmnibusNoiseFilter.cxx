@@ -1,7 +1,8 @@
 #include "WireCellSigProc/OmnibusNoiseFilter.h"
 
 #include "WireCellSigProc/Diagnostics.h"
-#include "WireCellSigProc/Response.h"
+
+#include "WireCellUtil/Response.h"
 
 #include "WireCellIface/SimpleFrame.h"
 #include "WireCellIface/SimpleTrace.h"

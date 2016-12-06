@@ -1,5 +1,5 @@
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
-#include "WireCellSigProc/Response.h"
+#include "WireCellUtil/Response.h"
 //#include <iostream> //debug
 
 using namespace WireCell;
@@ -65,7 +65,7 @@ const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::get_filter(int chan
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::rcrc(int channel) const
 {
-  return get_filter(channel, m_rcrc);
+    return get_filter(channel, m_rcrc);
 }
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::config(int channel) const
@@ -116,7 +116,7 @@ void SimpleChannelNoiseDB::set_nominal_baseline(const std::vector<int>& channels
 }
 void SimpleChannelNoiseDB::set_rcrc_constant(const std::vector<int>& channels, double rcrc)
 {
-  Response::SimpleRC rcres(rcrc,m_tick);
+    Response::SimpleRC rcres(rcrc,m_tick);
     auto signal = rcres.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
     
     
@@ -169,22 +169,22 @@ void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,
 
 void SimpleChannelNoiseDB::set_filter(const std::vector<int>& channels, const multimask_t& masks)
 {
-  Waveform::compseq_t spectrum;
-  spectrum.resize(m_nsamples,std::complex<float>(1,0));
+    Waveform::compseq_t spectrum;
+    spectrum.resize(m_nsamples,std::complex<float>(1,0));
 
-  for (auto m : masks) {
-    for (int ind=get<1>(m); ind <= get<2>(m); ++ind) {
-      //filt->assign(ind, get<0>(m));
-      spectrum.at(ind) = get<0>(m);
+    for (auto m : masks) {
+	for (int ind=get<1>(m); ind <= get<2>(m); ++ind) {
+	    //filt->assign(ind, get<0>(m));
+	    spectrum.at(ind) = get<0>(m);
+	}
+	//std::cout << "Xin: " << get<1>(m) << " " << get<2>(m) << " " << get<0>(m) << " " << spectrum.at(0) << " " << spectrum.at(169) << " " << spectrum.at(170)<< std::endl;
     }
-    //std::cout << "Xin: " << get<1>(m) << " " << get<2>(m) << " " << get<0>(m) << " " << spectrum.at(0) << " " << spectrum.at(169) << " " << spectrum.at(170)<< std::endl;
-  }
-  auto filt = std::make_shared<filter_t>(spectrum);
+    auto filt = std::make_shared<filter_t>(spectrum);
   
 
-  for (auto ch : channels) {
-    set_one(chind(ch), filt, m_masks, m_default_filter);
-  }
+    for (auto ch : channels) {
+	set_one(chind(ch), filt, m_masks, m_default_filter);
+    }
   
 }
 
@@ -200,3 +200,8 @@ int SimpleChannelNoiseDB::chind(int ch) const
     }
     return it->second;
 }
+
+// Local Variables:
+// mode: c++
+// c-basic-offset: 4
+// End:
