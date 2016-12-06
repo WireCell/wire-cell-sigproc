@@ -15,12 +15,11 @@
 using namespace std;
 
 using namespace WireCell;
-using namespace WireCellSigProc;
+using namespace WireCell::SigProc;
 
 int main(int argc, char* argv[])
 {
-  
-   int beg=-1, end=-1;
+    int beg=-1, end=-1;
     Diagnostics::Chirp chirp;
     bool found = chirp(horig, beg, end);
     Assert(found);
@@ -30,3 +29,7 @@ int main(int argc, char* argv[])
     Assert(end == 3720);
     return 0;
 }
+// Local Variables:
+// mode: c++
+// c-basic-offset: 4
+// End:

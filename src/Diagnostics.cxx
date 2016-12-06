@@ -4,7 +4,7 @@
 #include <complex>
 //#include <iostream>
 
-using namespace WireCellSigProc;
+using namespace WireCell::SigProc;
 
 
 
@@ -144,3 +144,7 @@ bool Diagnostics::Chirp::operator()(const WireCell::Waveform::realseq_t& sig, in
     return false;
 }
 
+// Local Variables:
+// mode: c++
+// c-basic-offset: 4
+// End:

@@ -9,7 +9,7 @@
 #include <complex>
 #include <iostream>
 
-using namespace WireCellSigProc;
+using namespace WireCell::SigProc;
 
 bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& chansig,
 				   const WireCell::Waveform::realseq_t& medians)

@@ -1,7 +1,8 @@
 #include "WireCellSigProc/Derivations.h"
 
 #include <iostream>
-using namespace WireCellSigProc;
+
+using namespace WireCell::SigProc;
 
 std::pair<double,double> Derivations::CalcRMS(const WireCell::Waveform::realseq_t& signal)
 {

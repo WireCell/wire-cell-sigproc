@@ -7,7 +7,7 @@
 
 using namespace std;
 using namespace WireCell;
-using namespace WireCellSigProc;
+using namespace WireCell::SigProc;
 
 int main()
 {

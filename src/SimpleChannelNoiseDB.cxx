@@ -3,7 +3,7 @@
 //#include <iostream> //debug
 
 using namespace WireCell;
-using namespace WireCellSigProc;
+using namespace WireCell::SigProc;
 
 SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
     : m_tick(-1)

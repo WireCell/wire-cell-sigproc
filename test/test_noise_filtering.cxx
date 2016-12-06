@@ -132,13 +132,13 @@ int main(int argc, char* argv[])
   vector<int> special_chans;
   special_chans.push_back(2240);
   
-  WireCellSigProc::SimpleChannelNoiseDB::mask_t h36kHz(0,169,173);
-  WireCellSigProc::SimpleChannelNoiseDB::mask_t h108kHz(0,513,516);
-  WireCellSigProc::SimpleChannelNoiseDB::mask_t hspkHz(0,17,19);
-  WireCellSigProc::SimpleChannelNoiseDB::multimask_t hharmonic;
+  SigProc::SimpleChannelNoiseDB::mask_t h36kHz(0,169,173);
+  SigProc::SimpleChannelNoiseDB::mask_t h108kHz(0,513,516);
+  SigProc::SimpleChannelNoiseDB::mask_t hspkHz(0,17,19);
+  SigProc::SimpleChannelNoiseDB::multimask_t hharmonic;
   hharmonic.push_back(h36kHz);
   hharmonic.push_back(h108kHz);
-  WireCellSigProc::SimpleChannelNoiseDB::multimask_t hspecial;
+  SigProc::SimpleChannelNoiseDB::multimask_t hspecial;
   hspecial.push_back(h36kHz);
   hspecial.push_back(h108kHz);
   hspecial.push_back(hspkHz);
@@ -158,7 +158,7 @@ int main(int argc, char* argv[])
   // Load up components.  Note, in a real app this is done as part
   // of factory + configurable and driven by user configuration.
   
-  auto noise = new WireCellSigProc::SimpleChannelNoiseDB;
+  auto noise = new SigProc::SimpleChannelNoiseDB;
   // initialize
   noise->set_sampling(tick, nsamples);
   // set nominal baseline
@@ -178,15 +178,15 @@ int main(int argc, char* argv[])
   
   shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
   
-  auto one = new WireCellSigProc::Microboone::OneChannelNoise;
+  auto one = new SigProc::Microboone::OneChannelNoise;
   one->set_channel_noisedb(noise_sp);
   shared_ptr<WireCell::IChannelFilter> one_sp(one);
   
-  auto many = new WireCellSigProc::Microboone::CoherentNoiseSub;
+  auto many = new SigProc::Microboone::CoherentNoiseSub;
   shared_ptr<WireCell::IChannelFilter> many_sp(many);
   
   
-  WireCellSigProc::OmnibusNoiseFilter bus;
+  SigProc::OmnibusNoiseFilter bus;
   bus.set_channel_filters({one_sp});
   bus.set_grouped_filters({many_sp});
   bus.set_channel_noisedb(noise_sp);

@@ -9,7 +9,7 @@
 
 using namespace WireCell;
 
-using namespace WireCellSigProc;
+using namespace WireCell::SigProc;
 
 OmnibusNoiseFilter::OmnibusNoiseFilter()
 {
@@ -132,3 +132,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 }
 
 
+// Local Variables:
+// mode: c++
+// c-basic-offset: 4
+// End:

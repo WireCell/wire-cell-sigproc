@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
     // Load up components.  Note, in a real app this is done as part
     // of factory + configurable and driven by user configuration.
 
-    auto noise = new WireCellSigProc::SimpleChannelNoiseDB;
+    auto noise = new SigProc::SimpleChannelNoiseDB;
     noise->set_nominal_baseline(uchans, unombl);
     noise->set_nominal_baseline(vchans, vnombl);
     noise->set_nominal_baseline(wchans, wnombl);
@@ -106,14 +106,14 @@ int main(int argc, char* argv[])
     noise->set_rcrc_constant(rcrcchans, rcrc);
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 
-    auto one = new WireCellSigProc::Microboone::OneChannelNoise;
+    auto one = new SigProc::Microboone::OneChannelNoise;
     one->set_channel_noisedb(noise_sp);
     shared_ptr<WireCell::IChannelFilter> one_sp(one);
 
-    auto many = new WireCellSigProc::Microboone::CoherentNoiseSub;
+    auto many = new SigProc::Microboone::CoherentNoiseSub;
     shared_ptr<WireCell::IChannelFilter> many_sp(many);
 
-    WireCellSigProc::OmnibusNoiseFilter bus;
+    SigProc::OmnibusNoiseFilter bus;
     bus.set_channel_filters({one_sp});
     bus.set_grouped_filters({many_sp});
     bus.set_channel_noisedb(noise_sp);
