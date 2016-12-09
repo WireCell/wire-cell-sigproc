@@ -112,7 +112,8 @@ def asgenerator(source):
     '''
     If string, assume file, open proper generator, o.w. just return
     '''
-    if type(source) not in [type("") or type(u"")]:
+    if type(source) not in [type(""), type(u"")]:
+        #print 'Source is not a string: %s' % type(source)
         return source
     if osp.splitext(source)[1] in [".tar", ".gz", ".tgz"]:
         return fromtarfile(source)
@@ -210,6 +211,8 @@ def toarrays(rflist):
 def convert(inputfile, outputfile = "wire-cell-garfield-fine-response.json.bz2", average=False, shaped=False):
     '''
     Convert an input Garfield file pack into an output wire cell field response file.
+
+    See also wirecell.sigproc.response.persist
     '''
     rflist = load(inputfile)
     if shaped:

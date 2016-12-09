@@ -70,34 +70,3 @@ class PathResponse(namedtuple("PathResponse", "current pitchpos wirepos")):
     __slots__ = ()
 
 
-import numpy
-
-def todict(obj):
-    '''
-    Return a dictionary for the object which is marked up for type.
-    '''
-    for typ in FieldResponse, PlaneResponse, PathResponse:
-        if isinstance(obj, typ):
-            return {obj.__class__.__name__: {k:todict(v) for k,v in obj._asdict().items()}}
-    if isinstance(obj, numpy.ndarray):
-        shape = list(obj.shape)
-        elements = obj.flatten().tolist()
-        return dict(array=dict(shape=shape,elements=elements))
-    if isinstance(obj, list):
-        return [todict(ele) for ele in obj]
-
-    return obj
-
-def fromdict(obj):
-    '''
-    Undo `todict()`.
-    '''
-    if isinstance(obj, dict):
-        if 'array' in obj:
-            return numpy.asarray(obj['array']['elements']).reshape(obj['array']['shape'])
-        for typ in FieldResponse, PlaneResponse, PathResponse:
-            if typ.__name__ in obj:
-                return typ(**{k:fromdict(v) for k,v in obj[typ.__name__].items()})
-    if isinstance(obj, list):
-        return [fromdict(ele) for ele in obj]
-    return obj

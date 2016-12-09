@@ -567,15 +567,13 @@ def deconvolve(Mct, Rpf, Ff, Fp):
 
 
 
-
-
-
-
-def garfield_1d_to_schema(rflist, origin=10*units.cm):
+def rf1dtoschema(rflist, origin=10*units.cm):
     '''
     Convert the list of 1D ResponseFunction objects into response.schema objects.
 
     The "1D" refers to the drift paths starting on a line in 2D space.
+
+    Because it is 1D, all the pitch and wire directions are the same.
     '''
     rflist = normalize(rflist)
 
@@ -606,6 +604,10 @@ def garfield_1d_to_schema(rflist, origin=10*units.cm):
         plr = schema.PlaneResponse(paths, planeid, pitch, pitchdir, wiredir)
         planes.append(plr)
     return schema.FieldResponse(planes, anti_drift_axis, origin, tstart, period)
+
+
+
+
 
 def write(rflist, outputfile = "wire-cell-garfield-response.json.bz2"):
     '''
