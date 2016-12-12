@@ -566,10 +566,10 @@ def deconvolve(Mct, Rpf, Ff, Fp):
     return Sct
 
 
-
 def rf1dtoschema(rflist, origin=10*units.cm):
     '''
-    Convert the list of 1D ResponseFunction objects into response.schema objects.
+    Convert the list of 1D ResponseFunction objects into
+    response.schema objects.
 
     The "1D" refers to the drift paths starting on a line in 2D space.
 
@@ -584,7 +584,7 @@ def rf1dtoschema(rflist, origin=10*units.cm):
     tstart = one.times[0]/units.us
 
     planes = list()
-    byplane = group_by(rflist,'plane')
+    byplane = group_by(rflist, 'plane')
     for inplane in byplane:
         letter = inplane[0].plane
         planeid = "uvw".index(letter)
@@ -592,7 +592,7 @@ def rf1dtoschema(rflist, origin=10*units.cm):
         pitch = abs(onetwo[0].pos[0] - onetwo[1].pos[0]) / units.mm
         pitchdir = (0.0, 0.0, 1.0)
         wiredir = (0.0, 1.0, 0.0)
-        inplane.sort(key = lambda x: x.region*10000+x.impact)
+        inplane.sort(key=lambda x: x.region*10000+x.impact)
 
         paths = list()
         for rf in inplane:
@@ -600,7 +600,7 @@ def rf1dtoschema(rflist, origin=10*units.cm):
             wirepos = 0.0
             par = schema.PathResponse(rf.response, pitchpos, wirepos)
             paths.append(par)
-            
+
         plr = schema.PlaneResponse(paths, planeid, pitch, pitchdir, wiredir)
         planes.append(plr)
     return schema.FieldResponse(planes, anti_drift_axis, origin, tstart, period)

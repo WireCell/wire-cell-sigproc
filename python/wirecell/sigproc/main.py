@@ -32,5 +32,16 @@ def convert_garfield(ctx, garfield_fileset, wirecell_field_response_file):
     per.dump(wirecell_field_response_file, fr)
 
 
+@cli.command("plot-field-response")
+@click.argument("wcfrfile")
+@click.argument("pdffile")
+@click.pass_context
+def plot_field_response(ctx, wcfrfile, pdffile):
+    import wirecell.sigproc.response.persist as per
+    import wirecell.sigproc.response.plots as plt
+
+    fr = per.load(wcfrfile)
+
+
 def main():
     cli(obj=dict())

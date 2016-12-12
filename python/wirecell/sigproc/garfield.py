@@ -146,24 +146,19 @@ def load(source):
 
         fnamedat = parse_filename(filename)
 
-        plane_letter = None
-        for get,want in zip('uvy','uvw'):
-            if get+'.dat' in filename.lower():
-                plane_letter = want
-
         gen = split_text_records(text)
         for rec in gen:
             dat = parse_text_record(rec)
 
             key = tuple([filename] + [dat[k] for k in ['group', 'wire_region', 'label']])
-            #print key, dat['signal'], sum(dat['y'])
+            # print key, dat['signal'], sum(dat['y'])
 
             old = uniq.get(key, None)
             if old:             # sum up all signal types
                 old['y'] += dat['y']
                 continue
 
-            dat.pop('signal')                
+            dat.pop('signal')
             dat.update(fnamedat)
             uniq[key] = dat
 
@@ -177,23 +172,29 @@ def load(source):
         this_plane = list()
         for one in byplane:
             times = one['x']
-            ls = (times[0], times[-1], len(times))
-            rf = response.ResponseFunction(plane, one['wire_region'] - zero_wire_region, one['wire_region_pos'],
-                                           ls, numpy.asarray(one['y']), one['impact'])
+            t0 = int(times[0])                         # fix round off
+            tf = int(times[-1])                        # fix round off
+            ls = (t0, tf, len(times))
+
+            relative_region = one['wire_region'] - zero_wire_region
+            fix_garfield_impact_sign = -1
+            impact_number = fix_garfield_impact_sign * one['impact']
+            rf = response.ResponseFunction(plane, relative_region,
+                                           one['wire_region_pos'],
+                                           ls, numpy.asarray(one['y']),
+                                           impact_number)
             this_plane.append(rf)
         this_plane.sort(key=lambda x: x.region * 10000 + x.impact)
         ret += this_plane
     return ret
 
 
-
-
 def toarrays(rflist):
     '''
     Return field response current waveforms as 3 2D arrays.
 
-    Return as tuple (u,v,w) where each is a 2D array shape: (#regions, #responses).
-
+    Return as tuple (u,v,w) where each is a 2D array shape:
+    (#regions, #responses).
     '''
     ret = list()
     for byplane in response.group_by(rflist, 'plane'):
