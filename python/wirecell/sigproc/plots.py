@@ -338,54 +338,61 @@ def plot_digitized_line(uvw_rfs, gain_mVfC=14.7, shaping=2.0*units.us, tick=0.5*
     >>> plots.plot_digitized_line(uvw)
 
     '''
-    u,v,w = uvw_rfs
+    u, v, w = uvw_rfs
 
-    # deal with some round off 
-    dt_hi = round(w.times[1]-w.times[0])
+    # deal with some round off.
+    dt_hi = int(round(w.times[1] - w.times[0]))
     n_hi = len(w.times)
-    tmax = n_hi*dt_hi / units.us
-    times_hi = numpy.linspace(0, tmax, n_hi)
-    #start_hi = n_hi
-    #end_hi = n_hi
 
     n_lo = int(round(dt_hi/tick * n_hi))
-    times_lo = numpy.linspace(0, tmax, n_lo)
-    start_lo = n_lo//2
-    end_lo = n_lo
 
-    colors = ['red','blue','black']
-    legends = ['U-wire','V-wire','Y-wire']
+    colors = ['red', 'blue', 'black']
+    legends = ['U-wire', 'V-wire', 'Y-wire']
 
-    fig, axes = plt.subplots(1,1)
-
-    toffset = 50.0
-
-    print "Nbins: %d->%d dt: %.2f -> %.2f" % (n_hi, n_lo, times_hi[1]-times_hi[0], times_lo[1]-times_lo[0])
+    fig, axes = plt.subplots(1, 1)
 
     data = list()
-    for ind,rf in enumerate(uvw_rfs):
+    for ind, rf in enumerate(uvw_rfs):
         print legends[ind], numpy.sum(rf.response)/units.electron_charge
-        
-        sig = rf.shaped(gain_mVfC, shaping)
-        samp = sig.resample(n_lo)
-        adcf = (samp.response / units.fC) * adc_per_mv
-        adc = numpy.array(adcf, dtype=int)
 
-        x = times_lo[start_lo:end_lo] - toffset
-        y = adc[start_lo:end_lo]
-        axes.plot(x,
-                  y,
-                  ls='steps',
+        if shaping:
+            sig = rf.shaped(gain_mVfC, shaping)
+        else:
+            print 'No shaping'
+            sig = rf
+        samp = sig.resample(n_lo)
+        x = samp.times/units.us
+
+        if shaping:
+            adcf = (samp.response / units.fC) * adc_per_mv
+            y = numpy.array(adcf, dtype=int)
+            lstype = 'steps'
+        else:
+            y = samp.response
+            lstype = 'default'
+
+        axes.plot(x, y,
+                  ls=lstype,
                   color=colors[ind],
                   label=legends[ind])
         if not data:
             data.append(x)
         data.append(y)
-        
 
-    axes.set_title('Simulated ADC Waveform (cross-pitch track)')
-    axes.set_xlabel('Sample time [$\mu$s]')
-    axes.set_ylabel('ADC (baseline subtracted)')
-    axes.legend()
+    if shaping:
+        axes.set_title('Simulated ADC Waveform (cross-pitch track)')
+    else:
+        axes.set_title('Simulated Induced current (cross-pitch track)')
+    if shaping:
+        axes.set_xlabel('Sample time [$\mu$s]')
+    else:
+        axes.set_xlabel('Time [$\mu$s]')
+    if shaping:
+        axes.set_ylabel('ADC (baseline subtracted)')
+    else:
+        axes.set_ylabel('Instantaneous current')
+    axes.legend(loc="upper left")
+    xmmymm = list(axes.axis())
+    xmmymm[0] = 50.0;
+    axes.axis(xmmymm)
     return fig, numpy.vstack(data).T
-    

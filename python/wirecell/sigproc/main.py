@@ -41,6 +41,40 @@ def plot_field_response(ctx, wcfrfile, pdffile):
     import wirecell.sigproc.response.plots as plt
 
     fr = per.load(wcfrfile)
+    # ...
+
+
+@cli.command("plot-track-response")
+@click.option("-o", "--output", default=None,
+              help="Set output data file")
+@click.option("-g", "--gain", default=14.7,
+              help="Set gain.")
+@click.option("-s", "--shaping", default=2.0,
+              help="Set shaping time in us.")
+@click.option("-t", "--tick", default=0.5,
+              help="Set tick time in us (0.1 is good for no shaping).")
+@click.argument("garfield-fileset")
+@click.argument("pdffile")
+@click.pass_context
+def plot_track_response(ctx, output, gain, shaping, tick,
+                            garfield_fileset, pdffile):
+    import wirecell.sigproc.garfield as gar
+    import wirecell.sigproc.response as res
+    import wirecell.sigproc.plots as plots
+    from wirecell.sigproc import units
+
+    shaping *= units.us
+    tick *= units.us
+
+    rflist = gar.load(garfield_fileset)
+    uvw = res.line(rflist)
+    fig, data = plots.plot_digitized_line(uvw, gain, shaping, tick)
+    fig.savefig(pdffile)
+
+    if output:
+        with open(output, 'w') as fp:
+            for t, u, v, w in data:
+                fp.write('%f %e %e %e\n' % (t, u, v, w))
 
 
 def main():

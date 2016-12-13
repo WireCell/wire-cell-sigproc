@@ -129,15 +129,16 @@ class ResponseFunction(object):
         Object as a dictionary.
         '''
         return dict(plane=self.plane, region=self.region, pos=self.pos,
-                    domainls=self.domainls, response=self.response.tolist(), impact=self.impact)
-
+                    domainls=self.domainls, response=self.response.tolist(),
+                    impact=self.impact)
 
     def shaped(self, gain_mVfC=14, shaping=2.0*units.us, nbins=None):
         '''
-        Convolve electronics shaping/peaking response, returning a new ResponseFunction.
+        Convolve electronics shaping/peaking response, returning a new
+        ResponseFunction.
         '''
-        ## use version defined above
-        #from scipy.signal import fftconvolve
+        # use version defined above
+        # from scipy.signal import fftconvolve
         if nbins is None:
             newfr = self.dup()
         else:
@@ -157,7 +158,7 @@ class ResponseFunction(object):
 
 def group_by(rflist, field):
     '''
-    Return a list of lists grouping by like values of the field.  
+    Return a list of lists grouping by like values of the field.
     '''
     ret = list()
     for thing in sorted(set(getattr(d, field) for d in rflist)):
