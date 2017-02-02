@@ -78,6 +78,11 @@ const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::noise(int channel) 
     return get_filter(channel, m_masks);
 }
 	
+const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::response(int channel) const
+{
+    return get_filter(channel, m_response);
+}
+
 
 void SimpleChannelNoiseDB::set_sampling(double tick, int nsamples)
 {
@@ -91,10 +96,13 @@ void SimpleChannelNoiseDB::set_sampling(double tick, int nsamples)
 
     m_rcrc.clear();
     m_config.clear();
+    m_response.clear();
 
     Waveform::compseq_t spectrum;
     spectrum.resize(nsamples,std::complex<float>(1,0));
     m_default_filter = std::make_shared<filter_t>(spectrum);
+    Waveform::compseq_t empty;
+    m_default_response = std::make_shared<filter_t>(empty);
 }
 	
 // set one thing in a vector at the index, resizing if needed, use def
@@ -139,6 +147,15 @@ void SimpleChannelNoiseDB::set_rcrc_constant(const std::vector<int>& channels, d
     for (auto ch : channels) {
 	set_one(chind(ch), filt, m_rcrc, m_default_filter);
     }
+}
+
+void SimpleChannelNoiseDB::set_response(const std::vector<int>& channels, const filter_t& spectrum)
+{
+    auto filt = std::make_shared<filter_t>(spectrum);
+    for (auto ch : channels) {
+        set_one(chind(ch), filt, m_response, m_default_response);
+    }
+
 }
 
 void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,

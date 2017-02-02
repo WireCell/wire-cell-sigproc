@@ -50,6 +50,15 @@ namespace WireCell {
 		/** Filter in place a group of signals together. */
 		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
 
+		/// Direct injection of needed service interfaces.
+		/** Set the sampling used when digitizing the waveform. */
+		void set_channel_noisedb(WireCell::IChannelNoiseDatabase::pointer ndb) {
+		    m_noisedb = ndb;
+		}
+
+            private:
+		WireCell::IChannelNoiseDatabase::pointer m_noisedb;
+
 	    };
 
 

@@ -36,6 +36,8 @@ namespace WireCell {
 	    virtual const filter_t& rcrc(int channel) const;
 	    virtual const filter_t& config(int channel) const;
 	    virtual const filter_t& noise(int channel) const;
+            virtual const filter_t& response(int channel) const;
+
 	    virtual std::vector<channel_group_t> coherent_channels() const {
 		return m_channel_groups;
 	    }
@@ -70,6 +72,10 @@ namespace WireCell {
 	    void set_rcrc_constant(const std::vector<int>& channels, double rcrc=2000.0);
 
 	
+            /// Set a detector response spectrum for the set of channels
+            void set_response(const std::vector<int>& channels, const filter_t& spectrum);
+
+
 	    /// Set a constant scaling to a band covering the given
 	    /// frequency bins (inclusively) for the given channels.
 	    /// Frequency bin "i" is from i*f to (i+1)*f where f is
@@ -104,8 +110,9 @@ namespace WireCell {
 
 	    typedef std::shared_ptr<filter_t> shared_filter_t;
 	    typedef std::vector<shared_filter_t> filter_vector_t;
-	    filter_vector_t m_rcrc, m_config, m_masks;
+	    filter_vector_t m_rcrc, m_config, m_masks, m_response;
 	    shared_filter_t m_default_filter;
+	    shared_filter_t m_default_response;
 
 	    mutable std::unordered_map<int,int> m_ch2ind;
 	    int chind(int ch) const;

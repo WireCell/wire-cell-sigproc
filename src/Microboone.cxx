@@ -78,7 +78,8 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
     return true;
 }
 
-bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians){
+bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians)
+{
     // calculate the RMS 
     std::pair<double,double> temp = Derivations::CalcRMS(medians);
     double mean = temp.first;
@@ -492,6 +493,15 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     WireCell::Waveform::realseq_t medians = Derivations::CalcMedian(chansig);
     //std::cout << medians.size() << " " << medians.at(0) << " " << medians.at(1) << std::endl;
   
+
+    // For Xin: here is how you can get the response spectrum for this group.
+    const int achannel = chansig.begin()->first;
+    const Waveform::compseq_t& respec = m_noisedb->response(achannel);
+    if (respec.size()) {
+        // now, apply the response spectrum to deconvolve the median
+        // and apply the special protection or pass respec into
+        // SignalProtection().
+    }
 
     // do the signal protection and adaptive baseline
     Microboone::SignalProtection(medians);
