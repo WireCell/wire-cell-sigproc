@@ -33,6 +33,8 @@ namespace WireCell {
 	    virtual double sample_time() const { return m_tick; }
 	    virtual double nominal_baseline(int channel) const;
 	    virtual double gain_correction(int channel) const;
+            virtual double response_offset(int channel) const;
+
 	    virtual const filter_t& rcrc(int channel) const;
 	    virtual const filter_t& config(int channel) const;
 	    virtual const filter_t& noise(int channel) const;
@@ -66,6 +68,9 @@ namespace WireCell {
 				    double from_gain_mVfC=7.8, double to_gain_mVfC=14.0,
 				    double from_shaping=1.0*units::us, double to_shaping=2.0*units::us);
 
+
+            /// Set a response offset for the given set of channels.
+            void set_response_offset(const std::vector<int>& channels, double offset);
 
 	    /// Set the RC+RC time constant in the system of units for the
 	    /// digitization sample time ("tick").  Default is for microboone.
@@ -104,8 +109,8 @@ namespace WireCell {
 	    double m_tick;
 	    int m_nsamples;
 
-	    double m_default_baseline, m_default_gain;
-	    std::vector<double> m_baseline, m_gain;
+	    double m_default_baseline, m_default_gain, m_default_offset;
+	    std::vector<double> m_baseline, m_gain, m_offset;
 
 
 	    typedef std::shared_ptr<filter_t> shared_filter_t;

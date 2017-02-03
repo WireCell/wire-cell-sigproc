@@ -10,6 +10,7 @@ SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
     , m_nsamples(-1)
     , m_default_baseline(0.0)
     , m_default_gain(1.0)
+    , m_default_offset(0.0)
 {
     set_sampling(tick, nsamples);
 }
@@ -43,6 +44,15 @@ double SimpleChannelNoiseDB::gain_correction(int channel) const
     return m_default_gain;
 }
 
+double SimpleChannelNoiseDB::response_offset(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < m_offset.size()) {
+	return m_offset[ind];
+    }
+    return m_default_offset;
+
+}
 
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::get_filter(int channel, const filter_vector_t& fv) const
@@ -181,6 +191,14 @@ void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,
 	//	std::cout << ch << " " << ind << std::endl;
 	set_one(ind, filt, m_config, m_default_filter);
 	set_one(ind, gain_ratio, m_gain, m_default_gain);
+    }
+}
+
+void SimpleChannelNoiseDB::set_response_offset(const std::vector<int>& channels, double offset)
+{
+    for (auto ch : channels) {
+	int ind = chind(ch);
+	set_one(ind, offset, m_offset, m_default_offset);
     }
 }
 
