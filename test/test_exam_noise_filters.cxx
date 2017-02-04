@@ -347,8 +347,10 @@ int main(int argc, char* argv[])
     auto one = new SigProc::Microboone::OneChannelNoise;
     one->set_channel_noisedb(noise_sp);
     shared_ptr<WireCell::IChannelFilter> one_sp(one);
+    
 
     auto many = new SigProc::Microboone::CoherentNoiseSub;
+    many->set_channel_noisedb(noise_sp);
     shared_ptr<WireCell::IChannelFilter> many_sp(many);
 
 

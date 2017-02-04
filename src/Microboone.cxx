@@ -496,11 +496,14 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
 
     // For Xin: here is how you can get the response spectrum for this group.
     const int achannel = chansig.begin()->first;
+
+    //std::cout << m_noisedb->response_offset(achannel) << std::endl;
+
     const Waveform::compseq_t& respec = m_noisedb->response(achannel);
     if (respec.size()) {
-        // now, apply the response spectrum to deconvolve the median
-        // and apply the special protection or pass respec into
-        // SignalProtection().
+	// now, apply the response spectrum to deconvolve the median
+	// and apply the special protection or pass respec into
+	// SignalProtection().
     }
 
     // do the signal protection and adaptive baseline
