@@ -39,9 +39,13 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 	double sum2 = 0;
 	double sum3 = 0;
 	double coef = 0;
-	std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
-	
 
+	std::pair<double,double> temp = Derivations::CalcRMS(signal);
+	//std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
+	
+	// if ( abs(ch-6117)<5)
+	//     std::cout << ch << " " << temp.first << " " << temp.second << " "  << std::endl;
+	
 	for (int j=0;j!=nbin;j++){
 	    if (fabs(signal.at(j)) < 4 * temp.second){
 		sum2 += signal.at(j) * medians.at(j);
@@ -51,6 +55,10 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 	if (sum3 >0) {
 	    coef = sum2/sum3;
 	}
+	// protect against the extreme cases
+	// if (coef < 0.6) coef = 0.6;
+	// if (coef > 1.5) coef = 1.5;
+
 	coef_all[ch] = coef;
 	if (coef != 0){
 	    ave_coef += coef;
@@ -67,10 +75,14 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 	float scaling;
 	if (ave_coef != 0 ){
 	    scaling = coef_all[ch]/ave_coef;
+	    // add some protections ... 
+	    if (scaling < 0.5 ) scaling = 0.5;
+	    if (scaling > 1.5) scaling = 1.5;
 	}else{
 	    scaling = 0;
 	}
-	//std::cout << scaling << " " << signal.at(0) << " " << medians.at(0) << std::endl;
+	// if ( abs(ch-6117)<5)
+	//     std::cout << ch << " " << scaling << " "  << std::endl;
 	//scaling = 1.0;
 	for (int i=0;i!=nbin;i++){
 	    if (fabs(signal.at(i)) > 0.001) {
@@ -117,8 +129,6 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 
     
     
-    
-
 
      // calculate the RMS 
     std::pair<double,double> temp = Derivations::CalcRMS(medians);
@@ -157,52 +167,54 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
   
     // the deconvolution protection code ... 
     if (respec.size()>0){
-	WireCell::Waveform::compseq_t medians_freq = WireCell::Waveform::dft(medians);
-	WireCell::Waveform::shrink(medians_freq,respec);
+	//std::cout << nbin << std::endl;
+
+     	WireCell::Waveform::compseq_t medians_freq = WireCell::Waveform::dft(medians);
+     	WireCell::Waveform::shrink(medians_freq,respec);
 	
-	for (int i=0;i!=medians_freq.size();i++){
-	    double freq;
-	    // assuming 2 MHz digitization
-	    if (i <medians_freq.size()/2.){
-		freq = i/(1.*medians_freq.size())*2.;
-	    }else{
-		freq = (medians_freq.size() - i)/(1.*medians_freq.size())*2.;
-	    }
-	    std::complex<float> factor = filter_time(freq)*filter_low(freq);
-	    medians_freq.at(i) = medians_freq.at(i) * factor;
-	}
-	WireCell::Waveform::realseq_t medians_decon = WireCell::Waveform::idft(medians_freq);
+    	for (int i=0;i!=medians_freq.size();i++){
+    	    double freq;
+    	    // assuming 2 MHz digitization
+    	    if (i <medians_freq.size()/2.){
+    		freq = i/(1.*medians_freq.size())*2.;
+    	    }else{
+    		freq = (medians_freq.size() - i)/(1.*medians_freq.size())*2.;
+    	    }
+    	    std::complex<float> factor = filter_time(freq)*filter_low(freq);
+    	    medians_freq.at(i) = medians_freq.at(i) * factor;
+    	}
+    	WireCell::Waveform::realseq_t medians_decon = WireCell::Waveform::idft(medians_freq);
 	
-	temp = Derivations::CalcRMS(medians_decon);
-	mean = temp.first;
-	rms = temp.second;
+    	temp = Derivations::CalcRMS(medians_decon);
+    	mean = temp.first;
+    	rms = temp.second;
 	
-	if (protection_factor*rms > upper_decon_limit){
-	    limit = protection_factor*rms;
-	}else{
-	    limit = upper_decon_limit;
-	}
+    	if (protection_factor*rms > upper_decon_limit){
+    	    limit = protection_factor*rms;
+    	}else{
+    	    limit = upper_decon_limit;
+    	}
 	
-	for (int j=0;j!=nbin;j++) {
-	    float content = medians_decon.at(j);
-	    if ((content-mean)>limit){
-		int time_bin = j + res_offset;
-		
-		medians.at(time_bin) = 0; 
-		signalsBool.at(time_bin) = 1;
-		// add the front and back padding
-		for (int k=0;k!=pad_b;k++){
-		    int bin = time_bin+k+1;
-		    if (bin > nbin-1) bin = nbin-1;
-		    signalsBool.at(bin) = 1;
-		}
-		for (int k=0;k!=pad_f;k++){
-		    int bin = time_bin-k-1;
-		    if (bin <0) { bin = 0; }
-		    signalsBool.at(bin) = 1;
-		}
-	    }
-	}
+    	for (int j=0;j!=nbin;j++) {
+    	    float content = medians_decon.at(j);
+    	    if ((content-mean)>limit){
+    		int time_bin = j + res_offset;
+		if (time_bin >= nbin) time_bin -= nbin;
+    		medians.at(time_bin) = 0; 
+    		signalsBool.at(time_bin) = 1;
+    		// add the front and back padding
+    		for (int k=0;k!=pad_b;k++){
+    		    int bin = time_bin+k+1;
+    		    if (bin > nbin-1) bin = nbin-1;
+    		    signalsBool.at(bin) = 1;
+    		}
+    		for (int k=0;k!=pad_f;k++){
+    		    int bin = time_bin-k-1;
+    		    if (bin <0) { bin = 0; }
+    		    signalsBool.at(bin) = 1;
+    		}
+    	    }
+    	}
     }
 
     // std::cout << "haha" << std::endl;
