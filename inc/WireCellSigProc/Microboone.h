@@ -23,7 +23,7 @@ namespace WireCell {
 	    bool RemoveFilterFlags(WireCell::Waveform::realseq_t& sig);
 	    bool NoisyFilterAlg(WireCell::Waveform::realseq_t& spec, int ch);
 
-	    bool SignalProtection(WireCell::Waveform::realseq_t& sig);
+	    bool SignalProtection(WireCell::Waveform::realseq_t& sig, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b);
 	    bool Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& chansig, const WireCell::Waveform::realseq_t& medians);
 
 

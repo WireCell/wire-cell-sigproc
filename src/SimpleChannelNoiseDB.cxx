@@ -11,6 +11,8 @@ SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
     , m_default_baseline(0.0)
     , m_default_gain(1.0)
     , m_default_offset(0.0)
+    , m_default_pad_f(0)
+    , m_default_pad_b(0)
 {
     set_sampling(tick, nsamples);
 }
@@ -54,6 +56,25 @@ double SimpleChannelNoiseDB::response_offset(int channel) const
 
 }
 
+int SimpleChannelNoiseDB::pad_window_front(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < m_pad_f.size()) {
+	return m_pad_f[ind];
+    }
+    return m_default_pad_f;
+
+}
+
+int SimpleChannelNoiseDB::pad_window_back(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < m_pad_b.size()) {
+	return m_pad_b[ind];
+    }
+    return m_default_pad_b;
+
+}
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::get_filter(int channel, const filter_vector_t& fv) const
 {
@@ -201,6 +222,24 @@ void SimpleChannelNoiseDB::set_response_offset(const std::vector<int>& channels,
 	set_one(ind, offset, m_offset, m_default_offset);
     }
 }
+
+void SimpleChannelNoiseDB::set_pad_window_front(const std::vector<int>& channels, int pad_f)
+{
+    for (auto ch : channels) {
+	int ind = chind(ch);
+	set_one(ind, pad_f, m_pad_f, m_default_pad_f);
+    }
+}
+
+void SimpleChannelNoiseDB::set_pad_window_back(const std::vector<int>& channels, int pad_b)
+{
+    for (auto ch : channels) {
+	int ind = chind(ch);
+	set_one(ind, pad_b, m_pad_b, m_default_pad_b);
+    }
+}
+
+
 
 void SimpleChannelNoiseDB::set_filter(const std::vector<int>& channels, const multimask_t& masks)
 {
