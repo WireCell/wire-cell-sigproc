@@ -267,62 +267,64 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     return true;
 }
 
-bool Microboone::NoisyFilterAlg(WireCell::Waveform::realseq_t& sig, int ch)
+bool Microboone::NoisyFilterAlg(WireCell::Waveform::realseq_t& sig, float min_rms, float max_rms)
 {
     const double rmsVal = Microboone::CalcRMSWithFlags(sig);
-    int planeNum,channel_no;
-    if (ch < 2400) {
-	planeNum = 0;
-	channel_no = ch;
-    }
-    else if (ch < 4800) {
-	planeNum = 1;
-	channel_no = ch - 2400;
-    }
-    else {
-	planeNum = 2;
-	channel_no = ch - 4800;
-    }
+    
+    // int planeNum,channel_no;
+    // if (ch < 2400) {
+    // 	planeNum = 0;
+    // 	channel_no = ch;
+    // }
+    // else if (ch < 4800) {
+    // 	planeNum = 1;
+    // 	channel_no = ch - 2400;
+    // }
+    // else {
+    // 	planeNum = 2;
+    // 	channel_no = ch - 4800;
+    // }
 
-    //std::cout << rmsVal << " " << ch << std::endl;
+    // //std::cout << rmsVal << " " << ch << std::endl;
   
-    double maxRMSCut[3] = {10.0,10.0,5.0};
-    double minRMSCut[3] = {2,2,2};
+    // double maxRMSCut[3] = {10.0,10.0,5.0};
+    // double minRMSCut[3] = {2,2,2};
 
-    if (planeNum == 0) {
-	if (channel_no < 100) {
-	    maxRMSCut[0] = 5;
-	    minRMSCut[0] = 1;
-	}
-	else if (channel_no >= 100 && channel_no<2000) {
-	    maxRMSCut[0] = 11; // increase the threshold slightly ... 
-	    minRMSCut[0] = 1.9;
-	}
-	else if (channel_no >= 2000 && channel_no < 2400) {
-	    maxRMSCut[0] = 5;
-	    minRMSCut[0] = 0.9; // take into account FT-1 channel ... 
-	}
-    }
-    else if (planeNum == 1) {
-	if (channel_no <290){
-	    maxRMSCut[1] = 5;
-	    minRMSCut[1] = 1;
-	}
-	else if (channel_no>=290 && channel_no < 2200) {
-	    maxRMSCut[1] = 11;
-	    minRMSCut[1] = 1.9;
-	}
-	else if (channel_no >=2200) {
-	    maxRMSCut[1] = 5;
-	    minRMSCut[1] = 1;
-	}
-    }
-    else if (planeNum == 2) {
-	maxRMSCut[2] = 8;
-	minRMSCut[2] = 1.3; // reduce threshold to take into account the adaptive baseline ... 
-    }
+    // if (planeNum == 0) {
+    // 	if (channel_no < 100) {
+    // 	    maxRMSCut[0] = 5;
+    // 	    minRMSCut[0] = 1;
+    // 	}
+    // 	else if (channel_no >= 100 && channel_no<2000) {
+    // 	    maxRMSCut[0] = 11; // increase the threshold slightly ... 
+    // 	    minRMSCut[0] = 1.9;
+    // 	}
+    // 	else if (channel_no >= 2000 && channel_no < 2400) {
+    // 	    maxRMSCut[0] = 5;
+    // 	    minRMSCut[0] = 0.9; // take into account FT-1 channel ... 
+    // 	}
+    // }
+    // else if (planeNum == 1) {
+    // 	if (channel_no <290){
+    // 	    maxRMSCut[1] = 5;
+    // 	    minRMSCut[1] = 1;
+    // 	}
+    // 	else if (channel_no>=290 && channel_no < 2200) {
+    // 	    maxRMSCut[1] = 11;
+    // 	    minRMSCut[1] = 1.9;
+    // 	}
+    // 	else if (channel_no >=2200) {
+    // 	    maxRMSCut[1] = 5;
+    // 	    minRMSCut[1] = 1;
+    // 	}
+    // }
+    // else if (planeNum == 2) {
+    // 	maxRMSCut[2] = 8;
+    // 	minRMSCut[2] = 1.3; // reduce threshold to take into account the adaptive baseline ... 
+    // }
   
-    if(rmsVal > maxRMSCut[planeNum] || rmsVal < minRMSCut[planeNum]) {
+    //if(rmsVal > maxRMSCut[planeNum] || rmsVal < minRMSCut[planeNum]) {
+    if(rmsVal > max_rms || rmsVal < min_rms) {
 	int numBins = sig.size();
 	for(int i = 0; i < numBins; i++) {
 	    sig.at(i) = 10000.0;
@@ -724,7 +726,12 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
 
     // Identify the Noisy channels ... 
     Microboone::SignalFilter(signal);
-    bool is_noisy = Microboone::NoisyFilterAlg(signal,ch);
+
+    //
+    const float min_rms = m_noisedb->min_rms_cut(ch);
+    const float max_rms = m_noisedb->max_rms_cut(ch);
+
+    bool is_noisy = Microboone::NoisyFilterAlg(signal,min_rms,max_rms);
     Microboone::RemoveFilterFlags(signal);
 
     // if (is_noisy){

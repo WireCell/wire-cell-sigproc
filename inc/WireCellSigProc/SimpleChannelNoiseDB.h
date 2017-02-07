@@ -37,6 +37,10 @@ namespace WireCell {
 	    virtual int pad_window_front(int channel) const;
 	    virtual int pad_window_back(int channel) const;
 
+	    virtual float min_rms_cut(int channel) const;
+	    virtual float max_rms_cut(int channel) const;
+
+
 	    virtual const filter_t& rcrc(int channel) const;
 	    virtual const filter_t& config(int channel) const;
 	    virtual const filter_t& noise(int channel) const;
@@ -75,6 +79,13 @@ namespace WireCell {
             void set_response_offset(const std::vector<int>& channels, double offset);
 	    void set_pad_window_front(const std::vector<int>& channels, int pad_f);
 	    void set_pad_window_back(const std::vector<int>& channels, int pad_b);
+
+	    void set_min_rms_cut(const std::vector<int>& channels, float min_rms);
+	    void set_min_rms_cut_one(int channel, float min_rms);
+	    void set_max_rms_cut(const std::vector<int>& channels, float max_rms);
+	    void set_max_rms_cut_one(int channel, float max_rms);
+
+
 
 	    /// Set the RC+RC time constant in the system of units for the
 	    /// digitization sample time ("tick").  Default is for microboone.
@@ -115,8 +126,12 @@ namespace WireCell {
 
 	    double m_default_baseline, m_default_gain, m_default_offset;
 	    int m_default_pad_f, m_default_pad_b;
+
+	    float m_default_min_rms, m_default_max_rms;
+
 	    std::vector<double> m_baseline, m_gain, m_offset;
 	    std::vector<int> m_pad_f, m_pad_b;
+	    std::vector<float> m_min_rms, m_max_rms;
 
 
 	    typedef std::shared_ptr<filter_t> shared_filter_t;

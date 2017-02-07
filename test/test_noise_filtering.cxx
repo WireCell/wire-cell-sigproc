@@ -203,12 +203,41 @@ int main(int argc, char* argv[])
   // do the RCRC
   noise->set_rcrc_constant(rcrcchans, rcrc);
 
-  /// Need to fill these in!
-  // IChannelNoiseDatabase::filter_t u_response;
-  // IChannelNoiseDatabase::filter_t v_response;
+  
+  // fill in the rms cut ... 
+  // before Hardware Fix
+  for (int i=0;i!=uchans.size();i++){
+      if (uchans.at(i)<100){
+	  noise->set_min_rms_cut_one(uchans.at(i),1);
+	  noise->set_max_rms_cut_one(uchans.at(i),5);
+      }else if (uchans.at(i)<2000){
+	  noise->set_min_rms_cut_one(uchans.at(i),1.9);
+	  noise->set_max_rms_cut_one(uchans.at(i),11);
+      }else{
+	  noise->set_min_rms_cut_one(uchans.at(i),0.9);
+	  noise->set_max_rms_cut_one(uchans.at(i),5);
+      }
+  }
+  for (int i=0;i!=vchans.size();i++){
+      if (vchans.at(i)<290+uchans.size()){
+	  noise->set_min_rms_cut_one(vchans.at(i),1);
+	  noise->set_max_rms_cut_one(vchans.at(i),5);
+      }else if (vchans.at(i)<2200+uchans.size()){
+	  noise->set_min_rms_cut_one(vchans.at(i),1.9);
+	  noise->set_max_rms_cut_one(vchans.at(i),11);
+      }else{
+	  noise->set_min_rms_cut_one(vchans.at(i),1);
+	  noise->set_max_rms_cut_one(vchans.at(i),5);
+      }
+  }
+  noise->set_min_rms_cut(wchans,1.3);
+  noise->set_max_rms_cut(wchans,8.0);
+  
 
-  // noise->set_response(uchans, u_response);
-  // noise->set_response(vchans, v_response);
+  
+  
+  
+
 
   // set initial bad channels
   noise->set_bad_channels(bad_channels);

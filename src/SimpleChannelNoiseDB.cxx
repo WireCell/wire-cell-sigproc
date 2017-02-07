@@ -13,6 +13,8 @@ SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
     , m_default_offset(0.0)
     , m_default_pad_f(0)
     , m_default_pad_b(0)
+    , m_default_min_rms(0.5)
+    , m_default_max_rms(10)
 {
     set_sampling(tick, nsamples);
 }
@@ -54,6 +56,24 @@ double SimpleChannelNoiseDB::response_offset(int channel) const
     }
     return m_default_offset;
 
+}
+
+float SimpleChannelNoiseDB::min_rms_cut(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < m_min_rms.size()) {
+	return m_min_rms[ind];
+    }
+    return m_default_min_rms;
+}
+
+float SimpleChannelNoiseDB::max_rms_cut(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < m_max_rms.size()) {
+	return m_max_rms[ind];
+    }
+    return m_default_max_rms;
 }
 
 int SimpleChannelNoiseDB::pad_window_front(int channel) const
@@ -222,6 +242,40 @@ void SimpleChannelNoiseDB::set_response_offset(const std::vector<int>& channels,
 	set_one(ind, offset, m_offset, m_default_offset);
     }
 }
+
+
+
+void SimpleChannelNoiseDB::set_min_rms_cut(const std::vector<int>& channels, float min_rms)
+{
+    for (auto ch : channels) {
+	int ind = chind(ch);
+	set_one(ind, min_rms, m_min_rms, m_default_min_rms);
+    }
+}
+
+void SimpleChannelNoiseDB::set_min_rms_cut_one(int ch, float min_rms)
+{
+
+    int ind = chind(ch);
+    set_one(ind, min_rms, m_min_rms, m_default_min_rms);
+}
+
+
+
+void SimpleChannelNoiseDB::set_max_rms_cut(const std::vector<int>& channels, float max_rms)
+{
+    for (auto ch : channels) {
+	int ind = chind(ch);
+	set_one(ind, max_rms, m_max_rms, m_default_max_rms);
+    }
+}
+
+void SimpleChannelNoiseDB::set_max_rms_cut_one(int ch, float max_rms)
+{
+    int ind = chind(ch);
+    set_one(ind, max_rms, m_max_rms, m_default_max_rms);
+}
+
 
 void SimpleChannelNoiseDB::set_pad_window_front(const std::vector<int>& channels, int pad_f)
 {

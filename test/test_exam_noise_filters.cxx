@@ -273,10 +273,21 @@ int main(int argc, char* argv[])
     vector<int> miscfgchan;
     const double from_gain_mVfC=4.7, to_gain_mVfC=14.0,
 	from_shaping=1.0*units::microsecond, to_shaping=2.0*units::microsecond;
+    
+    
+    // these are before hardware fix 
     for (int ind=2016; ind<= 2095; ++ind) { miscfgchan.push_back(ind); }
     for (int ind=2192; ind<= 2303; ++ind) { miscfgchan.push_back(ind); }
     for (int ind=2352; ind< 2400; ++ind) { miscfgchan.push_back(ind); }
     
+    // these are after the hardware fix 
+    // for (int ind=768; ind<864; ++ind) { miscfgchan.push_back(ind); }
+    // for (int ind=2016; ind<2160; ++ind) { miscfgchan.push_back(ind); }
+    // for (int ind=2176; ind<2400; ++ind) { miscfgchan.push_back(ind); }
+    // for (int ind=2400+1440; ind<2400+1536; ++ind) { miscfgchan.push_back(ind); }
+    // for (int ind=4800+1536; ind<4800+1728; ++ind) { miscfgchan.push_back(ind); }
+    
+
     // hard-coded bad channels
     vector<int> bad_channels;
     for (int i=0;i!=wchans.size();i++){
@@ -285,6 +296,16 @@ int main(int argc, char* argv[])
 	  bad_channels.push_back(i+4800);
       }
     }
+    
+    // the following are additional channels after the hardware fix
+    // bad_channels.push_back(300);
+    // bad_channels.push_back(308);
+    // bad_channels.push_back(310);
+    // bad_channels.push_back(438);
+    // bad_channels.push_back(336);
+    // bad_channels.push_back(337);
+
+
 
     // Q&D RC+RC time constant - all have same.
     const double rcrc = 1.0*units::millisecond;
@@ -371,6 +392,63 @@ int main(int argc, char* argv[])
     noise->set_filter(harmonicchans,hharmonic);
     noise->set_filter(special_chans,hspecial);
     noise->set_channel_groups(channel_groups);
+
+    // these are before Hardware Fix
+    for (int i=0;i!=uchans.size();i++){
+      if (uchans.at(i)<100){
+    	noise->set_min_rms_cut_one(uchans.at(i),1);
+    	noise->set_max_rms_cut_one(uchans.at(i),5);
+      }else if (uchans.at(i)<2000){
+    	noise->set_min_rms_cut_one(uchans.at(i),1.9);
+    	noise->set_max_rms_cut_one(uchans.at(i),11);
+      }else{
+    	noise->set_min_rms_cut_one(uchans.at(i),0.9);
+    	noise->set_max_rms_cut_one(uchans.at(i),5);
+      }
+    }
+    for (int i=0;i!=vchans.size();i++){
+      if (vchans.at(i)<290+uchans.size()){
+    	noise->set_min_rms_cut_one(vchans.at(i),1);
+    	noise->set_max_rms_cut_one(vchans.at(i),5);
+      }else if (vchans.at(i)<2200+uchans.size()){
+    	noise->set_min_rms_cut_one(vchans.at(i),1.9);
+    	noise->set_max_rms_cut_one(vchans.at(i),11);
+      }else{
+    	noise->set_min_rms_cut_one(vchans.at(i),1);
+    	noise->set_max_rms_cut_one(vchans.at(i),5);
+      }
+    }
+    
+    // these are the one after the Hardware Fix
+    // for (int i=0;i!=uchans.size();i++){
+    //   if (uchans.at(i)<600){
+    // 	noise->set_min_rms_cut_one(uchans.at(i),1+(1.7-1)/600.*i);
+    // 	noise->set_max_rms_cut_one(uchans.at(i),5);
+    //   }else if (uchans.at(i)<1800){
+    // 	noise->set_min_rms_cut_one(uchans.at(i),1.7);
+    // 	noise->set_max_rms_cut_one(uchans.at(i),11);
+    //   }else{
+    // 	noise->set_min_rms_cut_one(uchans.at(i),1+ (1.7-1)/600.*(2399-i));
+    // 	noise->set_max_rms_cut_one(uchans.at(i),5);
+    //   }
+    // }
+    // for (int i=0;i!=vchans.size();i++){
+    //   if (vchans.at(i)<600+uchans.size()){
+    // 	noise->set_min_rms_cut_one(vchans.at(i),0.8+(1.7-0.8)/600.*i);
+    // 	noise->set_max_rms_cut_one(vchans.at(i),5);
+    //   }else if (vchans.at(i)<1800+uchans.size()){
+    // 	noise->set_min_rms_cut_one(vchans.at(i),1.7);
+    // 	noise->set_max_rms_cut_one(vchans.at(i),11);
+    //   }else{
+    // 	noise->set_min_rms_cut_one(vchans.at(i),0.8+ (1.7-0.8)/600.*(2399-i));
+    // 	noise->set_max_rms_cut_one(vchans.at(i),5);
+    //   }
+    // }
+
+    // Cut in W plane is the same before and after the Hardware Fix 
+    noise->set_min_rms_cut(wchans,1.3);
+    noise->set_max_rms_cut(wchans,8.0);
+    
     
     shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
 
