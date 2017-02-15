@@ -339,6 +339,7 @@ def plot_digitized_line(uvw_rfs, gain_mVfC=14.7, shaping=2.0*units.us, tick=0.5*
 
     '''
     u, v, w = uvw_rfs
+    time_offset = 50*units.us
 
     # deal with some round off.
     dt_hi = int(round(w.times[1] - w.times[0]))
@@ -361,7 +362,7 @@ def plot_digitized_line(uvw_rfs, gain_mVfC=14.7, shaping=2.0*units.us, tick=0.5*
             print 'No shaping'
             sig = rf
         samp = sig.resample(n_lo)
-        x = samp.times/units.us
+        x = (samp.times-time_offset)/units.us
 
         if shaping:
             adcf = (samp.response / units.fC) * adc_per_mv
@@ -393,6 +394,9 @@ def plot_digitized_line(uvw_rfs, gain_mVfC=14.7, shaping=2.0*units.us, tick=0.5*
         axes.set_ylabel('Instantaneous current')
     axes.legend(loc="upper left")
     xmmymm = list(axes.axis())
-    xmmymm[0] = 50.0;
+    xmmymm[0] = 0.0
+    xmmymm[1] = 50.0
+    xmmymm[3] = 65.0
     axes.axis(xmmymm)
+    axes.text(5,20, "Garfield 2D Calculation\n        (line source)")
     return fig, numpy.vstack(data).T
