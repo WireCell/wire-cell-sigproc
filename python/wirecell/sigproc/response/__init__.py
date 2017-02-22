@@ -635,7 +635,7 @@ def line(rflist, normalization=13700*units.electron_charge):
     Assuming an infinite track of `normalization` ionization electrons
     per pitch which runs along the starting points of the response
     function paths, calculate the average response on the central wire
-    of each plane.
+    of each plane.  
     '''
     impacts = set([rf.impact for rf in rflist])
     if len(impacts) > 1:

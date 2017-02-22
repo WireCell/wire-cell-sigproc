@@ -329,7 +329,7 @@ def response_averages_colz(avgtriple, time):
 
 
 
-def plot_digitized_line(uvw_rfs, gain_mVfC=14.7, shaping=2.0*units.us, tick=0.5*units.us, adc_per_mv = 1.1*4096/2000.0):
+def plot_digitized_line(uvw_rfs, gain_mVfC=14.0, shaping=2.0*units.us, tick=0.5*units.us, adc_per_mv = 1.2*4096/2000.0):
     '''
     Make plot of shaped and digitized response functions.
 
