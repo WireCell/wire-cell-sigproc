@@ -280,6 +280,18 @@ int main(int argc, char* argv[])
     for (int ind=2192; ind<= 2303; ++ind) { miscfgchan.push_back(ind); }
     for (int ind=2352; ind< 2400; ++ind) { miscfgchan.push_back(ind); }
     
+    // these are time dependent list to be implemented ...
+    // ((channel_no >=2016 && channel_no <= 2095 
+    // 	      || channel_no >=2192 && channel_no <=2303 
+    // 	      || channel_no >= 2352 && channel_no <2400)&&run_no<4952)||
+    // 	    ((channel_no>=2016&&channel_no<=2111 || 
+    // 	      channel_no>=2176&&channel_no<=2303 ||
+    // 	      channel_no>=2352&&channel_no>=2383)&&run_no>=5282&&run_no<=5810) ||
+    // 	    ((channel_no>=2016&&channel_no<=2111 ||
+    // 	      channel_no>=2128&&channel_no<=2303 ||
+    // 	      channel_no>=2320&&channel_no<=2383)&&run_no>=5811&&run_no<=6699) ||
+    // 	      ((channel_no>=2240&&channel_no<=2255)&&run_no>=6700&&run_no<=6998))
+
     // these are after the hardware fix 
     // for (int ind=768; ind<864; ++ind) { miscfgchan.push_back(ind); }
     // for (int ind=2016; ind<2160; ++ind) { miscfgchan.push_back(ind); }

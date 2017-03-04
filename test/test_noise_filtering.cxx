@@ -191,6 +191,7 @@ int main(int argc, char* argv[])
   noise->set_response_offset(vchans,vplane_time_shift);
   
   noise->set_pad_window_front(uchans,20);
+  //noise->set_pad_window_front(uchans,10);
   noise->set_pad_window_back(uchans,10);
   noise->set_pad_window_front(vchans,10);
   noise->set_pad_window_back(vchans,10);
