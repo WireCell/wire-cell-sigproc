@@ -283,7 +283,7 @@ int main(int argc, char* argv[])
     // these are time dependent list to be implemented ...
     // ((channel_no >=2016 && channel_no <= 2095 
     // 	      || channel_no >=2192 && channel_no <=2303 
-    // 	      || channel_no >= 2352 && channel_no <2400)&&run_no<4952)||
+    // 	      || channel_no >= 2352 && channel_no <2400)&&run_no<5112)||
     // 	    ((channel_no>=2016&&channel_no<=2111 || 
     // 	      channel_no>=2176&&channel_no<=2303 ||
     // 	      channel_no>=2352&&channel_no>=2383)&&run_no>=5282&&run_no<=5810) ||
