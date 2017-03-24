@@ -7,9 +7,15 @@ using namespace std;
 
 int main()
 {
-    Eigen::FFT<float> fft;
-    std::vector<float> timevec = {1,2,3,2,1};
-    std::vector<std::complex<float> > freqvec;
+#ifdef MISSING_FFTW_SINGLE_PRECISION
+    typedef double TYPE;
+#else
+    typedef float TYPE;
+#endif
+
+    Eigen::FFT<TYPE> fft;
+    std::vector<TYPE> timevec = {1,2,3,2,1};
+    std::vector<std::complex<TYPE> > freqvec;
 
     fft.fwd( freqvec,timevec);
     // manipulate freqvec
