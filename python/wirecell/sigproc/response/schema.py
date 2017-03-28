@@ -44,10 +44,11 @@ class FieldResponse(namedtuple("FieldResponse","planes axis origin tstart period
 
 
 
-class PlaneResponse(namedtuple("PlaneResponse","paths planeid pitch pitchdir wiredir")):
+class PlaneResponse(namedtuple("PlaneResponse","paths planeid location pitch pitchdir wiredir")):
     '''
     :param list paths: List of PathResponse objects.
     :param int planeid: A numerical identifier for the plane.
+    :param float location: Location in drift direction of this plane.
     :param float pitch: The wire pitch in millimeters.
     :param list pitchdir: A normalized 3-vector giving direction of the wire pitch.
     :param list wiredir: A normalized 3-vector giving direction of the wire run.

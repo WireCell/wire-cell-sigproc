@@ -337,6 +337,7 @@ def plot_digitized_line(uvw_rfs, gain_mVfC=14.0, shaping=2.0*units.us, tick=0.5*
     >>> uvw = response.line.responses(dat)
     >>> plots.plot_digitized_line(uvw)
 
+    See also wirecell.sigproc.paper.noise
     '''
     u, v, w = uvw_rfs
     time_offset = 50*units.us
@@ -381,9 +382,9 @@ def plot_digitized_line(uvw_rfs, gain_mVfC=14.0, shaping=2.0*units.us, tick=0.5*
         data.append(y)
 
     if shaping:
-        axes.set_title('Simulated ADC Waveform (cross-pitch track)')
+        axes.set_title('ADC Waveform with 2D MicroBooNE Wire Plane Model')
     else:
-        axes.set_title('Simulated Induced current (cross-pitch track)')
+        axes.set_title('Induced Current with 2D MicroBooNE Wire Plane Model')
     if shaping:
         axes.set_xlabel('Sample time [$\mu$s]')
     else:
@@ -398,5 +399,5 @@ def plot_digitized_line(uvw_rfs, gain_mVfC=14.0, shaping=2.0*units.us, tick=0.5*
     xmmymm[1] = 50.0
     xmmymm[3] = 65.0
     axes.axis(xmmymm)
-    axes.text(5,20, "Garfield 2D Calculation\n        (line source)")
+    axes.text(5,20, "   Garfield 2D calculation\n(perpendicular line source)")
     return fig, numpy.vstack(data).T

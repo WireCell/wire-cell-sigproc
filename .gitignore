@@ -6,3 +6,6 @@
 #*
 *.gz
 \#*
+*.html
+*.egg-info
+venv

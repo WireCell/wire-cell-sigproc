@@ -47,16 +47,18 @@ def plot_field_response(ctx, wcfrfile, pdffile):
 @cli.command("plot-track-response")
 @click.option("-o", "--output", default=None,
               help="Set output data file")
-@click.option("-g", "--gain", default=14.7,
+@click.option("-g", "--gain", default=14.0,
               help="Set gain.")
 @click.option("-s", "--shaping", default=2.0,
               help="Set shaping time in us.")
 @click.option("-t", "--tick", default=0.5,
               help="Set tick time in us (0.1 is good for no shaping).")
+@click.option("-n", "--norm", default=16000,
+              help="Set normalization in units of electron charge.")
 @click.argument("garfield-fileset")
 @click.argument("pdffile")
 @click.pass_context
-def plot_track_response(ctx, output, gain, shaping, tick,
+def plot_track_response(ctx, output, gain, shaping, tick, norm,
                             garfield_fileset, pdffile):
     import wirecell.sigproc.garfield as gar
     import wirecell.sigproc.response as res
@@ -65,16 +67,20 @@ def plot_track_response(ctx, output, gain, shaping, tick,
 
     shaping *= units.us
     tick *= units.us
+    norm *= units.electron_charge
 
-    rflist = gar.load(garfield_fileset)
-    uvw = res.line(rflist)
-    fig, data = plots.plot_digitized_line(uvw, gain, shaping, tick)
+    dat = gar.load(garfield_fileset)
+
+    uvw = res.line(dat, norm)
+
+    adc_gain = 1.2          # post amplifier gain, was 1.1 for a while
+    adc_bin_range = 4096.0
+    adc_volt_range = 2000.0
+    adc_per_mv = adc_gain*adc_bin_range/adc_volt_range
+
+    fig,data = plots.plot_digitized_line(uvw, gain, shaping,
+                                         adc_per_mv = adc_per_mv)
     fig.savefig(pdffile)
-
-    if output:
-        with open(output, 'w') as fp:
-            for t, u, v, w in data:
-                fp.write('%f %e %e %e\n' % (t, u, v, w))
 
 
 def main():
