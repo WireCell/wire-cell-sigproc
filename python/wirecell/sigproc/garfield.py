@@ -3,18 +3,25 @@
 Process Garfield field response output files to produce Wire Cell
 field response input files.
 
-Garfield input is provided as a tar file.  Internal structure does not
-matter much but the files are assumed to be spelled in the form:
+Garfield input is provided as a tar file.  Internal directory
+structure does not matter much but the files are assumed to be spelled
+in the form:
 
-<impact>_<plane>.dat
+    <impact>_<plane>.dat
 
 where <impact> spells the impact position in mm and plane is from the
 set {"U","V","Y"}.
 
 Each .dat file may hold many records.  See parse_text_record() for
-details of assumptions.
+details of the assumptions made when parsing.
+
+These quantities must be given explicitly:
+
+    - speed :: the nominal drift speed
+
 '''
-from wirecell.sigproc import response, units
+from wirecell.util import units
+from wirecell.sigproc import response
 
 import numpy
 import tarfile
@@ -26,13 +33,23 @@ def fromtarfile(filename):
     '''
     Iterate on tarfile, returning (name,text) pair of each file.
     '''
-
-
     tf = tarfile.open(filename, 'r')
     for name,member in sorted([(m.name,m) for m in tf.getmembers()]):
         if member.isdir():
             continue
         yield (member.name, tf.extractfile(member).read())
+# fixme: move to some util module
+def asgenerator(source):
+    '''
+    If string, assume file, open proper generator, o.w. just return
+    '''
+    if type(source) not in [type(""), type(u"")]:
+        #print 'Source is not a string: %s' % type(source)
+        return source
+    if osp.splitext(source)[1] in [".tar", ".gz", ".tgz"]:
+        return fromtarfile(source)
+    raise ValueError('unknown garfield data source: "%s"' % source)
+
 
 def split_text_records(text):
     '''
@@ -106,18 +123,6 @@ def parse_text_record(text):
     ret['x'] = numpy.asarray(xdata)*xscale
     ret['y'] = numpy.asarray(ydata)*yscale
     return ret
-
-# fixme: move to some util module
-def asgenerator(source):
-    '''
-    If string, assume file, open proper generator, o.w. just return
-    '''
-    if type(source) not in [type(""), type(u"")]:
-        #print 'Source is not a string: %s' % type(source)
-        return source
-    if osp.splitext(source)[1] in [".tar", ".gz", ".tgz"]:
-        return fromtarfile(source)
-    raise ValueError('unknown garfield data source: "%s"' % source)
 
 
 def parse_filename(filename):

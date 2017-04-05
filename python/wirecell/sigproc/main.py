@@ -85,3 +85,7 @@ def plot_track_response(ctx, output, gain, shaping, tick, norm,
 
 def main():
     cli(obj=dict())
+
+if '__main__' == __name__:
+    main()
+    

@@ -2,7 +2,7 @@
 '''
 Functions related to responses.
 '''
-from wirecell.sigproc import units
+from wirecell.util import units
 
 import schema
 
@@ -567,7 +567,7 @@ def deconvolve(Mct, Rpf, Ff, Fp):
     return Sct
 
 
-def rf1dtoschema(rflist, origin=10*units.cm):
+def rf1dtoschema(rflist, origin=10*units.cm, speed = 1.114*units.mm/units.us):
     '''
     Convert the list of 1D ResponseFunction objects into
     response.schema objects.
@@ -579,10 +579,9 @@ def rf1dtoschema(rflist, origin=10*units.cm):
     rflist = normalize(rflist)
 
     anti_drift_axis = (1.0, 0.0, 0.0)
-    origin = origin/units.mm    # schema objects are in explicit units
     one = rflist[0]             # get sample times
-    period = (one.times[1] - one.times[0])/units.us
-    tstart = one.times[0]/units.us
+    period = (one.times[1] - one.times[0])
+    tstart = one.times[0]
 
     planes = list()
     byplane = group_by(rflist, 'plane')
@@ -590,7 +589,7 @@ def rf1dtoschema(rflist, origin=10*units.cm):
         letter = inplane[0].plane
         planeid = "uvw".index(letter)
         onetwo = [rf for rf in inplane if rf.impact == 0.0 and (rf.region == 0 or rf.region==1)]
-        pitch = abs(onetwo[0].pos[0] - onetwo[1].pos[0]) / units.mm
+        pitch = abs(onetwo[0].pos[0] - onetwo[1].pos[0])
         location = inplane[0].pos[1]
         pitchdir = (0.0, 0.0, 1.0)
         wiredir = (0.0, 1.0, 0.0)
@@ -598,14 +597,14 @@ def rf1dtoschema(rflist, origin=10*units.cm):
 
         paths = list()
         for rf in inplane:
-            pitchpos = (rf.region*pitch + rf.impact)/units.mm
+            pitchpos = (rf.region*pitch + rf.impact)
             wirepos = 0.0
             par = schema.PathResponse(rf.response, pitchpos, wirepos)
             paths.append(par)
 
         plr = schema.PlaneResponse(paths, planeid, location, pitch, pitchdir, wiredir)
         planes.append(plr)
-    return schema.FieldResponse(planes, anti_drift_axis, origin, tstart, period)
+    return schema.FieldResponse(planes, anti_drift_axis, origin, tstart, period, speed)
 
 
 
