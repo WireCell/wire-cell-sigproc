@@ -172,7 +172,7 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
      	WireCell::Waveform::compseq_t medians_freq = WireCell::Waveform::dft(medians);
      	WireCell::Waveform::shrink(medians_freq,respec);
 	
-    	for (int i=0;i!=medians_freq.size();i++){
+    	for (size_t i=0;i!=medians_freq.size();i++){
     	    double freq;
     	    // assuming 2 MHz digitization
     	    if (i <medians_freq.size()/2.){
@@ -228,7 +228,7 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     // std::cout << "haha" << " " << signals.size() << std::endl;
 
   
-    for (int j=0;j!=signals.size();j++) {
+    for (size_t j=0;j!=signals.size();j++) {
 	int bin = signals.at(j);
 	int prev_bin=bin;
 	int next_bin=bin;
@@ -341,7 +341,7 @@ bool Microboone::NoisyFilterAlg(WireCell::Waveform::realseq_t& sig, float min_rm
 bool Microboone::Chirp_raise_baseline(WireCell::Waveform::realseq_t& sig, int bin1, int bin2)
 {
     if (bin1 < 0 ) bin1 = 0;
-    if (bin2 > sig.size()) bin2 = sig.size();
+    if (bin2 > (int)sig.size()) bin2 = sig.size();
     for (int i=bin1; i<bin2;i++) {
 	sig.at(i) = 10000.0;
     }
@@ -351,10 +351,10 @@ bool Microboone::Chirp_raise_baseline(WireCell::Waveform::realseq_t& sig, int bi
 float Microboone::CalcRMSWithFlags(const WireCell::Waveform::realseq_t& sig)
 {
     float theRMS = 0.0;
-    int waveformSize = sig.size();
+    //int waveformSize = sig.size();
   
     WireCell::Waveform::realseq_t temp;
-    for (int i=0;i!=sig.size();i++){
+    for (size_t i=0;i!=sig.size();i++){
 	if (sig.at(i) < 4096) temp.push_back(sig.at(i));
     }
     float par[3];
@@ -422,8 +422,8 @@ bool Microboone::RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig)
     const int numBins = sig.size();
     int minWindowBins = windowSize/2;
   
-    double baselineVec[numBins];
-    bool isFilledVec[numBins];
+    double baselineVec[numBins] = {0.0};
+    bool isFilledVec[numBins] = {false};
 
     int numFlaggedBins = 0;
   
@@ -438,8 +438,8 @@ bool Microboone::RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig)
   
     double baselineVal = 0.0;
     int windowBins = 0;
-    int index;
-    double ADCval;
+    //int index;
+    double ADCval = 0.0;
     for(int j = 0; j <= windowSize/2; j++) {
 	ADCval = sig.at(j);
 	if(ADCval < 4096.0) {
@@ -462,11 +462,9 @@ bool Microboone::RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig)
 	isFilledVec[0] = true;
     }
   
-    int oldIndex;
-    int newIndex;
     for(int j = 1; j < numBins; j++) {
-	oldIndex = j-windowSize/2-1;
-	newIndex = j+windowSize/2;
+	int oldIndex = j-windowSize/2-1;
+	int newIndex = j+windowSize/2;
 	
 	if(oldIndex >= 0) {
 	    ADCval = sig.at(oldIndex);
@@ -498,18 +496,14 @@ bool Microboone::RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig)
 	}
     }
   
-    int downIndex=0;
-    int upIndex=0;
-    bool downFlag=false;
-    bool upFlag=false;
     for(int j = 0; j < numBins; j++) {
-	downFlag = false;
-	upFlag = false;
+	bool downFlag = false;
+	bool upFlag = false;
       
 	ADCval = sig.at(j);
 	if(ADCval != 10000.0) {
 	    if(isFilledVec[j] == false) {
-		downIndex = j;
+		int downIndex = j;
 		while((isFilledVec[downIndex] == false) && (downIndex > 0) && (sig.at(downIndex) != 10000.0)) {
 		    downIndex--;
 		}
@@ -518,7 +512,7 @@ bool Microboone::RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig)
 		    downFlag = true;
 		}
 	      
-		upIndex = j;
+		int upIndex = j;
 		while((isFilledVec[upIndex] == false) && (upIndex < numBins-1) && (sig.at(upIndex) != 10000.0)) {
 		    upIndex++;
 		}
@@ -552,10 +546,9 @@ bool Microboone::RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig)
 
 bool Microboone::RemoveFilterFlags(WireCell::Waveform::realseq_t& sig)
 {
-    double ADCval;
     int numBins = sig.size();
     for(int i = 0; i < numBins; i++) {
-	ADCval = sig.at(i);
+	double ADCval = sig.at(i);
 	if (ADCval > 4096.0) {
 	    if(ADCval > 10000.0) {
 		sig.at(i) = ADCval-20000.0;
@@ -566,7 +559,6 @@ bool Microboone::RemoveFilterFlags(WireCell::Waveform::realseq_t& sig)
 
 	}
     }
-  
   
     return true;
 }
@@ -647,6 +639,8 @@ void Microboone::OneChannelNoise::configure(const WireCell::Configuration& confi
 WireCell::Configuration Microboone::OneChannelNoise::default_configuration() const
 {
     // fixme!
+    Configuration cfg;
+    return cfg;
 }
 
 

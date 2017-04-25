@@ -40,9 +40,9 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
   TH2F *hv_raw = new TH2F("hv_raw","hv_raw",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,nticks,0,nticks);
   TH2F *hw_raw = new TH2F("hw_raw","hw_raw",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,nticks,0,nticks);
 
-  TH2F *hu_decon = new TH2F("hu_decon","hu_decon",nwire_u,-0.5,nwire_u-0.5,int(nticks/6.),0,nticks);
-  TH2F *hv_decon = new TH2F("hv_decon","hv_decon",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,int(nticks/6.),0,nticks);
-  TH2F *hw_decon = new TH2F("hw_decon","hw_decon",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,int(nticks/6.),0,nticks);
+  // TH2F *hu_decon = new TH2F("hu_decon","hu_decon",nwire_u,-0.5,nwire_u-0.5,int(nticks/6.),0,nticks);
+  // TH2F *hv_decon = new TH2F("hv_decon","hv_decon",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,int(nticks/6.),0,nticks);
+  // TH2F *hw_decon = new TH2F("hw_decon","hw_decon",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,int(nticks/6.),0,nticks);
   
   TH1F *hu_baseline = (TH1F*)file1->Get("hu_baseline");
   TH1F *hv_baseline = (TH1F*)file1->Get("hv_baseline");
@@ -135,7 +135,7 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
 	plane = 2;
       }
       //std::cout << "Xin1: " << chid << " " << plane << " " << it1.second.size() << std::endl;
-      for (int ind = 0; ind < it1.second.size(); ++ind){
+      for (size_t ind = 0; ind < it1.second.size(); ++ind){
 	start_time = it1.second[ind].first;
 	end_time = it1.second[ind].second;
 	T_bad->Fill();
@@ -157,7 +157,7 @@ void rms_plot(TCanvas& canvas, IFrame::pointer frame, const string& title)
 
     auto traces = frame->traces();
     for (auto trace : *traces.get()) {
-	int tbin = trace->tbin();
+	//int tbin = trace->tbin();
 	int ch = trace->channel();
 	auto charges = trace->charge();
 	//cerr << "ch:" << ch <<", tbin:" << tbin <<", " << charges.size() << " charges\n";
@@ -302,7 +302,7 @@ int main(int argc, char* argv[])
 
     // hard-coded bad channels
     vector<int> bad_channels;
-    for (int i=0;i!=wchans.size();i++){
+    for (size_t i=0;i!=wchans.size();i++){
       if (i>=7136 - 4800 && i <=7263 - 4800){
 	if (i != 7200- 4800 && i!=7215 - 4800)
 	  bad_channels.push_back(i+4800);
@@ -406,7 +406,7 @@ int main(int argc, char* argv[])
     noise->set_channel_groups(channel_groups);
 
     // these are before Hardware Fix
-    for (int i=0;i!=uchans.size();i++){
+    for (size_t i=0;i!=uchans.size();i++){
       if (uchans.at(i)<100){
     	noise->set_min_rms_cut_one(uchans.at(i),1);
     	noise->set_max_rms_cut_one(uchans.at(i),5);
@@ -418,11 +418,11 @@ int main(int argc, char* argv[])
     	noise->set_max_rms_cut_one(uchans.at(i),5);
       }
     }
-    for (int i=0;i!=vchans.size();i++){
-      if (vchans.at(i)<290+uchans.size()){
+    for (size_t i=0;i!=vchans.size();i++){
+      if (vchans.at(i)<290+(int)uchans.size()){
     	noise->set_min_rms_cut_one(vchans.at(i),1);
     	noise->set_max_rms_cut_one(vchans.at(i),5);
-      }else if (vchans.at(i)<2200+uchans.size()){
+      }else if (vchans.at(i)<2200+(int)uchans.size()){
     	noise->set_min_rms_cut_one(vchans.at(i),1.9);
     	noise->set_max_rms_cut_one(vchans.at(i),11);
       }else{

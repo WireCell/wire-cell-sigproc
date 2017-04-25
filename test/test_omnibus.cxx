@@ -1,5 +1,5 @@
 /**
-   This tests the OmnibusNoiseFilter class outside of the context of
+   This the OmnibusNoiseFilter class outside of the context of
    the DFP, Factory and Configurable patterns.  As such it is an
    example of tightly coupling exact input through the SST FrameSource
    to the exact OmnibusNoiseFilter class
@@ -39,7 +39,7 @@ void rms_plot(TCanvas& canvas, IFrame::pointer frame, const string& title)
 
     auto traces = frame->traces();
     for (auto trace : *traces.get()) {
-	int tbin = trace->tbin();
+	//int tbin = trace->tbin();
 	int ch = trace->channel();
 	auto charges = trace->charge();
 	//cerr << "ch:" << ch <<", tbin:" << tbin <<", " << charges.size() << " charges\n";

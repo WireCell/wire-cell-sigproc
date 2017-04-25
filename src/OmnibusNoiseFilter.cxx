@@ -23,6 +23,8 @@ void OmnibusNoiseFilter::configure(const WireCell::Configuration& config)
 }
 WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
 {
+    Configuration cfg;
+    return cfg;
 }
 
 
@@ -42,7 +44,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
     bad_bins.first = 0;
     bad_bins.second = nsamples;
     Waveform::ChannelMasks temp;
-    for (int i = 0; i< bad_channels.size();i++){
+    for (size_t i = 0; i< bad_channels.size();i++){
       temp[bad_channels.at(i)].push_back(bad_bins);
       //std::cout << temp.size() << " " << temp[bad_channels.at(i)].size() << std::endl;
     }
@@ -129,6 +131,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
       SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick(), cmm);
       out = IFrame::pointer(sframe);
     }
+    return true;
 }
 
 

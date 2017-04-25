@@ -18,7 +18,7 @@ bool Diagnostics::Partial::operator()(const WireCell::Waveform::compseq_t& spec)
 {
     const double mag0 = std::abs(spec[0+1]);
     double sum = mag0;
-    for (int ind=1; ind<= nfreqs && ind < spec.size(); ++ind) {
+    for (int ind=1; ind<= nfreqs && ind < (int)spec.size(); ++ind) {
 	const double magi = std::abs(spec[ind+1]);
 	if (mag0 <= magi) {
 	    return false;

@@ -28,12 +28,14 @@ void SimpleChannelNoiseDB::configure(const WireCell::Configuration& config)
 }
 WireCell::Configuration SimpleChannelNoiseDB::default_configuration() const
 {
+    Configuration cfg;
+    return cfg;
 }
 
 double SimpleChannelNoiseDB::nominal_baseline(int channel) const
 {
     const int ind = chind(channel);
-    if (0 <= ind && ind < m_baseline.size()) {
+    if (0 <= ind && ind < (int)m_baseline.size()) {
 	return m_baseline[ind];
     }
     return m_default_baseline;
@@ -42,7 +44,7 @@ double SimpleChannelNoiseDB::nominal_baseline(int channel) const
 double SimpleChannelNoiseDB::gain_correction(int channel) const
 {
     const int ind = chind(channel);
-    if (0 <= ind && ind < m_gain.size()) {
+    if (0 <= ind && ind < (int)m_gain.size()) {
 	return m_gain[ind];
     }
     return m_default_gain;
@@ -51,7 +53,7 @@ double SimpleChannelNoiseDB::gain_correction(int channel) const
 double SimpleChannelNoiseDB::response_offset(int channel) const
 {
     const int ind = chind(channel);
-    if (0 <= ind && ind < m_offset.size()) {
+    if (0 <= ind && ind < (int)m_offset.size()) {
 	return m_offset[ind];
     }
     return m_default_offset;
@@ -61,7 +63,7 @@ double SimpleChannelNoiseDB::response_offset(int channel) const
 float SimpleChannelNoiseDB::min_rms_cut(int channel) const
 {
     const int ind = chind(channel);
-    if (0 <= ind && ind < m_min_rms.size()) {
+    if (0 <= ind && ind < (int)m_min_rms.size()) {
 	return m_min_rms[ind];
     }
     return m_default_min_rms;
@@ -70,7 +72,7 @@ float SimpleChannelNoiseDB::min_rms_cut(int channel) const
 float SimpleChannelNoiseDB::max_rms_cut(int channel) const
 {
     const int ind = chind(channel);
-    if (0 <= ind && ind < m_max_rms.size()) {
+    if (0 <= ind && ind < (int)m_max_rms.size()) {
 	return m_max_rms[ind];
     }
     return m_default_max_rms;
@@ -79,7 +81,7 @@ float SimpleChannelNoiseDB::max_rms_cut(int channel) const
 int SimpleChannelNoiseDB::pad_window_front(int channel) const
 {
     const int ind = chind(channel);
-    if (0 <= ind && ind < m_pad_f.size()) {
+    if (0 <= ind && ind < (int)m_pad_f.size()) {
 	return m_pad_f[ind];
     }
     return m_default_pad_f;
@@ -89,7 +91,7 @@ int SimpleChannelNoiseDB::pad_window_front(int channel) const
 int SimpleChannelNoiseDB::pad_window_back(int channel) const
 {
     const int ind = chind(channel);
-    if (0 <= ind && ind < m_pad_b.size()) {
+    if (0 <= ind && ind < (int)m_pad_b.size()) {
 	return m_pad_b[ind];
     }
     return m_default_pad_b;
@@ -100,7 +102,7 @@ const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::get_filter(int chan
 {
     const int ind = chind(channel);
     //std::cerr << "ch=" << channel << " ind=" << ind << " " << fv.size() << std::endl;
-    if (0 <= ind && ind < fv.size()) {
+    if (0 <= ind && ind < (int)fv.size()) {
 	const shared_filter_t sf = fv[ind];
 	if (sf == nullptr) {
 	    return *(m_default_filter.get());
@@ -161,7 +163,7 @@ void SimpleChannelNoiseDB::set_sampling(double tick, int nsamples)
 template<typename T>
 void set_one(int ind, T val, std::vector<T>& vec, T def)
 {
-    if (ind >= vec.size()) {
+    if (ind >= (int)vec.size()) {
 	vec.resize(ind+1, def);
     }
     vec[ind] = val;

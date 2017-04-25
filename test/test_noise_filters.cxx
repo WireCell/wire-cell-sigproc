@@ -33,7 +33,7 @@ void rms_plot(TCanvas& canvas, IFrame::pointer frame, const string& title)
 
     auto traces = frame->traces();
     for (auto trace : *traces.get()) {
-	int tbin = trace->tbin();
+	//int tbin = trace->tbin();
 	int ch = trace->channel();
 	auto charges = trace->charge();
 	//cerr << "ch:" << ch <<", tbin:" << tbin <<", " << charges.size() << " charges\n";

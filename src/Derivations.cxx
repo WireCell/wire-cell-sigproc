@@ -10,7 +10,7 @@ std::pair<double,double> Derivations::CalcRMS(const WireCell::Waveform::realseq_
     double mean = temp.first;
     double rms = temp.second;
     WireCell::Waveform::realseq_t temp1;
-    for (int i=0;i!=signal.size();i++){
+    for (size_t i=0;i!=signal.size();i++){
 	if (fabs(signal.at(i)-mean) < 4.5 * rms){
 	    temp1.push_back(signal.at(i));
 	}
@@ -29,7 +29,7 @@ WireCell::Waveform::realseq_t Derivations::CalcMedian(const WireCell::IChannelFi
     float content[nchannel][nbins];
     int start_ch = 0;
     for (auto it: chansig){
-     	int ch = it.first;
+     	//int ch = it.first;
      	WireCell::IChannelFilter::signal_t& signal = it.second;
     	std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
     	if (temp.second > max_rms) {

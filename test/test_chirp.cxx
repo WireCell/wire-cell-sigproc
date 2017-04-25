@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     // the function should find something starting at the beginning.
     Assert(beg == 0);
     // and the chirp does not extend to the end
-    Assert(end !=0 && end != horig.size());
+    Assert(end !=0 && end != (int)horig.size());
 
     Assert (beg >= 0);
     Assert (end >= 0);

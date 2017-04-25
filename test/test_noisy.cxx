@@ -20,7 +20,6 @@ using namespace WireCell::SigProc;
 
 int main(int argc, char* argv[])
 {
-    int ch = 0;
     Microboone::SignalFilter(horig);
     bool is_noisy = Microboone::NoisyFilterAlg(horig,0.7,10.0);
     assert(is_noisy);
