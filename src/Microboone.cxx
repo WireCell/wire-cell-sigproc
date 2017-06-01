@@ -422,8 +422,8 @@ bool Microboone::RawAdapativeBaselineAlg(WireCell::Waveform::realseq_t& sig)
     const int numBins = sig.size();
     int minWindowBins = windowSize/2;
   
-    double baselineVec[numBins] = {0.0};
-    bool isFilledVec[numBins] = {false};
+    std::vector<double> baselineVec(numBins, 0.0);
+    std::vector<bool> isFilledVec(numBins, false);
 
     int numFlaggedBins = 0;
   
