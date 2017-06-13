@@ -272,7 +272,7 @@ int main(int argc, char* argv[])
     // Q&D miss-configured channel database
     vector<int> miscfgchan;
     const double from_gain_mVfC=4.7, to_gain_mVfC=14.0,
-	from_shaping=1.0*units::microsecond, to_shaping=2.0*units::microsecond;
+	from_shaping=1.1*units::microsecond, to_shaping=2.2*units::microsecond;
     
     
     // these are before hardware fix 
