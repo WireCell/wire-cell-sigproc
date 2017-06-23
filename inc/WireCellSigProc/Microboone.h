@@ -5,6 +5,7 @@
 #define WIRECELLSIGPROC_MICROBOONE
 
 #include "WireCellUtil/Waveform.h"
+#include "WireCellUtil/Bits.h"
 #include "WireCellIface/IChannelFilter.h"
 #include "WireCellIface/IConfigurable.h"
 #include "WireCellIface/IChannelNoiseDatabase.h"

@@ -8,6 +8,7 @@
 #include <cmath>
 #include <complex>
 #include <iostream>
+#include <set>
 
 using namespace WireCell::SigProc;
 
@@ -797,8 +798,122 @@ WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(channel_signal
 // ADC Bit Shift problem ... 
 WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(int ch, signal_t& signal) const
 {
+    std::vector<int> counter(m_nbits,0);
+    std::vector<int> s,s1(m_nbits,0);
+    int nbin = m_exam_nticks;
+
+    for (int i=0;i!=nbin;i++){
+	int x = signal.at(i);
+	s.clear();
+	do
+	    {
+		s.push_back( (x & 1));
+	    } while (x >>= 1);
+	s.resize(m_nbits);
+	
+	for (int j=0;j!=m_nbits;j++){
+	    counter.at(j) += abs(s.at(j) - s1.at(j));
+	}
+	s1=s;
+    }
+    
+    int nshift = 0;
+    for (int i=0;i!=m_nbits;i++){
+	if (counter.at(i) < nbin/2. - nbin/2. *sqrt(1./nbin) * m_threshold_sigma){
+	    nshift ++;
+	}else{
+	    break;
+	}
+    }
+    
     WireCell::Waveform::ChannelMaskMap ret;
+    if (nshift!=0 && nshift < 11){
+	WireCell::Waveform::BinRange ADC_bit_shifts;
+	ADC_bit_shifts.first = nshift;
+	ADC_bit_shifts.second = nshift;
+	
+	ret["ADCBitShift"][ch].push_back(ADC_bit_shifts);
+
+	// do the correction ...
+	const int nl = signal.size();
+	int x[nl], x_orig[nl];
+	for (int i=0;i!=nl;i++){
+	    x_orig[i] = signal.at(i);
+	    x[i] = signal.at(i);
+	}
+	
+	std::set<int> fillings;
+	int filling;
+	int mean = 0;
+	for (int i=0;i!=nl;i++){
+	    filling = WireCell::Bits::lowest_bits(x_orig[i], nshift);
+	    int y = WireCell::Bits::shift_right(x_orig[i], nshift, filling, 12);
+	    fillings.insert(filling);
+	    // cout << y << " ";
+	    // filling = lowest_bits(x[i], nshift);
+	    // filling = x[i] & int(pow(2, nshift)-1);
+	    x[i] = y;
+	    mean += x[i];
+	}
+	mean = mean/nl;
+
+	int exp_diff = pow(2,m_nbits-nshift)*m_threshold_fix;
+
+	// examine the results ... 
+	int prev1_bin_content = mean;
+	int prev_bin_content = mean;
+	int next_bin_content = mean;
+	int next1_bin_content = mean;
+	int curr_bin_content;
+	
+	for (int i=0;i<nl;i=i+1){
+	    curr_bin_content = x[i];
+	    // when to judge if one is likely bad ... 
+	    if (abs(curr_bin_content-mean)>exp_diff && 
+		(abs(curr_bin_content - prev_bin_content) > exp_diff ||
+		 abs(curr_bin_content - next_bin_content) > exp_diff)
+		){
+		int exp_value = ( (2*prev_bin_content - prev1_bin_content) +
+				    (prev_bin_content + next_bin_content)/2. + 
+				    (prev_bin_content * 2./3. + next1_bin_content/3.))/3.;
+		for (auto it = fillings.begin(); it!=fillings.end(); it++){
+		    int y = WireCell::Bits::shift_right(x_orig[i], nshift, (*it), 12);
+		    // when to switch ... 
+		    if (fabs(y-exp_value) < fabs(x[i] - exp_value)){
+			x[i] = y;//hs->SetBinContent(i+1,y);
+		    }
+		}
+	    }
+	    // if (chid == 1281 && i < 10){
+	    // 	std::cout <<x_orig[i] << " " << x[i] << std::endl;
+	    // }
+	    //hs->SetBinContent(i+1,mean);
+	    
+	    prev1_bin_content = prev_bin_content;
+	    prev_bin_content = x[i];
+	    if (i+2 < nl){
+		next_bin_content = x[i+2];
+	    }else{
+		next_bin_content = mean;
+	    }
+	    if (i+3 < nl){
+		next1_bin_content = x[i+3];
+	    }else{
+		next1_bin_content = mean;
+	    }
+	}
+	
+	
+	// change the histogram ...
+	for (int i=0;i!=nl;i++){
+	    signal.at(i) = x[i];
+	}
+	
+	
+    }
    
+    
+    
     return ret;
 }
 
