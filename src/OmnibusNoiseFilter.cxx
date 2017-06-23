@@ -13,6 +13,7 @@ using namespace WireCell::SigProc;
 
 OmnibusNoiseFilter::OmnibusNoiseFilter()
 {
+    configure(default_configuration());
 }
 OmnibusNoiseFilter::~OmnibusNoiseFilter()
 {
@@ -20,10 +21,24 @@ OmnibusNoiseFilter::~OmnibusNoiseFilter()
 
 void OmnibusNoiseFilter::configure(const WireCell::Configuration& config)
 {
+    auto jmm = config["maskmap"];
+
+    for (auto name : jmm.getMemberNames()) {
+        m_maskmap[name] = jmm[name].asString();
+	//	std::cerr << name << " " << m_maskmap[name] << std::endl;
+    }
+
+    
 }
 WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
 {
+    Configuration cfg1;
+    cfg1["chirp"] = "bad";
+    cfg1["noisy"] = "bad";
+    
     Configuration cfg;
+    cfg["maskmap"] = cfg1;
+    
     return cfg;
 }
 
