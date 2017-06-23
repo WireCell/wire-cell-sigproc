@@ -105,7 +105,27 @@ namespace WireCell {
 		WireCell::IChannelNoiseDatabase::pointer m_noisedb;
 	    };
 
+	    class ADCBitShift : public WireCell::IChannelFilter, public WireCell::IConfigurable {
+	    public:
+		ADCBitShift();
+		virtual ~ADCBitShift();
 
+			/** Filter in place the signal `sig` from given `channel`. */
+		virtual WireCell::Waveform::ChannelMaskMap apply(int channel, signal_t& sig) const;
+
+		/** Filter in place a group of signals together. */
+		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
+
+		virtual void configure(const WireCell::Configuration& config);
+		virtual WireCell::Configuration default_configuration() const;
+		
+	    private:
+		// Number of bits
+		// How many events
+		// Threshold for ADC Bit shift
+		// Threshold for correction 
+	    };
+	    
 	}
 
     }

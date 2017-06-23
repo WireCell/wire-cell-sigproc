@@ -744,6 +744,15 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
 }
 
 
+// ADC Bit Shift problem ... 
+WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(int ch, signal_t& signal) const
+{
+    WireCell::Waveform::ChannelMaskMap ret;
+
+    return ret;
+}
+
+// Not useful ... 
 WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(channel_signals_t& chansig) const
 {
     return WireCell::Waveform::ChannelMaskMap();
@@ -751,6 +760,33 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(channel_si
 
 
 
+
+
+
+Microboone::ADCBitShift::ADCBitShift()
+{
+}
+Microboone::ADCBitShift::~ADCBitShift()
+{
+}
+
+void Microboone::ADCBitShift::configure(const WireCell::Configuration& config)
+{
+    // fixme!
+}
+WireCell::Configuration Microboone::ADCBitShift::default_configuration() const
+{
+    // fixme!
+    Configuration cfg;
+    return cfg;
+}
+
+
+
+WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(channel_signals_t& chansig) const
+{
+    return WireCell::Waveform::ChannelMaskMap();
+}
 
 
 // Local Variables:
