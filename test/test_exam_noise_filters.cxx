@@ -40,9 +40,9 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
   TH2F *hv_raw = new TH2F("hv_raw","hv_raw",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,nticks,0,nticks);
   TH2F *hw_raw = new TH2F("hw_raw","hw_raw",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,nticks,0,nticks);
 
-  // TH2F *hu_decon = new TH2F("hu_decon","hu_decon",nwire_u,-0.5,nwire_u-0.5,int(nticks/6.),0,nticks);
-  // TH2F *hv_decon = new TH2F("hv_decon","hv_decon",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,int(nticks/6.),0,nticks);
-  // TH2F *hw_decon = new TH2F("hw_decon","hw_decon",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,int(nticks/6.),0,nticks);
+  TH2F *hu_decon = new TH2F("hu_decon","hu_decon",nwire_u,-0.5,nwire_u-0.5,int(nticks/6.),0,nticks);
+  TH2F *hv_decon = new TH2F("hv_decon","hv_decon",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,int(nticks/6.),0,nticks);
+  TH2F *hw_decon = new TH2F("hw_decon","hw_decon",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,int(nticks/6.),0,nticks);
   
   TH1F *hu_baseline = (TH1F*)file1->Get("hu_baseline");
   TH1F *hv_baseline = (TH1F*)file1->Get("hv_baseline");
@@ -467,6 +467,9 @@ int main(int argc, char* argv[])
     auto one = new SigProc::Microboone::OneChannelNoise;
     one->set_channel_noisedb(noise_sp);
     shared_ptr<WireCell::IChannelFilter> one_sp(one);
+
+    auto adc_bit_shift = new SigProc::Microboone::ADCBitShift;
+    shared_ptr<WireCell::IChannelFilter> adc_bit_shift_sp(adc_bit_shift);
     
 
     auto many = new SigProc::Microboone::CoherentNoiseSub;
@@ -475,7 +478,7 @@ int main(int argc, char* argv[])
 
 
     SigProc::OmnibusNoiseFilter bus;
-    bus.set_channel_filters({one_sp});
+    bus.set_channel_filters({adc_bit_shift_sp,one_sp});
     bus.set_grouped_filters({many_sp});
     bus.set_channel_noisedb(noise_sp);
 

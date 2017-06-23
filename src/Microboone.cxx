@@ -831,6 +831,8 @@ WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(int ch, signal
 	WireCell::Waveform::BinRange ADC_bit_shifts;
 	ADC_bit_shifts.first = nshift;
 	ADC_bit_shifts.second = nshift;
+
+	//	std::cerr << ch << " " << nshift << " " << std::endl;
 	
 	ret["ADCBitShift"][ch].push_back(ADC_bit_shifts);
 
