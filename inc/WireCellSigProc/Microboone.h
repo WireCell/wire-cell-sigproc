@@ -107,7 +107,8 @@ namespace WireCell {
 
 	    class ADCBitShift : public WireCell::IChannelFilter, public WireCell::IConfigurable {
 	    public:
-		ADCBitShift();
+		ADCBitShift(int nbits = 12, int exam_nticks = 500, double threshold_sigma = 7.5,
+			    double threshold_fix = 0.8);
 		virtual ~ADCBitShift();
 
 			/** Filter in place the signal `sig` from given `channel`. */
@@ -121,9 +122,13 @@ namespace WireCell {
 		
 	    private:
 		// Number of bits 12
+		int m_nbits;
 		// How many ADC: 500
+		int m_exam_nticks;
 		// Threshold for ADC Bit shift: 7.5 sigma
+		double m_threshold_sigma;
 		// Threshold for correction: 80%
+		double m_threshold_fix;
 	    };
 	    
 	}

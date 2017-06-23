@@ -744,15 +744,7 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
 }
 
 
-// ADC Bit Shift problem ... 
-WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(int ch, signal_t& signal) const
-{
-    WireCell::Waveform::ChannelMaskMap ret;
 
-    return ret;
-}
-
-// Not useful ... 
 WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(channel_signals_t& chansig) const
 {
     return WireCell::Waveform::ChannelMaskMap();
@@ -763,30 +755,53 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(channel_si
 
 
 
-Microboone::ADCBitShift::ADCBitShift()
+Microboone::ADCBitShift::ADCBitShift(int nbits, int exam_nticks, double threshold_sigma,  double threshold_fix)
+    : m_nbits(nbits)
+    , m_exam_nticks(exam_nticks)
+    , m_threshold_sigma(threshold_sigma)
+    , m_threshold_fix(threshold_fix)
 {
 }
 Microboone::ADCBitShift::~ADCBitShift()
 {
 }
 
-void Microboone::ADCBitShift::configure(const WireCell::Configuration& config)
+void Microboone::ADCBitShift::configure(const WireCell::Configuration& cfg)
 {
-    // fixme!
+    m_nbits = get<int>(cfg, "Number_of_ADC_bits", m_nbits);
+    m_exam_nticks = get<int>(cfg, "Exam_number_of_ticks_test", m_exam_nticks);
+    m_threshold_sigma = get<double>(cfg, "Threshold_sigma_test", m_threshold_sigma);
+    m_threshold_fix = get<double>(cfg, "Threshold_fix", m_threshold_fix);
 }
 WireCell::Configuration Microboone::ADCBitShift::default_configuration() const
 {
-    // fixme!
     Configuration cfg;
+    cfg["Number_of_ADC_bits"] = m_nbits;
+    cfg["Exam_number_of_ticks_test"] = m_exam_nticks;
+    cfg["Threshold_sigma_test"] = m_threshold_sigma;
+    cfg["Threshold_fix"] = m_threshold_fix;
+	
     return cfg;
 }
 
 
+// Not useful ... 
 
 WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(channel_signals_t& chansig) const
 {
+
+    
     return WireCell::Waveform::ChannelMaskMap();
 }
+
+// ADC Bit Shift problem ... 
+WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(int ch, signal_t& signal) const
+{
+    WireCell::Waveform::ChannelMaskMap ret;
+
+    return ret;
+}
+
 
 
 // Local Variables:
