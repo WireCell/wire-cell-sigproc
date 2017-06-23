@@ -798,7 +798,7 @@ WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(channel_signal
 WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(int ch, signal_t& signal) const
 {
     WireCell::Waveform::ChannelMaskMap ret;
-
+ 
     return ret;
 }
 
