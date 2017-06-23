@@ -120,10 +120,10 @@ namespace WireCell {
 		virtual WireCell::Configuration default_configuration() const;
 		
 	    private:
-		// Number of bits
-		// How many events
-		// Threshold for ADC Bit shift
-		// Threshold for correction 
+		// Number of bits 12
+		// How many ADC: 500
+		// Threshold for ADC Bit shift: 7.5 sigma
+		// Threshold for correction: 80%
 	    };
 	    
 	}
