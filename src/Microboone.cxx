@@ -5,6 +5,8 @@
 #include "WireCellSigProc/Microboone.h"
 #include "WireCellSigProc/Derivations.h"
 
+#include "WireCellUtil/NamedFactory.h"
+
 #include <cmath>
 #include <complex>
 #include <iostream>
@@ -271,6 +273,8 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 bool Microboone::NoisyFilterAlg(WireCell::Waveform::realseq_t& sig, float min_rms, float max_rms)
 {
     const double rmsVal = Microboone::CalcRMSWithFlags(sig);
+
+    //std::cout << rmsVal << std::endl;
     
     // int planeNum,channel_no;
     // if (ch < 2400) {
@@ -566,8 +570,10 @@ bool Microboone::RemoveFilterFlags(WireCell::Waveform::realseq_t& sig)
 
 
 
-Microboone::CoherentNoiseSub::CoherentNoiseSub()
+Microboone::CoherentNoiseSub::CoherentNoiseSub(const std::string anode_tn )
+    : m_anode_tn(anode_tn)
 {
+    configure(default_configuration());
 }
 Microboone::CoherentNoiseSub::~CoherentNoiseSub()
 {
@@ -622,12 +628,29 @@ Microboone::CoherentNoiseSub::apply(int channel, signal_t& sig) const
 }
 
 
+void Microboone::CoherentNoiseSub::configure(const WireCell::Configuration& config)
+{
+    // fixme!
+    m_anode_tn = get(config, "anode", m_anode_tn);
+    m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
+    if (!m_anode) {
+        THROW(KeyError() << errmsg{"failed to get IAnodePlane: " + m_anode_tn});
+    }
+}
+WireCell::Configuration Microboone::CoherentNoiseSub::default_configuration() const
+{
+    // fixme!
+    Configuration cfg;
+    cfg["anode"] = m_anode_tn; 
+    return cfg;
+}
 
-
-Microboone::OneChannelNoise::OneChannelNoise()
+Microboone::OneChannelNoise::OneChannelNoise(const std::string anode_tn )
     : m_check_chirp() // fixme, there are magic numbers hidden here
     , m_check_partial() // fixme, here too.
+    , m_anode_tn(anode_tn)
 {
+    configure(default_configuration());
 }
 Microboone::OneChannelNoise::~OneChannelNoise()
 {
@@ -636,11 +659,17 @@ Microboone::OneChannelNoise::~OneChannelNoise()
 void Microboone::OneChannelNoise::configure(const WireCell::Configuration& config)
 {
     // fixme!
+    m_anode_tn = get(config, "anode", m_anode_tn);
+    m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
+    if (!m_anode) {
+        THROW(KeyError() << errmsg{"failed to get IAnodePlane: " + m_anode_tn});
+    }
 }
 WireCell::Configuration Microboone::OneChannelNoise::default_configuration() const
 {
     // fixme!
     Configuration cfg;
+    cfg["anode"] = m_anode_tn; 
     return cfg;
 }
 
@@ -671,8 +700,15 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     bool is_chirp = m_check_chirp(signal_gc, chirped_bins.first, chirped_bins.second);
     if (is_chirp) {
       ret["chirp"][ch].push_back(chirped_bins);
+
+      //std::cout << "chirping " << ch << std::endl;
+       
+      auto wpid = m_anode->resolve(ch);      
+      const int iplane = wpid.index();
+      //std::cerr << iplane << std::endl;
+      if (iplane!=2) // not collection
+	  ret["lf_noisy"][ch].push_back(chirped_bins);
       
-      ret["lf_noisy"][ch].push_back(chirped_bins);
       // for (int i=chirped_bins.first;i!=chirped_bins.second;i++){
       // 	signal.at(i) = 0;
       // }
@@ -724,7 +760,11 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
 	WireCell::Waveform::BinRange temp_chirped_bins;
 	temp_chirped_bins.first = 0;
 	temp_chirped_bins.second = signal.size();
-	ret["lf_noisy"][ch].push_back(temp_chirped_bins);
+
+	auto wpid = m_anode->resolve(ch);
+	const int iplane = wpid.index();
+	if (iplane!=2) // not collection
+	    ret["lf_noisy"][ch].push_back(temp_chirped_bins);
 	 
 	Microboone::SignalFilter(signal);
 	Microboone::RawAdapativeBaselineAlg(signal);
@@ -747,6 +787,7 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     // std::cout << ch << " " << is_chirp << " " << is_partial << " " << is_noisy << std::endl;
 
     if (is_noisy) {
+	//	std::cout << "Noisy " << ch << " " << min_rms << " " << max_rms << std::endl;
 	chirped_bins.first = 0;
 	chirped_bins.second = signal.size();
 	ret["noisy"][ch].push_back(chirped_bins);

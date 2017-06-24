@@ -6,6 +6,9 @@
 
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
 
+#include "WireCellUtil/PluginManager.h"
+#include "WireCellUtil/NamedFactory.h"
+
 #include "WireCellUtil/Testing.h"
 #include "WireCellUtil/ExecMon.h"
 
@@ -255,6 +258,26 @@ int main(int argc, char* argv[])
 	return 1;
     }
 
+
+    PluginManager& pm = PluginManager::instance();
+    pm.add("WireCellGen");
+
+    string filenames[3] = {
+      "microboone-noise-spectra-v2.json.bz2",
+      "garfield-1d-3planes-21wires-6impacts-v6.json.bz2",
+      "microboone-celltree-wires-v2.json.bz2",
+    };
+    {
+      auto anodecfg = Factory::lookup<IConfigurable>("AnodePlane");
+      auto cfg = anodecfg->default_configuration();
+      cfg["fields"] = filenames[1];
+      cfg["wires"] = filenames[2];
+      anodecfg->configure(cfg);
+    }
+
+    // std::cout << "asd " << std::endl;
+    
+    
     std::string url = argv[1];
 
     XinFileIterator fs(url.c_str());
@@ -463,7 +486,7 @@ int main(int argc, char* argv[])
     // }
 
     // Cut in W plane is the same before and after the Hardware Fix 
-    noise->set_min_rms_cut(wchans,1.3);
+    noise->set_min_rms_cut(wchans,1.25);
     noise->set_max_rms_cut(wchans,8.0);
     
     
