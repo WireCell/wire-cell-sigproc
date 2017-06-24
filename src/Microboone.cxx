@@ -644,6 +644,9 @@ WireCell::Configuration Microboone::OneChannelNoise::default_configuration() con
     return cfg;
 }
 
+bool Microboone::OneChannelNoise::ID_lf_noisy(signal_t& sig) const{
+    // do something ... 
+}
 
 WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, signal_t& signal) const
 {

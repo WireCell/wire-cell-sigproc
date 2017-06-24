@@ -97,6 +97,8 @@ namespace WireCell {
 		    m_noisedb = ndb;
 		}
 
+		bool ID_lf_noisy(signal_t& sig) const;
+		
 	    private:
 
 		Diagnostics::Chirp m_check_chirp; // fixme, these should be done via service interfaces
