@@ -668,6 +668,8 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     bool is_chirp = m_check_chirp(signal_gc, chirped_bins.first, chirped_bins.second);
     if (is_chirp) {
       ret["chirp"][ch].push_back(chirped_bins);
+      
+      ret["lf_noisy"][ch].push_back(chirped_bins);
       // for (int i=chirped_bins.first;i!=chirped_bins.second;i++){
       // 	signal.at(i) = 0;
       // }
@@ -715,6 +717,12 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     }
     // Now do the adaptive baseline for the bad RC channels
     if (is_partial) {
+	// add something
+	WireCell::Waveform::BinRange temp_chirped_bins;
+	temp_chirped_bins.first = 0;
+	temp_chirped_bins.second = signal.size();
+	ret["lf_noisy"][ch].push_back(temp_chirped_bins);
+	 
 	Microboone::SignalFilter(signal);
 	Microboone::RawAdapativeBaselineAlg(signal);
     }

@@ -124,23 +124,28 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
 
   Waveform::ChannelMaskMap input_cmm = frame_raw->masks();
   for (auto const& it: input_cmm) {
-    //std::cout << "Xin1: " << it.first << " " << it.second.size() << std::endl;
-    for (auto const &it1 : it.second){
-      chid = it1.first;
-      if (chid < nwire_u){
-	plane = 0;
-      }else if (chid < nwire_v){
-	plane = 1;
-      }else{
-	plane = 2;
-      }
-      //std::cout << "Xin1: " << chid << " " << plane << " " << it1.second.size() << std::endl;
-      for (size_t ind = 0; ind < it1.second.size(); ++ind){
-	start_time = it1.second[ind].first;
-	end_time = it1.second[ind].second;
-	T_bad->Fill();
+
+    if (it.first == "bad"){ // save bad ... 
+      //std::cout << "Xin1: " << it.first << " " << it.second.size() << std::endl;
+      for (auto const &it1 : it.second){
+	chid = it1.first;
+	if (chid < nwire_u){
+	  plane = 0;
+	}else if (chid < nwire_v){
+	  plane = 1;
+	}else{
+	  plane = 2;
+	}
+	//std::cout << "Xin1: " << chid << " " << plane << " " << it1.second.size() << std::endl;
+	for (size_t ind = 0; ind < it1.second.size(); ++ind){
+	  start_time = it1.second[ind].first;
+	  end_time = it1.second[ind].second;
+	  T_bad->Fill();
+	}
       }
     }
+
+    
   }
 
 
