@@ -673,10 +673,6 @@ WireCell::Configuration Microboone::OneChannelNoise::default_configuration() con
     return cfg;
 }
 
-bool Microboone::OneChannelNoise::ID_lf_noisy(signal_t& sig) const{
-    // do something ... 
-}
-
 WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, signal_t& signal) const
 {
     WireCell::Waveform::ChannelMaskMap ret;
@@ -706,9 +702,11 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
       auto wpid = m_anode->resolve(ch);      
       const int iplane = wpid.index();
       //std::cerr << iplane << std::endl;
-      if (iplane!=2) // not collection
-	  ret["lf_noisy"][ch].push_back(chirped_bins);
-      
+      if (iplane!=2){ // not collection
+	  //std::cout << chirped_bins.first << " " << chirped_bins.second << " " << signal.size() << std::endl;
+	  if (chirped_bins.first>0 || chirped_bins.second<int(signal.size()))
+	      ret["lf_noisy"][ch].push_back(chirped_bins);
+      }
       // for (int i=chirped_bins.first;i!=chirped_bins.second;i++){
       // 	signal.at(i) = 0;
       // }
@@ -791,7 +789,15 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
 	chirped_bins.first = 0;
 	chirped_bins.second = signal.size();
 	ret["noisy"][ch].push_back(chirped_bins);
+
+	if(ret["lf_noisy"].find(ch)!=ret["lf_noisy"].end())
+	    ret["lf_noisy"].erase(ch);
+	
     }
+    // else{
+    // 
+    // 	}
+    // }
 
     return ret;
 }
@@ -969,6 +975,120 @@ WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(int ch, signal
     
     
     return ret;
+}
+
+
+
+
+Microboone::OneChannelStatus::OneChannelStatus(const std::string anode_tn, double threshold, int window, int nbins, double cut)
+    : m_anode_tn(anode_tn)
+    , m_threshold(threshold)
+    , m_window(window)
+    , m_nbins(nbins)
+    , m_cut(cut)
+{
+    configure(default_configuration());
+}
+Microboone::OneChannelStatus::~OneChannelStatus()
+{
+}
+
+void Microboone::OneChannelStatus::configure(const WireCell::Configuration& cfg)
+{
+    m_threshold = get<int>(cfg, "Threshold", m_threshold);
+    m_window = get<int>(cfg, "Window", m_window);
+    m_nbins = get<double>(cfg, "Nbins", m_nbins);
+    m_cut = get<double>(cfg, "Cut", m_cut);
+
+    m_anode_tn = get(cfg, "anode", m_anode_tn);
+    m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
+    if (!m_anode) {
+        THROW(KeyError() << errmsg{"failed to get IAnodePlane: " + m_anode_tn});
+    }
+}
+WireCell::Configuration Microboone::OneChannelStatus::default_configuration() const
+{
+    Configuration cfg;
+    cfg["Threshold"] = m_threshold;
+    cfg["Window"] = m_window;
+    cfg["Nbins"] = m_nbins;
+    cfg["Cut"] = m_cut;
+    cfg["anode"] = m_anode_tn; 
+    return cfg;
+}
+
+WireCell::Waveform::ChannelMaskMap Microboone::OneChannelStatus::apply(channel_signals_t& chansig) const
+{
+
+    
+    return WireCell::Waveform::ChannelMaskMap();
+}
+
+// ADC Bit Shift problem ... 
+WireCell::Waveform::ChannelMaskMap Microboone::OneChannelStatus::apply(int ch, signal_t& signal) const
+{
+    WireCell::Waveform::ChannelMaskMap ret;
+    auto wpid = m_anode->resolve(ch);
+    const int iplane = wpid.index();
+    if (iplane!=2){ // not collection
+	//std::cout << ch << " ";
+	if (ID_lf_noisy(signal)){
+	    WireCell::Waveform::BinRange temp_chirped_bins;
+	    temp_chirped_bins.first = 0;
+	    temp_chirped_bins.second = signal.size();
+	    ret["lf_noisy"][ch].push_back(temp_chirped_bins);
+	}
+    }
+    return ret;
+}
+
+
+bool Microboone::OneChannelStatus::ID_lf_noisy(signal_t& sig) const{
+    // do something ...
+    std::pair<double,double> results = Derivations::CalcRMS(sig);
+
+    //Waveform::mean_rms(sig);
+    double mean = results.first;
+    double rms = results.second;
+
+    //  std::cout << mean << " " << rms << " ";
+    
+    double valid = 0 ;
+    for (int i=0;i<int(sig.size());i++){
+	if (sig.at(i)!=0){
+	    valid ++;
+	}
+    }
+    
+    signal_t temp_sig = sig;
+    for (int i=0;i<int(sig.size());i++){
+	if (fabs(sig.at(i)-mean) > m_threshold * rms){
+	    for (int k=-m_window;k!=m_window;k++){
+		if (k+i>=0&& k+i < int(sig.size()))
+		    temp_sig.at(k+i) = mean;
+	    }
+	}
+    }
+
+    if(valid>0){
+	double content = 0;
+	// for (int i=0;i!=temp_sig.size();i++){
+	//     temp_sig.at(i)=i;
+	// }
+	// do FFT 
+	Waveform::compseq_t sig_freq = Waveform::dft(temp_sig);	
+	for (int i=0;i!=m_nbins;i++){
+	    content += abs(sig_freq.at(i+1));
+	}
+	// std::cout << abs(sig_freq.at(1)) << " " << abs(sig_freq.at(2)) << " "  << abs(sig_freq.at(3)) << " " << abs(sig_freq.at(4)) << " " << abs(sig_freq.at(5)) << std::endl; 
+	//	std::cout << content << " " << valid << std::endl;
+	
+	if (content/valid>m_cut) return true;
+    }
+    
+    return false;
+    
+    
 }
 
 

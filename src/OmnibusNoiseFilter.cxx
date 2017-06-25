@@ -146,7 +146,17 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
     	//std::cout << bychan[cs.first].at(0) << " " << cs.second.at(0) << std::endl;
       }
     }
-    
+
+    // run status
+    for (auto trace : *traces.get()) {
+    	int ch = trace->channel();
+    	IChannelFilter::signal_t& signal = bychan[ch]; // ref
+	for (auto filter : m_perchan_status) {
+    	    auto masks = filter->apply(ch, signal);
+
+	    Waveform::merge(cmm,masks,m_maskmap);
+	}
+    }
     
     
     // pack up output

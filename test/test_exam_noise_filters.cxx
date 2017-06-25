@@ -125,6 +125,11 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
   T_bad->Branch("end_time",&end_time,"end_time/I");
   T_bad->SetDirectory(file);
 
+  TTree *T_lf = new TTree("T_lf","T_lf");
+  int channel;
+  T_lf->Branch("channel",&channel,"channel/I");
+  
+
   Waveform::ChannelMaskMap input_cmm = frame_raw->masks();
   for (auto const& it: input_cmm) {
 
@@ -146,6 +151,12 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
 	  T_bad->Fill();
 	}
       }
+    }else if (it.first =="lf_noisy"){
+      for (auto const &it1 : it.second){
+	channel = it1.first;
+	T_lf->Fill();
+      }
+      
     }
 
     
@@ -499,15 +510,18 @@ int main(int argc, char* argv[])
     auto adc_bit_shift = new SigProc::Microboone::ADCBitShift;
     shared_ptr<WireCell::IChannelFilter> adc_bit_shift_sp(adc_bit_shift);
     
-
     auto many = new SigProc::Microboone::CoherentNoiseSub;
     many->set_channel_noisedb(noise_sp);
     shared_ptr<WireCell::IChannelFilter> many_sp(many);
 
+    auto one_status = new SigProc::Microboone::OneChannelStatus;
+    shared_ptr<WireCell::IChannelFilter> one_status_sp(one_status);
+    
 
     SigProc::OmnibusNoiseFilter bus;
     bus.set_channel_filters({adc_bit_shift_sp,one_sp});
     bus.set_grouped_filters({many_sp});
+    bus.set_channel_status_filters({one_status_sp});
     bus.set_channel_noisedb(noise_sp);
 
     //TCanvas canvas("c","canvas",500,500);

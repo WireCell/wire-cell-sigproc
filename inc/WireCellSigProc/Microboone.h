@@ -18,6 +18,9 @@ namespace WireCell {
     namespace SigProc {
 	namespace Microboone {
 
+	    
+	    
+
 	    bool Chirp_raise_baseline(WireCell::Waveform::realseq_t& sig, int bin1, int bin2);
 	    bool SignalFilter(WireCell::Waveform::realseq_t& sig);
 	    float CalcRMSWithFlags(const WireCell::Waveform::realseq_t& sig);
@@ -105,7 +108,7 @@ namespace WireCell {
 		    m_noisedb = ndb;
 		}
 
-		bool ID_lf_noisy(signal_t& sig) const;
+		
 		
 	    private:
 
@@ -117,6 +120,33 @@ namespace WireCell {
 		WireCell::IChannelNoiseDatabase::pointer m_noisedb;
 	    };
 
+
+	    class OneChannelStatus : public WireCell::IChannelFilter, public WireCell::IConfigurable {
+	    public:
+		OneChannelStatus(const std::string anode_tn = "AnodePlane", double threshold = 3.5, int window =5, int nbins = 250, double cut = 14);
+		virtual ~OneChannelStatus();
+		
+		/** Filter in place the signal `sig` from given `channel`. */
+		virtual WireCell::Waveform::ChannelMaskMap apply(int channel, signal_t& sig) const;
+		
+		/** Filter in place a group of signals together. */
+		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
+		
+		virtual void configure(const WireCell::Configuration& config);
+		virtual WireCell::Configuration default_configuration() const;
+
+		bool ID_lf_noisy(signal_t& sig) const;
+		
+	    private:
+		std::string m_anode_tn;
+		IAnodePlane::pointer m_anode;
+		double m_threshold;
+		int m_window;
+		int m_nbins;
+		double m_cut;
+	    };
+	    
+	    
 	    class ADCBitShift : public WireCell::IChannelFilter, public WireCell::IConfigurable {
 	    public:
 		ADCBitShift(int nbits = 12, int exam_nticks = 500, double threshold_sigma = 7.5,

@@ -65,14 +65,14 @@ bool Diagnostics::Chirp::operator()(const WireCell::Waveform::realseq_t& sig, in
 
     const int numBins = sig.size();
    
-    for (int ibin = 0; ibin < numBins; ++ibin) {
+    for (int ibin = 0; ibin < numBins; ibin++) {
 
 	double ADCval = sig[ibin];
 
 	runningAmpMean += ADCval;
 	runningAmpRMS += ADCval*ADCval;
       
-	++counter;
+	counter++;
 	if(counter == windowSize) {
 
 	    runningAmpMean /= (double)windowSize;
@@ -84,12 +84,12 @@ bool Diagnostics::Chirp::operator()(const WireCell::Waveform::realseq_t& sig, in
 	    RMSthird = runningAmpRMS;
 	  
 	    if(runningAmpRMS < chirpMinRMS) {
-		++numLowRMS;
+		numLowRMS++;
 	    }
 	  
 	    if(ibin >= 3*windowSize-1) {
 		if((RMSsecond < chirpMinRMS) && ((RMSfirst > chirpMinRMS) || (RMSthird > chirpMinRMS))) {
-		    ++numNormalNeighbors;
+		    numNormalNeighbors++;
 		}
 	      
 		if(lowRMSFlag == false) {
