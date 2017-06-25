@@ -6,6 +6,8 @@
 #include "WireCellIface/IAnodePlane.h"
 #include "WireCellUtil/Waveform.h"
 
+
+
 namespace WireCell {
   namespace SigProc {
     
@@ -27,7 +29,7 @@ namespace WireCell {
       
       /// Explicitly inject required services
       void RemovePMTSignalCollection(Waveform::realseq_t& signal,double rms, int ch);
-      void IDPMTSignalInduction(Waveform::realseq_t& signal, double rms, int ch);
+      void IDPMTSignalInduction(Waveform::realseq_t& signal, double rms, int ch, int plane);
       void RemovePMTSignalInduction(Waveform::realseq_t& signal, int start_bin, int end_bin);
       
     private:
