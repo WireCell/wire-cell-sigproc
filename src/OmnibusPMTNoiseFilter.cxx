@@ -187,7 +187,7 @@ void OmnibusPMTNoiseFilter::RemovePMTSignalCollection(Waveform::realseq_t& signa
   int end_bin=0;
   int peak_bin=0;
 
-  std::cout << m_threshold << " " << m_pad_window << " " << m_min_window_length << " " << rms << " " << ch << std::endl;
+  //  std::cout << m_threshold << " " << m_pad_window << " " << m_min_window_length << " " << rms << " " << ch << std::endl;
 
   for (int i=0;i!=int(signal.size());i++){
     float content = signal.at(i);

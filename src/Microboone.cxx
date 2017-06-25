@@ -137,6 +137,8 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     std::pair<double,double> temp = Derivations::CalcRMS(medians);
     double mean = temp.first;
     double rms = temp.second;
+
+    // std::cout << mean << " " << rms << " " << respec.size() << " " << res_offset << " " << pad_f << " " << pad_b << " " << respec.at(0) << std::endl;
     
     float limit;
     if (protection_factor*rms > upper_adc_limit){
@@ -169,7 +171,7 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     }
   
     // the deconvolution protection code ... 
-    if (respec.size()>0){
+    if ((respec.at(0).real()!=1 || respec.at(0).imag()!=0) && res_offset!=0){
 	//std::cout << nbin << std::endl;
 
      	WireCell::Waveform::compseq_t medians_freq = WireCell::Waveform::dft(medians);
@@ -616,7 +618,8 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     //std::cout <<"abc1 " << std::endl;
 
     // for (auto it: chansig){
-    //   std::cout << "Xin3 " << it.second.at(0) << std::endl;
+    // 	std::cout << "Xin3 " << it.first << std::endl;
+    // 	break;
     // }
   
     return WireCell::Waveform::ChannelMaskMap();		// not implemented
