@@ -2,6 +2,7 @@
 #include "WireCellIface/SimpleFrame.h"
 #include "WireCellIface/SimpleTrace.h"
 #include "WireCellSigProc/OmnibusNoiseFilter.h"
+#include "WireCellSigProc/OmnibusPMTNoiseFilter.h"
 #include "WireCellSigProc/Microboone.h"
 
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
@@ -524,6 +525,8 @@ int main(int argc, char* argv[])
     bus.set_channel_status_filters({one_status_sp});
     bus.set_channel_noisedb(noise_sp);
 
+    SigProc::OmnibusPMTNoiseFilter pmt_bus;
+    
     //TCanvas canvas("c","canvas",500,500);
 
     //canvas.Print("test_omnibus.pdf[","pdf");
@@ -535,9 +538,12 @@ int main(int argc, char* argv[])
     // rms_plot(canvas, frame, "Raw frame");
 	
     IFrame::pointer quiet;
-
+    IFrame::pointer mid_quiet;
+    
     cerr << em("Removing noise") << endl;
-    bus(frame, quiet);
+    bus(frame, mid_quiet);
+    cerr << em("Removing PMT noise") << endl;
+    pmt_bus(mid_quiet,quiet);
     cerr << em("...done") << endl;
 
     // rms_plot(canvas, quiet, "Quiet frame");
