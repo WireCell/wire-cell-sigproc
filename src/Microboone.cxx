@@ -599,7 +599,7 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     const int pad_b = m_noisedb->pad_window_back(achannel);
 
 
-    //    if (respec.size()) {
+    // if (respec.size()) {
     // now, apply the response spectrum to deconvolve the median
     // and apply the special protection or pass respec into
     // SignalProtection().

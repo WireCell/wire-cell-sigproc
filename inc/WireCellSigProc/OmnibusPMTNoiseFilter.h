@@ -16,7 +16,7 @@ namespace WireCell {
       typedef std::vector< std::vector<int> > grouped_channels_t;
       
       /// Create an OmnibusPMTNoiseFilter.
-      OmnibusPMTNoiseFilter(const std::string anode_tn = "AnodePlane", int pad_window = 5, int min_window_length = 4, int threshold = 5, float rms_threshold = 0.5);
+      OmnibusPMTNoiseFilter(const std::string anode_tn = "AnodePlane", int pad_window = 5, int min_window_length = 4, int threshold = 4, float rms_threshold = 0.5, int sort_wires = 4, float ind_th1 = 2.0, float ind_th2 = 0.5);
       virtual ~OmnibusPMTNoiseFilter();
       
       /// IFrameFilter interface.
@@ -40,6 +40,10 @@ namespace WireCell {
       int m_min_window_length;
       int m_threshold;
       float m_rms_threshold;
+
+      int m_sort_wires;
+      float m_ind_th1;
+      float m_ind_th2;
       
     };
   }
