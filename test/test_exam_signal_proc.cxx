@@ -1,4 +1,4 @@
-#include "WireCellSigProc/OmnibusNoiseFilter.h"
+#include "WireCellSigProc/OmnibusSigProc.h"
 #include "WireCellUtil/PluginManager.h"
 #include "WireCellUtil/NamedFactory.h"
 #include "WireCellUtil/Waveform.h"
