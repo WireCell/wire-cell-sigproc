@@ -357,6 +357,14 @@ int main(int argc, char* argv[])
     // std::cout << "asd " << std::endl;
     
 
+
+    // various software filters ...
+    // one HF for ROI,  two LF for ROI finding
+    // one HF for charge
+    // one HF for hit
+    // two HF filters for wire dimension 
+    
+    
     int nrebin = 6;
     
     std::string url = argv[1];
@@ -367,9 +375,15 @@ int main(int argc, char* argv[])
 
     IFrame::pointer frame = fs.frame();
     
+    SigProc::OmnibusSigProc bus;
 
+    IFrame::pointer frame_decon;
     
-    save_into_file(url.c_str(),frame,nrebin);
+    cerr << em("Do deconvolution") << endl;
+    bus(frame, frame_decon);
+    cerr << em(" ... done") << endl;
+    
+    save_into_file(url.c_str(),frame_decon,nrebin);
     
     
 }

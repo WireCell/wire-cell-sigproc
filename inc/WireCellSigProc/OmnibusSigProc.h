@@ -9,7 +9,7 @@ namespace WireCell {
   namespace SigProc {
     class OmnibusSigProc : public WireCell::IFrameFilter, public WireCell::IConfigurable {
     public:
-      OmnibusSigProc(const std::string anode_tn = "AnodePlane");
+      OmnibusSigProc(const std::string anode_tn = "AnodePlane", double fine_time_offset = 0, double coarse_time_offset = 0);
       virtual ~OmnibusSigProc();
       
       virtual bool operator()(const input_pointer& in, output_pointer& out);
@@ -24,13 +24,11 @@ namespace WireCell {
       IAnodePlane::pointer m_anode;
       
       // Overall time offset
+      double m_fine_time_offset;
+      double m_coarse_time_offset;
       
       
-      // various software filters ...
-      // one HF for ROI,  two LF for ROI finding
-      // one HF for charge
-      // one HF for hit
-      // two HF filters for wire dimension 
+    
       
     };
   }
