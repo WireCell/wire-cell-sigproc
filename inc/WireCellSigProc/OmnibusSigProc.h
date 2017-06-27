@@ -18,22 +18,18 @@ namespace WireCell {
       virtual WireCell::Configuration default_configuration() const;
       
     private:
+      
       // Anode plane for geometry
       std::string m_anode_tn;
       IAnodePlane::pointer m_anode;
       
       // Overall time offset
-
       
       
       // various software filters ...
-      
       // one HF for ROI,  two LF for ROI finding
-
       // one HF for charge
-
       // one HF for hit
-
       // two HF filters for wire dimension 
       
     };
