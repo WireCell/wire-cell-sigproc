@@ -70,9 +70,9 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
 }
 
 void OmnibusSigProc::load_data(const input_pointer& in){
-  Array::array_xxf u_data = Array::array_xxf::Zero(nwire_u,m_nticks);
-  Array::array_xxf v_data = Array::array_xxf::Zero(nwire_v,m_nticks);
-  Array::array_xxf w_data = Array::array_xxf::Zero(nwire_w,m_nticks);
+  u_data = Array::array_xxf::Zero(nwire_u,m_nticks);
+  v_data = Array::array_xxf::Zero(nwire_v,m_nticks);
+  w_data = Array::array_xxf::Zero(nwire_w,m_nticks);
   
   auto traces = in->traces();
   Array::array_xxf* temp=&u_data;
@@ -107,6 +107,7 @@ void OmnibusSigProc::load_data(const input_pointer& in){
     }
   }
 
+  //ensure dead channels are indeed dead ...
   // zero out the bad channels ...
   for (auto const& it: cmm) {
     if (it.first == "bad"){
@@ -136,24 +137,67 @@ void OmnibusSigProc::load_data(const input_pointer& in){
 
   
   
-  //  std::cout << u_data(1000,2000) << " " << v_data(1000,2000) << " " << w_data(1000,2000) << std::endl;
+    //std::cout << u_data(14,2000) << " " << v_data(1000,2000) << " " << w_data(1000,2000) << std::endl;
   
   }
 
 }
+
+void OmnibusSigProc::do_time_fft(){
+  uc_data = Array::dft_rc(u_data,0);
+  vc_data = Array::dft_rc(v_data,0);
+  wc_data = Array::dft_rc(w_data,0);
+
+  // now apply the ch-by-ch response ... 
+}
+
+void OmnibusSigProc::do_wire_fft(){
+  uc_data = Array::dft_cc(uc_data,1);
+  vc_data = Array::dft_cc(vc_data,1);
+  wc_data = Array::dft_cc(wc_data,1);
+
+  //std::cout << uc_data1(1000,3000) << std::endl;
+}
+
+void OmnibusSigProc::do_wire_inv_fft(){
+  uc_data = Array::idft_cc(uc_data,1);
+  vc_data = Array::idft_cc(vc_data,1);
+  wc_data = Array::idft_cc(wc_data,1);
+}
+
+void OmnibusSigProc::do_time_inv_fft(){
+  u_data = Array::idft_cr(uc_data,0);
+  v_data = Array::idft_cr(vc_data,0);
+  w_data = Array::idft_cr(wc_data,0);
+}
+
 bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 {
   cmm = in->masks();
 
-  // load data in ... 
+  // load data into EIGEN matrices ...
   load_data(in);
-    
 
-  //ensure dead channels are indeed dead ...
-  
-  
+  //std::cout << u_data(1000,3000) << std::endl;
+
   // Deconvolute
+  //do the first time FFT and can correct for the ch-by-ch response
+  do_time_fft();
+
+  //std::cout << uc_data(1000,3000) << std::endl;
+  //do the second time wire FFT
+  do_wire_fft();
+  //std::cout << uc_data(1000,3000) << std::endl;
   
+  //do the first time inverse FFT in wire
+  do_wire_inv_fft();
+
+  //std::cout << uc_data(1000,3000) << std::endl;
+  
+  //do the second time inverse FFT in time with different filters ...
+  do_time_inv_fft();
+  
+  //std::cout << u_data(1000,3000) << std::endl;
   
   // Form ROIs
 
