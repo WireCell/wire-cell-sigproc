@@ -9,12 +9,17 @@
 #include "WireCellIface/IChannelFilter.h"
 #include "WireCellIface/IConfigurable.h"
 #include "WireCellIface/IChannelNoiseDatabase.h"
+#include "WireCellIface/IAnodePlane.h"
+
 #include "WireCellSigProc/Diagnostics.h"
 
 
 namespace WireCell {
     namespace SigProc {
 	namespace Microboone {
+
+	    
+	    
 
 	    bool Chirp_raise_baseline(WireCell::Waveform::realseq_t& sig, int bin1, int bin2);
 	    bool SignalFilter(WireCell::Waveform::realseq_t& sig);
@@ -40,7 +45,7 @@ namespace WireCell {
 	    class CoherentNoiseSub : public WireCell::IChannelFilter { // no iconfigurable
 	    public:
 
-		CoherentNoiseSub();
+		CoherentNoiseSub(const std::string anode_tn = "AnodePlane");
 		virtual ~CoherentNoiseSub();
 
 		//// IChannelFilter interface
@@ -51,6 +56,11 @@ namespace WireCell {
 		/** Filter in place a group of signals together. */
 		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
 
+		/// IConfigurable configuration interface
+		virtual void configure(const WireCell::Configuration& config);
+		virtual WireCell::Configuration default_configuration() const;
+
+		
 		/// Direct injection of needed service interfaces.
 		/** Set the sampling used when digitizing the waveform. */
 		void set_channel_noisedb(WireCell::IChannelNoiseDatabase::pointer ndb) {
@@ -59,7 +69,8 @@ namespace WireCell {
 
             private:
 		WireCell::IChannelNoiseDatabase::pointer m_noisedb;
-
+		std::string m_anode_tn;
+		IAnodePlane::pointer m_anode;
 	    };
 
 
@@ -76,7 +87,7 @@ namespace WireCell {
 	    class OneChannelNoise : public WireCell::IChannelFilter, public WireCell::IConfigurable {
 	    public:
 
-		OneChannelNoise();
+		OneChannelNoise(const std::string anode_tn = "AnodePlane");
 		virtual ~OneChannelNoise();
 
 		//// IChannelFilter interface
@@ -97,15 +108,45 @@ namespace WireCell {
 		    m_noisedb = ndb;
 		}
 
+		
+		
 	    private:
 
 		Diagnostics::Chirp m_check_chirp; // fixme, these should be done via service interfaces
 		Diagnostics::Partial m_check_partial; // at least need to expose them to configuration
-	
-
+		std::string m_anode_tn;
+		IAnodePlane::pointer m_anode;
+		
 		WireCell::IChannelNoiseDatabase::pointer m_noisedb;
 	    };
 
+
+	    class OneChannelStatus : public WireCell::IChannelFilter, public WireCell::IConfigurable {
+	    public:
+		OneChannelStatus(const std::string anode_tn = "AnodePlane", double threshold = 3.5, int window =5, int nbins = 250, double cut = 14);
+		virtual ~OneChannelStatus();
+		
+		/** Filter in place the signal `sig` from given `channel`. */
+		virtual WireCell::Waveform::ChannelMaskMap apply(int channel, signal_t& sig) const;
+		
+		/** Filter in place a group of signals together. */
+		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
+		
+		virtual void configure(const WireCell::Configuration& config);
+		virtual WireCell::Configuration default_configuration() const;
+
+		bool ID_lf_noisy(signal_t& sig) const;
+		
+	    private:
+		std::string m_anode_tn;
+		IAnodePlane::pointer m_anode;
+		double m_threshold;
+		int m_window;
+		int m_nbins;
+		double m_cut;
+	    };
+	    
+	    
 	    class ADCBitShift : public WireCell::IChannelFilter, public WireCell::IConfigurable {
 	    public:
 		ADCBitShift(int nbits = 12, int exam_nticks = 500, double threshold_sigma = 7.5,

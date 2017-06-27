@@ -14,8 +14,10 @@
 
 #include "WireCellUtil/Waveform.h"
 
+
 #include <vector>
 #include <map>
+#include <string>
 
 namespace WireCell {
     namespace SigProc {
@@ -48,6 +50,11 @@ namespace WireCell {
 	    void set_channel_filters(std::vector<WireCell::IChannelFilter::pointer> filters) {
 		m_perchan = filters;
 	    }
+	    /// Set per-channel status.
+	    void set_channel_status_filters(std::vector<WireCell::IChannelFilter::pointer> filters) {
+		m_perchan_status = filters;
+	    }
+	    
 	    /// Set the grouped channel filters.
 	    void set_grouped_filters(std::vector<WireCell::IChannelFilter::pointer> filters) {
 		m_grouped = filters;
@@ -60,8 +67,10 @@ namespace WireCell {
 
 	private:
 	
-	    std::vector<WireCell::IChannelFilter::pointer> m_perchan, m_grouped;
+	    std::vector<WireCell::IChannelFilter::pointer> m_perchan, m_grouped, m_perchan_status;
 	    WireCell::IChannelNoiseDatabase::pointer m_noisedb;
+
+	    std::map<std::string, std::string> m_maskmap;
 
 	};
 

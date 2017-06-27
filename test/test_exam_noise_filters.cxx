@@ -2,9 +2,13 @@
 #include "WireCellIface/SimpleFrame.h"
 #include "WireCellIface/SimpleTrace.h"
 #include "WireCellSigProc/OmnibusNoiseFilter.h"
+#include "WireCellSigProc/OmnibusPMTNoiseFilter.h"
 #include "WireCellSigProc/Microboone.h"
 
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
+
+#include "WireCellUtil/PluginManager.h"
+#include "WireCellUtil/NamedFactory.h"
 
 #include "WireCellUtil/Testing.h"
 #include "WireCellUtil/ExecMon.h"
@@ -24,6 +28,7 @@ using namespace WireCell;
 using namespace std;
 
 const string url_test = "/data0/bviren/data/uboone/test_3455_0.root"; // big!
+//const string url_test = ""; // big!
 
 void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::pointer frame_raw, int nwire_u, int nwire_v, int nwire_w, int nticks){
   TFile *file1 = new TFile(filename);
@@ -122,25 +127,41 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
   T_bad->Branch("end_time",&end_time,"end_time/I");
   T_bad->SetDirectory(file);
 
+  TTree *T_lf = new TTree("T_lf","T_lf");
+  int channel;
+  T_lf->Branch("channel",&channel,"channel/I");
+  
+
   Waveform::ChannelMaskMap input_cmm = frame_raw->masks();
   for (auto const& it: input_cmm) {
-    //std::cout << "Xin1: " << it.first << " " << it.second.size() << std::endl;
-    for (auto const &it1 : it.second){
-      chid = it1.first;
-      if (chid < nwire_u){
-	plane = 0;
-      }else if (chid < nwire_v){
-	plane = 1;
-      }else{
-	plane = 2;
+
+    if (it.first == "bad"){ // save bad ... 
+      //std::cout << "Xin1: " << it.first << " " << it.second.size() << std::endl;
+      for (auto const &it1 : it.second){
+	chid = it1.first;
+	if (chid < nwire_u){
+	  plane = 0;
+	}else if (chid < nwire_v){
+	  plane = 1;
+	}else{
+	  plane = 2;
+	}
+	//std::cout << "Xin1: " << chid << " " << plane << " " << it1.second.size() << std::endl;
+	for (size_t ind = 0; ind < it1.second.size(); ++ind){
+	  start_time = it1.second[ind].first;
+	  end_time = it1.second[ind].second;
+	  T_bad->Fill();
+	}
       }
-      //std::cout << "Xin1: " << chid << " " << plane << " " << it1.second.size() << std::endl;
-      for (size_t ind = 0; ind < it1.second.size(); ++ind){
-	start_time = it1.second[ind].first;
-	end_time = it1.second[ind].second;
-	T_bad->Fill();
+    }else if (it.first =="lf_noisy"){
+      for (auto const &it1 : it.second){
+	channel = it1.first;
+	T_lf->Fill();
       }
+      
     }
+
+    
   }
 
 
@@ -250,6 +271,26 @@ int main(int argc, char* argv[])
 	return 1;
     }
 
+
+    PluginManager& pm = PluginManager::instance();
+    pm.add("WireCellGen");
+
+    string filenames[3] = {
+      "microboone-noise-spectra-v2.json.bz2",
+      "garfield-1d-3planes-21wires-6impacts-v6.json.bz2",
+      "microboone-celltree-wires-v2.json.bz2",
+    };
+    {
+      auto anodecfg = Factory::lookup<IConfigurable>("AnodePlane");
+      auto cfg = anodecfg->default_configuration();
+      cfg["fields"] = filenames[1];
+      cfg["wires"] = filenames[2];
+      anodecfg->configure(cfg);
+    }
+
+    // std::cout << "asd " << std::endl;
+    
+    
     std::string url = argv[1];
 
     XinFileIterator fs(url.c_str());
@@ -458,7 +499,7 @@ int main(int argc, char* argv[])
     // }
 
     // Cut in W plane is the same before and after the Hardware Fix 
-    noise->set_min_rms_cut(wchans,1.3);
+    noise->set_min_rms_cut(wchans,1.25);
     noise->set_max_rms_cut(wchans,8.0);
     
     
@@ -471,17 +512,22 @@ int main(int argc, char* argv[])
     auto adc_bit_shift = new SigProc::Microboone::ADCBitShift;
     shared_ptr<WireCell::IChannelFilter> adc_bit_shift_sp(adc_bit_shift);
     
-
     auto many = new SigProc::Microboone::CoherentNoiseSub;
     many->set_channel_noisedb(noise_sp);
     shared_ptr<WireCell::IChannelFilter> many_sp(many);
 
+    auto one_status = new SigProc::Microboone::OneChannelStatus;
+    shared_ptr<WireCell::IChannelFilter> one_status_sp(one_status);
+    
 
     SigProc::OmnibusNoiseFilter bus;
     bus.set_channel_filters({adc_bit_shift_sp,one_sp});
     bus.set_grouped_filters({many_sp});
+    bus.set_channel_status_filters({one_status_sp});
     bus.set_channel_noisedb(noise_sp);
 
+    SigProc::OmnibusPMTNoiseFilter pmt_bus;
+    
     //TCanvas canvas("c","canvas",500,500);
 
     //canvas.Print("test_omnibus.pdf[","pdf");
@@ -493,9 +539,12 @@ int main(int argc, char* argv[])
     // rms_plot(canvas, frame, "Raw frame");
 	
     IFrame::pointer quiet;
-
+    IFrame::pointer mid_quiet;
+    
     cerr << em("Removing noise") << endl;
-    bus(frame, quiet);
+    bus(frame, mid_quiet);
+    cerr << em("Removing PMT noise") << endl;
+    pmt_bus(mid_quiet,quiet);
     cerr << em("...done") << endl;
 
     // rms_plot(canvas, quiet, "Quiet frame");
