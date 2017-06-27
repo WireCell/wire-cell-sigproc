@@ -71,6 +71,10 @@ void save_into_file(const char* filename,IFrame::pointer frame_decon, int nrebin
   hu_threshold->SetDirectory(file);
   hv_threshold->SetDirectory(file);
   hw_threshold->SetDirectory(file);
+  
+
+
+  
   // temporary ...
 
   
@@ -86,22 +90,72 @@ void save_into_file(const char* filename,IFrame::pointer frame_decon, int nrebin
     auto charges = trace->charge();
     if (ch < nwire_u){
       int counter = 0;
+      int rebin_counter = 0;
+      float acc_charge = 0;
+      
       for (auto q : charges) {
-	counter ++;
-	hu_decon->SetBinContent(ch+1,tbin+counter,q); 
+	rebin_counter ++;
+	if (rebin_counter < nrebin){
+	  acc_charge += q;
+	}else if (rebin_counter == nrebin){
+	  counter ++;
+	  hu_decon->SetBinContent(ch+1,tbin+counter,acc_charge); 
+	  //reset ... 
+	  rebin_counter = 0;
+	  acc_charge = 0;
+	}
       }
     }else if (ch < nwire_v + nwire_u){
+
       int counter = 0;
+      int rebin_counter = 0;
+      float acc_charge = 0;
+      
       for (auto q : charges) {
-	counter ++;
-	hv_decon->SetBinContent(ch+1-nwire_u,tbin+counter,q); 
+	rebin_counter ++;
+	if (rebin_counter < nrebin){
+	  acc_charge += q;
+	}else if (rebin_counter == nrebin){
+	  counter ++;
+	  hv_decon->SetBinContent(ch+1-nwire_u,tbin+counter,acc_charge); 
+	  //reset ... 
+	  rebin_counter = 0;
+	  acc_charge = 0;
+	}
       }
+
+      
+      // int counter = 0;
+      // for (auto q : charges) {
+      // 	counter ++;
+      // 	hv_decon->SetBinContent(ch+1-nwire_u,tbin+counter,q); 
+	
+      // }
     }else{
+
       int counter = 0;
+      int rebin_counter = 0;
+      float acc_charge = 0;
+      
       for (auto q : charges) {
-	counter ++;
-	hw_decon->SetBinContent(ch+1-nwire_u-nwire_v,tbin+counter,q); 
+	rebin_counter ++;
+	if (rebin_counter < nrebin){
+	  acc_charge += q;
+	}else if (rebin_counter == nrebin){
+	  counter ++;
+	  hw_decon->SetBinContent(ch+1-nwire_u-nwire_v,tbin+counter,acc_charge); 
+	  //reset ... 
+	  rebin_counter = 0;
+	  acc_charge = 0;
+	}
       }
+      
+      // int counter = 0;
+      // for (auto q : charges) {
+      // 	counter ++;
+      // 	hw_decon->SetBinContent(ch+1-nwire_u-nwire_v,tbin+counter,q); 
+	
+      // }
     }
   }
 
@@ -130,7 +184,7 @@ void save_into_file(const char* filename,IFrame::pointer frame_decon, int nrebin
 	chid = it1.first;
 	if (chid < nwire_u){
 	  plane = 0;
-	}else if (chid < nwire_v){
+	}else if (chid < nwire_v + nwire_u){
 	  plane = 1;
 	}else{
 	  plane = 2;
@@ -148,6 +202,19 @@ void save_into_file(const char* filename,IFrame::pointer frame_decon, int nrebin
 	T_lf->Fill();
       }
       
+    }else if (it.first=="threshold"){
+       for (auto const &it1 : it.second){
+	 chid = it1.first;
+	 float threshold = it1.second[0].first/it1.second[0].second;
+	 if (chid < nwire_u){
+	   hu_threshold->SetBinContent(chid+1,threshold);
+	 }else if (chid < nwire_u+nwire_v){
+	   hv_threshold->SetBinContent(chid+1-nwire_u,threshold);
+	 }else{
+	   hw_threshold->SetBinContent(chid+1-nwire_u-nwire_v,threshold);
+	 }
+	 
+       }
     }
 
     
@@ -290,7 +357,7 @@ int main(int argc, char* argv[])
     // std::cout << "asd " << std::endl;
     
 
-    int nrebin = 1;
+    int nrebin = 6;
     
     std::string url = argv[1];
 
