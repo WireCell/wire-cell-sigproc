@@ -2,6 +2,12 @@
 #include "WireCellUtil/Response.h"
 #include "WireCellUtil/Exceptions.h"
 
+#include "WireCellUtil/NamedFactory.h"
+
+WIRECELL_FACTORY(NominalChannelResponse,
+                 WireCell::SigProc::NominalChannelResponse,
+                 WireCell::IChannelResponse, WireCell::IConfigurable);
+
 using namespace WireCell;
 SigProc::NominalChannelResponse::NominalChannelResponse(double gain,
                                                         double shaping,
