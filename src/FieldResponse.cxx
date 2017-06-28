@@ -1,6 +1,12 @@
 #include "WireCellSigProc/FieldResponse.h"
 #include "WireCellUtil/Exceptions.h"
 
+#include "WireCellUtil/NamedFactory.h"
+
+WIRECELL_FACTORY(FieldResponse,
+                 WireCell::SigProc::FieldResponse,
+                 WireCell::IFieldResponse, WireCell::IConfigurable);
+
 using namespace WireCell;
 
 
