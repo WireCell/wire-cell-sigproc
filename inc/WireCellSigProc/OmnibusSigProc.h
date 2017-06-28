@@ -20,19 +20,17 @@ namespace WireCell {
       virtual WireCell::Configuration default_configuration() const;
       
     private:
+      
       // convert data into Eigen Matrix
-      void load_data(const input_pointer& in);
+      void load_data(const input_pointer& in, int plane);
 
-      // do the first FFT in time dimension ... 
-      void do_time_fft();
+      // deconvolution
+      void decon_2D(int plane);
+      
+      // save data into the out frame
+      void save_data(ITrace::vector& itraces, int plane);
+      
 
-      // do the second FFT in wire dimension ...
-      void do_wire_fft();
-
-      // do the first inverse FFT in wire dimension ...
-      void do_wire_inv_fft();
-      // do the second inverse FFT in time dimension ...
-      void do_time_inv_fft();
       
       
       // Anode plane for geometry
@@ -54,8 +52,8 @@ namespace WireCell {
       std::map<int,int> ch_plane_map;
 
       // data after decon steps before final ifft ...
-      Array::array_xxf u_data, v_data, w_data;
-      Array::array_xxc uc_data, vc_data, wc_data;
+      Array::array_xxf r_data;
+      Array::array_xxc c_data;
       
     };
   }

@@ -229,46 +229,47 @@ void save_into_file(const char* filename,IFrame::pointer frame_decon, int nrebin
 class XinFileIterator {
   TH2* hist[3];		// per plane
   WireCell::Waveform::ChannelMaskMap ret;
-  
+  TFile *file;
 public:
     XinFileIterator(const char* filename, const char* histtype="raw") {
-	TFile* file = TFile::Open(filename);
-	string uvw = "uvw";
-	for (int ind=0; ind<3; ++ind) {
-	    auto c = uvw[ind];
-	    std::string name = Form("h%c_%s", c, histtype);
-	    cerr << "Loading " << name << endl;
-	    hist[ind] = (TH2*)file->Get(name.c_str());
-	}
-	
-	TTree *T_bad = (TTree*)file->Get("T_bad");
-	int chid, plane, start_time,end_time;
-	T_bad->SetBranchAddress("chid",&chid);
-	T_bad->SetBranchAddress("plane",&plane);
-	T_bad->SetBranchAddress("start_time",&start_time);
-	T_bad->SetBranchAddress("end_time",&end_time);
-	
-	for (int i=0;i!=T_bad->GetEntries();i++){
-	  T_bad->GetEntry(i);
-	  WireCell::Waveform::BinRange chirped_bins;
-	  chirped_bins.first = start_time;
-	  chirped_bins.second = end_time;
-	  ret["bad"][chid].push_back(chirped_bins);
-	}
-	
-	
-	TTree *T_lf = (TTree*)file->Get("T_lf");
-	int channel;
-	T_lf->SetBranchAddress("channel",&channel);
-	for (int i=0;i!=T_lf->GetEntries();i++){
-	  T_lf->GetEntry(i);
-	   WireCell::Waveform::BinRange chirped_bins;
-	  chirped_bins.first = 0;
-	  chirped_bins.second = hist[0]->GetNbinsY();
-	  ret["lf_noisy"][channel].push_back(chirped_bins);
-	}
-
-	
+      file = TFile::Open(filename);
+      string uvw = "uvw";
+      for (int ind=0; ind<3; ++ind) {
+	auto c = uvw[ind];
+	std::string name = Form("h%c_%s", c, histtype);
+	cerr << "Loading " << name << endl;
+	hist[ind] = (TH2*)file->Get(name.c_str());
+      }
+      
+      TTree *T_bad = (TTree*)file->Get("T_bad");
+      int chid, plane, start_time,end_time;
+      T_bad->SetBranchAddress("chid",&chid);
+      T_bad->SetBranchAddress("plane",&plane);
+      T_bad->SetBranchAddress("start_time",&start_time);
+      T_bad->SetBranchAddress("end_time",&end_time);
+      
+      for (int i=0;i!=T_bad->GetEntries();i++){
+	T_bad->GetEntry(i);
+	WireCell::Waveform::BinRange chirped_bins;
+	chirped_bins.first = start_time;
+	chirped_bins.second = end_time;
+	ret["bad"][chid].push_back(chirped_bins);
+      }
+      
+      
+      TTree *T_lf = (TTree*)file->Get("T_lf");
+      int channel;
+      T_lf->SetBranchAddress("channel",&channel);
+      for (int i=0;i!=T_lf->GetEntries();i++){
+	T_lf->GetEntry(i);
+	WireCell::Waveform::BinRange chirped_bins;
+	chirped_bins.first = 0;
+	chirped_bins.second = hist[0]->GetNbinsY();
+	ret["lf_noisy"][channel].push_back(chirped_bins);
+      }
+      delete T_lf;
+      delete T_bad;
+      
 	//file->Close();
 	//delete file;
     }
@@ -294,6 +295,15 @@ public:
 	return ret;
     }
 
+  void clear(){
+    delete hist[0];
+    delete hist[1];
+    delete hist[2];
+    
+    file->Close();
+    delete file;
+  }
+  
     /// Return a frame, the one and only in the file.
     IFrame::pointer frame() {
 	ITrace::vector traces;
@@ -366,14 +376,23 @@ int main(int argc, char* argv[])
     
     
     int nrebin = 6;
-    
+
+
+    ExecMon em("starting");
     std::string url = argv[1];
 
     XinFileIterator fs(url.c_str());
 
-    ExecMon em("starting");
+    cerr <<  em("loading rootfiles") << endl;
 
     IFrame::pointer frame = fs.frame();
+
+    //    cerr << em("fill the frame") << endl;
+
+    fs.clear();
+    
+    cerr <<  em("close the file") << endl;
+    
     
     SigProc::OmnibusSigProc bus;
 
