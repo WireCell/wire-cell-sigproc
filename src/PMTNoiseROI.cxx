@@ -125,8 +125,8 @@ bool PMTNoiseROI::merge_ROI(PMTNoiseROI& ROI){
   // decide how to merge two ROIs? ... 
 
   // one peak is contained in the other's range then merge
-  if (peaks.at(0)>=ROI.get_start_bin() && peaks.at(0)<=ROI.get_end_bin()
-      || start_bin <= ROI.get_peaks().at(0) && end_bin >= ROI.get_peaks().at(0)){
+  if ( (peaks.at(0)>=ROI.get_start_bin() && peaks.at(0)<=ROI.get_end_bin())
+       || (start_bin <= ROI.get_peaks().at(0) && end_bin >= ROI.get_peaks().at(0))){
     if (ROI.get_start_bin() < start_bin)
       start_bin = ROI.get_start_bin();
     if (ROI.get_end_bin() > end_bin)
