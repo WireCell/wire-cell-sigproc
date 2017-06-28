@@ -2,6 +2,9 @@
 
 #include "WireCellUtil/NamedFactory.h"
 
+#include "WireCellIface/SimpleFrame.h"
+#include "WireCellIface/SimpleTrace.h"
+
 using namespace WireCell;
 
 using namespace WireCell::SigProc;
@@ -69,14 +72,24 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   
 }
 
-void OmnibusSigProc::load_data(const input_pointer& in){
-  u_data = Array::array_xxf::Zero(nwire_u,m_nticks);
-  v_data = Array::array_xxf::Zero(nwire_v,m_nticks);
-  w_data = Array::array_xxf::Zero(nwire_w,m_nticks);
+void OmnibusSigProc::load_data(const input_pointer& in, int plane){
+  if (plane ==0){
+    r_data = Array::array_xxf::Zero(nwire_u,m_nticks);
+  }else if (plane==1){
+    r_data = Array::array_xxf::Zero(nwire_v,m_nticks);
+  }else if (plane==2){
+    r_data = Array::array_xxf::Zero(nwire_w,m_nticks);
+  }
   
   auto traces = in->traces();
-  Array::array_xxf* temp=&u_data;
-  int offset = 0;
+  int offset=0;
+  if (plane==0){
+    offset = 0;
+  }else if (plane==1){
+    offset = nwire_u;
+  }else if (plane==2){
+    offset = nwire_u+nwire_v;
+  }
 
 
   //fix me, this mapping needs to be fixed ... 
@@ -85,125 +98,106 @@ void OmnibusSigProc::load_data(const input_pointer& in){
     int ch = trace->channel();
     auto charges = trace->charge();
 
-    int plane = ch_plane_map[ch];
 
-    //std::cout << nwire_u << " " << m_nticks << " " << charges.size() << " " << tbin << " " << ch << " " << plane << std::endl;
-    
-    if (plane == 0){
-      temp = &u_data;
-      offset = 0;
-    }else if (plane==1){
-      temp = &v_data;
-      offset = nwire_u;
-    }else if (plane==2){
-      temp = &w_data;
-      offset = nwire_u+nwire_v;
-    }
-
-    int counter = 0;
-    for (auto q : charges) {
-      (*temp)(ch - offset, tbin + counter) = q;
-      counter ++;
-    }
-  }
-
-  //ensure dead channels are indeed dead ...
-  // zero out the bad channels ...
-  for (auto const& it: cmm) {
-    if (it.first == "bad"){
-      for (auto const &it1 : it.second){
-	int chid = it1.first;
-	int plane = ch_plane_map[chid];
-	if (plane == 0){
-	  temp = &u_data;
-	  offset = 0;
-	}else if (plane==1){
-	  temp = &v_data;
-	  offset = nwire_u;
-	}else if (plane==2){
-	  temp = &w_data;
-	  offset = nwire_u+nwire_v;
-	}
-
-	for (size_t ind = 0; ind < it1.second.size();++ind){
-	  for (int i=it1.second[ind].first; i!= it1.second[ind].second; i++){
-	    (*temp)(chid-offset,i) = 0;
-	  }
-	}
-	
-	
+    if (plane==ch_plane_map[ch]){
+      int counter = 0;
+      for (auto q : charges) {
+	r_data(ch - offset, tbin + counter) = q;
+	counter ++;
       }
+
+      //ensure dead channels are indeed dead ...
+      if (cmm["bad"].find(ch)!=cmm["bad"].end()){
+	for (size_t ind = 0; ind < cmm["bad"][ch].size();++ind){
+ 	  for (int i=cmm["bad"][ch][ind].first; i!=cmm["bad"][ch][ind].second; i++){
+ 	    r_data(ch-offset,i) = 0;
+ 	  }
+ 	}
+      }
+      
     }
-
-  
-  
-    //std::cout << u_data(14,2000) << " " << v_data(1000,2000) << " " << w_data(1000,2000) << std::endl;
-  
   }
-
+  
+  // std::cout << r_data(14,2000) << " " << r_data(1000,2000) << " " << r_data(1000,3000) << std::endl;
+  
 }
 
-void OmnibusSigProc::do_time_fft(){
-  uc_data = Array::dft_rc(u_data,0);
-  vc_data = Array::dft_rc(v_data,0);
-  wc_data = Array::dft_rc(w_data,0);
 
-  // now apply the ch-by-ch response ... 
+void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane, int total_offset){
+
+  int offset=0;
+  int nwire;
+  if (plane==0){
+    offset = total_offset;
+    nwire = nwire_u;
+  }else if (plane==1){
+    offset = nwire_u + total_offset;
+    nwire = nwire_v;
+  }else if (plane==2){
+    offset = nwire_u + nwire_v + total_offset;
+    nwire = nwire_w;
+  }
+  
+  
+  for (int i=0;i!=nwire;i++){
+    ITrace::ChargeSequence charge;
+    for (int j=0;j!=m_nticks;j++){
+      charge.push_back(r_data(i,j));
+    }
+    SimpleTrace *trace = new SimpleTrace(i+offset, 0, charge);
+    itraces.push_back(ITrace::pointer(trace));
+  }
+  
 }
 
-void OmnibusSigProc::do_wire_fft(){
-  uc_data = Array::dft_cc(uc_data,1);
-  vc_data = Array::dft_cc(vc_data,1);
-  wc_data = Array::dft_cc(wc_data,1);
 
-  //std::cout << uc_data1(1000,3000) << std::endl;
+
+void OmnibusSigProc::decon_2D(int plane){
+
+  // first round of FFT on time
+  c_data = Array::dft_rc(r_data,0);
+
+  // now apply the ch-by-ch response ...
+  // to be added
+  
+  //second round of FFT on wire
+  c_data = Array::dft_cc(c_data,1);
+
+  //make ratio to the response and apply wire filter
+  // to be added
+  
+  //do the first round of inverse FFT on wire
+  c_data = Array::idft_cc(c_data,1);
+  
+  //do the second round of inverse FFT on wire
+  c_data = Array::idft_cr(c_data,0);
 }
 
-void OmnibusSigProc::do_wire_inv_fft(){
-  uc_data = Array::idft_cc(uc_data,1);
-  vc_data = Array::idft_cc(vc_data,1);
-  wc_data = Array::idft_cc(wc_data,1);
-}
 
-void OmnibusSigProc::do_time_inv_fft(){
-  u_data = Array::idft_cr(uc_data,0);
-  v_data = Array::idft_cr(vc_data,0);
-  w_data = Array::idft_cr(wc_data,0);
-}
+
 
 bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 {
   cmm = in->masks();
+  ITrace::vector itraces;
 
-  // load data into EIGEN matrices ...
-  load_data(in);
+  for (int i=0;i!=3;i++){
+    // load data into EIGEN matrices ...
+    load_data(in,i);
+    // initial decon ... 
+    decon_2D(i);
+    // Form ROIs
+    
+    // Refine ROIs
 
-  //std::cout << u_data(1000,3000) << std::endl;
-
-  // Deconvolute
-  //do the first time FFT and can correct for the ch-by-ch response
-  do_time_fft();
-
-  //std::cout << uc_data(1000,3000) << std::endl;
-  //do the second time wire FFT
-  do_wire_fft();
-  //std::cout << uc_data(1000,3000) << std::endl;
+    // merge results ...
+    
+    // Get results
+    save_data(itraces,i);
+  }
   
-  //do the first time inverse FFT in wire
-  do_wire_inv_fft();
-
-  //std::cout << uc_data(1000,3000) << std::endl;
-  
-  //do the second time inverse FFT in time with different filters ...
-  do_time_inv_fft();
-  
-  //std::cout << u_data(1000,3000) << std::endl;
-  
-  // Form ROIs
-
-  // Refine ROIs
-
-  // Get results
+  SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick(), cmm);
+  out = IFrame::pointer(sframe);
   
   return true;
 }
