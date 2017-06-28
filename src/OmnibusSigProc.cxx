@@ -123,18 +123,18 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
 }
 
 
-void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane){
+void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane, int total_offset){
 
   int offset=0;
   int nwire;
   if (plane==0){
-    offset = 0;
+    offset = total_offset;
     nwire = nwire_u;
   }else if (plane==1){
-    offset = nwire_u;
+    offset = nwire_u + total_offset;
     nwire = nwire_v;
   }else if (plane==2){
-    offset = nwire_u+nwire_v;
+    offset = nwire_u + nwire_v + total_offset;
     nwire = nwire_w;
   }
   
@@ -186,10 +186,11 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     load_data(in,i);
     // initial decon ... 
     decon_2D(i);
-    
     // Form ROIs
     
     // Refine ROIs
+
+    // merge results ...
     
     // Get results
     save_data(itraces,i);

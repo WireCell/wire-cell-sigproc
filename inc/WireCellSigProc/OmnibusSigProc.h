@@ -28,7 +28,7 @@ namespace WireCell {
       void decon_2D(int plane);
       
       // save data into the out frame
-      void save_data(ITrace::vector& itraces, int plane);
+      void save_data(ITrace::vector& itraces, int plane, int total_offset=0);
       
 
       
