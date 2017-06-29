@@ -71,7 +71,17 @@ int main(int argc, char* argv[])
     // TGraph **gu = new TGraph*[21];
     // TGraph **gv = new TGraph*[21];
     // TGraph **gw = new TGraph*[21];
+    // TGraph *gtemp;
     
+    Waveform::realseq_t wfs(9594);
+    Waveform::realseq_t ctbins(9594);
+    for (int i=0;i!=9594;i++){
+      ctbins.at(i) = i * period;
+    }
+    Waveform::realseq_t ftbins(Response::as_array(fravg.planes[0]).cols());
+    for (int i=0;i!=Response::as_array(fravg.planes[0]).cols();i++){
+      ftbins.at(i) = i * fravg.period;
+    }
     
     // Convert each average FR to a 2D array
     for (int ind=0; ind<3; ++ind) {
@@ -91,31 +101,64 @@ int main(int argc, char* argv[])
 	arr = Array::idft_cr(c_data,0);
 
 	
-	// for (int irow = 0; irow < nrows; ++ irow){
-	//   if (ind ==0){
-	//     gu[irow] = new TGraph();
-	//     for (int icol=0; icol < ncols; ++ icol){
-	//       gu[irow]->SetPoint(icol,icol*0.1,arr(irow,icol)/units::mV*(-1));
-	//     }
-	//   }else if (ind==1){
-	//     gv[irow] = new TGraph();
-	//     for (int icol=0; icol < ncols; ++ icol){
-	//       gv[irow]->SetPoint(icol,icol*0.1,arr(irow,icol)/units::mV*(-1));
-	//     }
-	//   }else if (ind==2){
-	//     gw[irow] = new TGraph();
-	//     for (int icol=0; icol < ncols; ++ icol){
-	//       gw[irow]->SetPoint(icol,icol*0.1,arr(irow,icol)/units::mV*(-1));
-	//     }
-	//   }
+	// figure out how to do fine ... shift (good ...) 
+	auto arr1 = arr.block(0,0,nrows,100);
+       	arr.block(0,0,nrows,ncols-100) = arr.block(0,100,nrows,ncols-100);
+	arr.block(0,ncols-100,nrows,100) = arr1;
+
+	
+	
+	// redigitize ... 
+	for (int irow = 0; irow < nrows; ++ irow){
+	  // gtemp = new TGraph();
+	  
+	  int fcount = 1;
+	  for (int i=0;i!=9594;i++){
+	    double ctime = ctbins.at(i);
+
+	    if (fcount < 1000)
+	      while(ctime > ftbins.at(fcount)){
+		fcount ++;
+		if (fcount >= 1000) break;
+	      }
+
+	    
+	    if(fcount < 1000){
+	      //interpolate between fbins.at(fcount - 1) and fbins.at(fcount)
+	      wfs.at(i) = (ctime - ftbins.at(fcount-1)) / period * arr(irow,fcount-1) + (ftbins.at(fcount)-ctime)/period * arr(irow,fcount);
+	      
+	    }else{
+	      wfs.at(i) = 0;
+	    }
+
+	    // gtemp->SetPoint(i,ctime/units::microsecond,wfs.at(i)/units::mV*(-1));
+	  }
 	  
 	  
-	// }
+	  // if (ind ==0){
+	  //   gu[irow] = gtemp;
+	  //   //	    for (int icol=0; icol < ncols; ++ icol){
+	  //   //  gu[irow]->SetPoint(icol,icol*0.1,arr(irow,icol)/units::mV*(-1));
+	  //   // }
+	  // }else if (ind==1){
+	  //   gv[irow] = gtemp;
+	  //   // for (int icol=0; icol < ncols; ++ icol){
+	  //   //   gv[irow]->SetPoint(icol,icol*0.1,arr(irow,icol)/units::mV*(-1));
+	  //   // }
+	  // }else if (ind==2){
+	  //   gw[irow] = gtemp;
+	  //   // for (int icol=0; icol < ncols; ++ icol){
+	  //   //   gw[irow]->SetPoint(icol,icol*0.1,arr(irow,icol)/units::mV*(-1));
+	  //   // }
+	  // }
+
+	  
+	}
 	
 	//cerr << "FRavg: plane " << ind << ": " << arr.rows() << " X " << arr.cols() << " " << fravg.period/units::microsecond << endl;
     }
 
-    //file->cd();
+    // file->cd();
     
     // for (int i=0;i!=21;i++){
     //   gu[i]->Write(Form("gu_%d",i));
