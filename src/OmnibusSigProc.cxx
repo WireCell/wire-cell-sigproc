@@ -6,6 +6,7 @@
 #include "WireCellIface/SimpleTrace.h"
 
 #include "WireCellIface/IFieldResponse.h"
+#include "WireCellIface/IFilterWaveform.h"
 
 using namespace WireCell;
 
@@ -202,7 +203,11 @@ void OmnibusSigProc::init_overall_response(){
   for (int i=0;i!=fine_nticks;i++){
     ftbins.at(i) = i * fravg.period;
   }
-  
+
+  // clear the overall response
+  for (int i=0;i!=3;i++){
+    overall_resp[i].clear();
+  }
 
   // Convert each average FR to a 2D array
   for (int ind=0; ind<3; ++ind) {
@@ -247,21 +252,27 @@ void OmnibusSigProc::init_overall_response(){
 	
 	    
 	if(fcount < fine_nticks){
-	  wfs.at(i) = (ctime - ftbins.at(fcount-1)) / m_period * arr(irow,fcount-1) + (ftbins.at(fcount)-ctime)/m_period * arr(irow,fcount);
+	  wfs.at(i) = ((ctime - ftbins.at(fcount-1)) /fravg.period * arr(irow,fcount-1) + (ftbins.at(fcount)-ctime)/fravg.period * arr(irow,fcount)) / units::mV / (-1);
 	}else{
 	  wfs.at(i) = 0;
 	}
       }
-    } // loop inside wire ... 
-
+      
+      overall_resp[ind].push_back(wfs);
+      //wfs.clear();
+    } // loop inside wire ...
+    // calculated the wire shift ...     
+    m_wire_shift[ind] = (int(overall_resp[ind].size())-1)/2;
   }// loop over plane
-  
+
+
   
 }
 
 
 void OmnibusSigProc::decon_2D(int plane){
 
+  // data part ... 
   // first round of FFT on time
   c_data = Array::dft_rc(r_data,0);
 
@@ -271,14 +282,62 @@ void OmnibusSigProc::decon_2D(int plane){
   //second round of FFT on wire
   c_data = Array::dft_cc(c_data,1);
 
+
+  //response part ...
+  Array::array_xxf r_resp = Array::array_xxf::Zero(r_data.rows(),m_nticks);
+  for (size_t i=0;i!=overall_resp[plane].size();i++){
+    for (int j=0;j!=m_nticks;j++){
+      r_resp(i,j) = overall_resp[plane].at(i).at(j);
+    }
+  }
+  
+  // do first round FFT on the resposne on time
+  Array::array_xxc c_resp = Array::dft_rc(r_resp,0);
+  // do second round FFT on the response on wire
+  c_resp = Array::dft_cc(c_resp,1);
+
+  
   //make ratio to the response and apply wire filter
-  // to be added
+  c_data = c_data/c_resp; 
+  for (int irow=0; irow<c_data.rows(); ++irow) {
+    for (int icol=0; icol<c_data.cols(); ++icol) {
+      float val = abs(c_data(irow,icol));
+      if (std::isnan(val)) {
+	c_data(irow,icol) = -0.0;
+      }
+      if (std::isinf(val)) {
+	c_data(irow,icol) = 0.0;
+      }
+    }
+  }
+  // apply software filter on wire
+  
   
   //do the first round of inverse FFT on wire
   c_data = Array::idft_cc(c_data,1);
+
+  // apply software filter on time
+  auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Gaus_wide");
+  auto filter_gaus_wide = ncr1->filter_waveform();
+  for (int irow=0; irow<c_data.rows(); ++irow) {
+    for (int icol=0; icol<c_data.cols(); ++icol) {
+      c_data(irow,icol) = c_data(irow,icol) * filter_gaus_wide.at(icol);
+    }
+  }
   
   //do the second round of inverse FFT on wire
-  c_data = Array::idft_cr(c_data,0);
+  r_data = Array::idft_cr(c_data,0);
+  
+  
+  // do the shift in wire 
+  
+  //  auto arr1 = arr.block(0,0,nrows,fine_time_shift);
+  //arr.block(0,0,nrows,ncols-fine_time_shift) = arr.block(0,fine_time_shift,nrows,ncols-fine_time_shift);
+  //arr.block(0,ncols-fine_time_shift,nrows,fine_time_shift) = arr1;
+  
+  
+  //do the shift in wire
+  
 }
 
 

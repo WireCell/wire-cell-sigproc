@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
     WireCell::Binning tbins(Response::as_array(fravg.planes[0]).cols(), 0, Response::as_array(fravg.planes[0]).cols() * fravg.period);
     Response::ColdElec ce(14.0 * units::mV/units::fC, 2.0 * units::microsecond);
     auto ewave = ce.generate(tbins);
-    Waveform::scale(ewave, 1.2*4096./2000.);
+    Waveform::scale(ewave, 1.2*4096/2000.);
     elec = Waveform::dft(ewave);
 
     std::complex<float> fine_period(fravg.period,0);
@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
 	    
 	    if(fcount < 1000){
 	      //interpolate between fbins.at(fcount - 1) and fbins.at(fcount)
-	      wfs.at(i) = (ctime - ftbins.at(fcount-1)) / period * arr(irow,fcount-1) + (ftbins.at(fcount)-ctime)/period * arr(irow,fcount);
+	      wfs.at(i) = (ctime - ftbins.at(fcount-1)) /fravg.period * arr(irow,fcount-1) + (ftbins.at(fcount)-ctime)/fravg.period * arr(irow,fcount);
 	      
 	    }else{
 	      wfs.at(i) = 0;
@@ -165,7 +165,6 @@ int main(int argc, char* argv[])
     //   gv[i]->Write(Form("gv_%d",i));
     //   gw[i]->Write(Form("gw_%d",i));
     // }
-    // file->Write();
     // file->Close();
     
 

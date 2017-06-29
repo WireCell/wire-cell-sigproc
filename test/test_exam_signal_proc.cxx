@@ -363,7 +363,7 @@ int main(int argc, char* argv[])
     {
       auto anodecfg = Factory::lookup<IConfigurable>("AnodePlane");
       auto cfg = anodecfg->default_configuration();
-      // cfg["fields"] = filenames[3];
+      cfg["fields"] = filenames[3];
       cfg["wires"] = filenames[2];
       anodecfg->configure(cfg);
     }
@@ -375,6 +375,18 @@ int main(int argc, char* argv[])
       cfg["filename"] = filenames[3];
       ifrcfg->configure(cfg);
     }
+    // add the filters
+    {
+      auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Gaus_wide");
+      auto cfg = incrcfg->default_configuration();
+      cfg["nbins"] = 9594;
+      cfg["max_freq"] = 1 * units::megahertz;
+      cfg["sigma"] = 1.11408e-01 * units::megahertz;
+      cfg["power"] = 2;
+      cfg["flag"] = true;
+      incrcfg->configure(cfg);
+    }
+    
 
     // std::cout << "asd " << std::endl;
     

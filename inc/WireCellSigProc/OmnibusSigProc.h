@@ -42,7 +42,8 @@ namespace WireCell {
       // Overall time offset
       double m_fine_time_offset; // must be positive, between 0-0.5 us, shift the response function to earlier time --> shift the deconvoluted signal to a later time
       double m_coarse_time_offset; // additional coarse time shift ... 
-
+      int m_wire_shift[3];
+      
       // bins
       double m_period;
       int m_nticks;
@@ -59,6 +60,9 @@ namespace WireCell {
       // data after decon steps before final ifft ...
       Array::array_xxf r_data;
       Array::array_xxc c_data;
+
+      //average overall responses
+      std::vector<Waveform::realseq_t> overall_resp[3];
       
     };
   }
