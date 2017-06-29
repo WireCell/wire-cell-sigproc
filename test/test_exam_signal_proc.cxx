@@ -375,16 +375,151 @@ int main(int argc, char* argv[])
       cfg["filename"] = filenames[3];
       ifrcfg->configure(cfg);
     }
+
     // add the filters
     {
-      auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Gaus_wide");
-      auto cfg = incrcfg->default_configuration();
-      cfg["nbins"] = 9594;
-      cfg["max_freq"] = 1 * units::megahertz;
-      cfg["sigma"] = 1.11408e-01 * units::megahertz;
-      cfg["power"] = 2;
-      cfg["flag"] = true;
-      incrcfg->configure(cfg);
+      // Tight Gaussian filters
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Gaus_tight");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["sigma"] = 1.11408e-01 * units::megahertz;
+	cfg["power"] = 2;
+	cfg["flag"] = true;
+	incrcfg->configure(cfg);
+      }
+
+      // Tight Wiener filters for U for ROI finding
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Wiener_tight_U");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["sigma"] = 5.75416e+01/800.*2 * units::megahertz;
+	cfg["power"] = 4.10358e+00;
+	cfg["flag"] = true;
+	incrcfg->configure(cfg);
+      }
+      
+      // Tight Wiener filters for V for ROI finding
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Wiener_tight_V");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["sigma"] = 5.99306e+01/800.*2* units::megahertz;
+	cfg["power"] = 4.20820e+00;
+	cfg["flag"] = true;
+	incrcfg->configure(cfg);
+      }
+      
+      // Tight Wiener filters for W 
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Wiener_tight_W");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["sigma"] = 5.88802e+01/800.*2  * units::megahertz;
+	cfg["power"] = 4.17455e+00;
+	cfg["flag"] = true;
+	incrcfg->configure(cfg);
+      }
+      
+      
+      // Wide Wiener filters for U for hit
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Wiener_wide_U");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["sigma"] = 1.78695e+01/200.*2.  * units::megahertz;
+	cfg["power"] = 5.33129e+00;
+	cfg["flag"] = true;
+	incrcfg->configure(cfg);
+      }
+
+      
+      // Wide Wiener filters for V for hit
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Wiener_wide_V");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["sigma"] = 1.84666e+01/200.*2.  * units::megahertz;
+	cfg["power"] = 5.60489e+00;
+	cfg["flag"] = true;
+	incrcfg->configure(cfg);
+      }
+      
+      // Wide Wiener filters for W for hit
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Wiener_wide_W");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["sigma"] = 1.83044e+01/200.*2. * units::megahertz;
+	cfg["power"] = 5.44945e+00;
+	cfg["flag"] = true;
+	incrcfg->configure(cfg);
+      }
+      
+      // Wide Gaussian filters for charge
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Gaus_tight");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["sigma"] = 0.14 * units::megahertz;
+	cfg["power"] = 2;
+	cfg["flag"] = true;
+	incrcfg->configure(cfg);
+      }
+      
+      // Tight low frequency filter for ROI
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("LfFilter","ROI_tight_lf");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["tau"] = 0.02 * units::megahertz;
+	incrcfg->configure(cfg);
+      }
+      // Loose low frequency filter for ROI
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("LfFilter","ROI_loose_lf");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["tau"] = 0.0025 * units::megahertz;
+	incrcfg->configure(cfg);
+      }
+      
+      // Wire Filter for induction planes
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Wire_ind");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 2400;
+	cfg["max_freq"] = 1 ;
+	cfg["sigma"] = 1./sqrt(3.1415926)*1.4 ;
+	cfg["power"] = 2;
+	cfg["flag"] = false;
+	incrcfg->configure(cfg);
+      }
+      
+      // Wire Filter for collection planes 
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Wire_col");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 3256;
+	cfg["max_freq"] = 1 ;
+	cfg["sigma"] = 1.0/sqrt(3.1415926)*3.0 ;
+	cfg["power"] = 2;
+	cfg["flag"] = false;
+	incrcfg->configure(cfg);
+      }
+      
+      
     }
     
 

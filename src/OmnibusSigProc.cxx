@@ -209,6 +209,9 @@ void OmnibusSigProc::init_overall_response(){
     overall_resp[i].clear();
   }
 
+  m_intrinsic_time_offset = fr.origin/fr.speed;
+
+  
   // Convert each average FR to a 2D array
   for (int ind=0; ind<3; ++ind) {
     auto arr = Response::as_array(fravg.planes[ind]);
@@ -229,10 +232,20 @@ void OmnibusSigProc::init_overall_response(){
 	
     // figure out how to do fine ... shift (good ...) 
     int fine_time_shift = m_fine_time_offset / fravg.period;
-    if (fine_time_shift>0){ 
-      auto arr1 = arr.block(0,0,nrows,fine_time_shift);
-      arr.block(0,0,nrows,ncols-fine_time_shift) = arr.block(0,fine_time_shift,nrows,ncols-fine_time_shift);
-      arr.block(0,ncols-fine_time_shift,nrows,fine_time_shift) = arr1;
+    if (fine_time_shift>0){
+      Array::array_xxf arr1(nrows,ncols - fine_time_shift);
+      arr1 = arr.block(0,0,nrows,ncols - fine_time_shift);
+      Array::array_xxf arr2(nrows,fine_time_shift);
+      arr2 = arr.block(0,ncols-fine_time_shift,nrows,fine_time_shift);
+      arr.block(0,0,nrows,fine_time_shift) = arr2;
+      arr.block(0,fine_time_shift,nrows,ncols-fine_time_shift) = arr1;
+      
+      // Array::array_xxf arr1(nrows,fine_time_shift);
+      // arr1 = arr.block(0,0,nrows,fine_time_shift);
+      // Array::array_xxf arr2(nrows,ncols-fine_time_shift);
+      // arr2 = arr.block(0,fine_time_shift,nrows,ncols-fine_time_shift);
+      // arr.block(0,0,nrows,ncols-fine_time_shift) = arr2;
+      // arr.block(0,ncols-fine_time_shift,nrows,fine_time_shift) = arr1;
     }
 	
 	
@@ -263,9 +276,11 @@ void OmnibusSigProc::init_overall_response(){
     } // loop inside wire ...
     // calculated the wire shift ...     
     m_wire_shift[ind] = (int(overall_resp[ind].size())-1)/2;
-  }// loop over plane
 
+    //    std::cout << /m_period << std::endl;
+  }//  loop over plane
 
+  
   
 }
 
@@ -317,7 +332,7 @@ void OmnibusSigProc::decon_2D(int plane){
   c_data = Array::idft_cc(c_data,1);
 
   // apply software filter on time
-  auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Gaus_wide");
+  auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Gaus_tight");
   auto filter_gaus_wide = ncr1->filter_waveform();
   for (int irow=0; irow<c_data.rows(); ++irow) {
     for (int icol=0; icol<c_data.cols(); ++icol) {
@@ -330,14 +345,30 @@ void OmnibusSigProc::decon_2D(int plane){
   
   
   // do the shift in wire 
+  int nrows = r_data.rows();
+  int ncols = r_data.cols();
+  {
+    // std::cout << nrows << " " << ncols << " " << m_wire_shift[plane] << std::endl;
+    Array::array_xxf arr1(m_wire_shift[plane], ncols) ;
+    arr1 = r_data.block(nrows-m_wire_shift[plane] , 0 , m_wire_shift[plane], ncols);
+    Array::array_xxf arr2(nrows-m_wire_shift[plane],ncols);
+    arr2 = r_data.block(0,0,nrows-m_wire_shift[plane],ncols);
+    r_data.block(0,0,m_wire_shift[plane],ncols) = arr1;
+    r_data.block(m_wire_shift[plane],0,nrows-m_wire_shift[plane],ncols) = arr2;
+  }
   
-  //  auto arr1 = arr.block(0,0,nrows,fine_time_shift);
-  //arr.block(0,0,nrows,ncols-fine_time_shift) = arr.block(0,fine_time_shift,nrows,ncols-fine_time_shift);
-  //arr.block(0,ncols-fine_time_shift,nrows,fine_time_shift) = arr1;
   
-  
-  //do the shift in wire
-  
+  //do the shift in time
+  int time_shift = (m_coarse_time_offset + m_intrinsic_time_offset)/m_period;
+  if (time_shift > 0){
+    Array::array_xxf arr1(nrows,ncols - time_shift);
+    arr1 = r_data.block(0,0,nrows,ncols - time_shift);
+    Array::array_xxf arr2(nrows,time_shift);
+    arr2 = r_data.block(0,ncols-time_shift,nrows,time_shift);
+    r_data.block(0,0,nrows,time_shift) = arr2;
+    r_data.block(0,time_shift,nrows,ncols-time_shift) = arr1;
+  }
+   
 }
 
 

@@ -11,7 +11,7 @@ namespace WireCell {
   namespace SigProc {
     class OmnibusSigProc : public WireCell::IFrameFilter, public WireCell::IConfigurable {
     public:
-      OmnibusSigProc(const std::string anode_tn = "AnodePlane", double fine_time_offset = 0, double coarse_time_offset = 0, double period = 0.5*units::microsecond, int nticks = 9594, double gain = 14.0 * units::mV/units::fC, double shaping_time = 2.0 * units::microsecond, double inter_gain = 1.2, double ADC_mV = 4096/2000.);
+      OmnibusSigProc(const std::string anode_tn = "AnodePlane", double fine_time_offset = 0.2 * units::microsecond, double coarse_time_offset = -8.5 * units::microsecond, double period = 0.5*units::microsecond, int nticks = 9594, double gain = 14.0 * units::mV/units::fC, double shaping_time = 2.0 * units::microsecond, double inter_gain = 1.2, double ADC_mV = 4096/2000.);
       virtual ~OmnibusSigProc();
       
       virtual bool operator()(const input_pointer& in, output_pointer& out);
@@ -41,7 +41,8 @@ namespace WireCell {
       
       // Overall time offset
       double m_fine_time_offset; // must be positive, between 0-0.5 us, shift the response function to earlier time --> shift the deconvoluted signal to a later time
-      double m_coarse_time_offset; // additional coarse time shift ... 
+      double m_coarse_time_offset; // additional coarse time shift ...
+      double m_intrinsic_time_offset;
       int m_wire_shift[3];
       
       // bins
