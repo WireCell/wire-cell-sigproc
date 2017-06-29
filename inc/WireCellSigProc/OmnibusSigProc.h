@@ -40,8 +40,8 @@ namespace WireCell {
       IAnodePlane::pointer m_anode;
       
       // Overall time offset
-      double m_fine_time_offset;
-      double m_coarse_time_offset;
+      double m_fine_time_offset; // must be positive, between 0-0.5 us, shift the response function to earlier time --> shift the deconvoluted signal to a later time
+      double m_coarse_time_offset; // additional coarse time shift ... 
 
       // bins
       double m_period;

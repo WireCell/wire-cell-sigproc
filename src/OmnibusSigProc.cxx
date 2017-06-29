@@ -223,10 +223,12 @@ void OmnibusSigProc::init_overall_response(){
 
 	
     // figure out how to do fine ... shift (good ...) 
-    auto arr1 = arr.block(0,0,nrows,100);
-    arr.block(0,0,nrows,ncols-100) = arr.block(0,100,nrows,ncols-100);
-    arr.block(0,ncols-100,nrows,100) = arr1;
-    
+    int fine_time_shift = m_fine_time_offset / fravg.period;
+    if (fine_time_shift>0){ 
+      auto arr1 = arr.block(0,0,nrows,fine_time_shift);
+      arr.block(0,0,nrows,ncols-fine_time_shift) = arr.block(0,fine_time_shift,nrows,ncols-fine_time_shift);
+      arr.block(0,ncols-fine_time_shift,nrows,fine_time_shift) = arr1;
+    }
 	
 	
     // redigitize ... 
@@ -287,6 +289,9 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   cmm = in->masks();
   ITrace::vector itraces;
 
+  // initialize the overall response function ... 
+  init_overall_response();
+  
   for (int i=0;i!=3;i++){
     // load data into EIGEN matrices ...
     load_data(in,i);
