@@ -11,7 +11,7 @@ namespace WireCell {
   namespace SigProc {
     class OmnibusSigProc : public WireCell::IFrameFilter, public WireCell::IConfigurable {
     public:
-      OmnibusSigProc(const std::string anode_tn = "AnodePlane", double fine_time_offset = 0, double coarse_time_offset = 0, double period = 0.5*units::microsecond, int nticks = 9594);
+      OmnibusSigProc(const std::string anode_tn = "AnodePlane", double fine_time_offset = 0, double coarse_time_offset = 0, double period = 0.5*units::microsecond, int nticks = 9594, double gain = 14.0 * units::mV/units::fC, double shaping_time = 2.0 * units::microsecond, double inter_gain = 1.2, double ADC_mV = 4096/2000.);
       virtual ~OmnibusSigProc();
       
       virtual bool operator()(const input_pointer& in, output_pointer& out);
@@ -29,7 +29,9 @@ namespace WireCell {
       
       // save data into the out frame
       void save_data(ITrace::vector& itraces, int plane, int total_offset=0);
-      
+
+      // initialize the overall response function ...
+      void init_overall_response();
 
       
       
@@ -45,6 +47,9 @@ namespace WireCell {
       double m_period;
       int m_nticks;
 
+      // gain, shaping time, other applification factors
+      double m_gain, m_shaping_time;
+      double m_inter_gain, m_ADC_mV;
       
       // Some global data useful
       int nwire_u, nwire_v, nwire_w;

@@ -348,20 +348,32 @@ int main(int argc, char* argv[])
 	return 1;
     }
 
-     PluginManager& pm = PluginManager::instance();
+    PluginManager& pm = PluginManager::instance();
     pm.add("WireCellGen");
+    pm.add("WireCellSigProc");
 
-    string filenames[3] = {
+    string filenames[4] = {
       "microboone-noise-spectra-v2.json.bz2",
       "garfield-1d-3planes-21wires-6impacts-v6.json.bz2",
       "microboone-celltree-wires-v2.json.bz2",
+      "ub-10-wnormed.json.bz2",
     };
+    
+    // do the geometry ... 
     {
       auto anodecfg = Factory::lookup<IConfigurable>("AnodePlane");
       auto cfg = anodecfg->default_configuration();
-      cfg["fields"] = filenames[1];
+      // cfg["fields"] = filenames[3];
       cfg["wires"] = filenames[2];
       anodecfg->configure(cfg);
+    }
+
+    // add the response function ...
+    {
+      auto ifrcfg = Factory::lookup<IConfigurable>("FieldResponse");
+      auto cfg = ifrcfg->default_configuration();
+      cfg["filename"] = filenames[3];
+      ifrcfg->configure(cfg);
     }
 
     // std::cout << "asd " << std::endl;
