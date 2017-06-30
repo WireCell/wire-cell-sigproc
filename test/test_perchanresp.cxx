@@ -65,6 +65,11 @@ int main(int argc, char* argv[])
     auto cr = Factory::find<IChannelResponse>(cr_tn);
     auto ap = Factory::find<IAnodePlane>(ap_tn);
 
+    auto bins = cr->channel_response_binning();
+    cerr << "PerChannelResponse with binning: " << bins.nbins() << " bins "
+         << " with sample period " << bins.binsize()/units::us << " us and bounds:"
+         << "[" << bins.min()/units::us << "," << bins.max()/units::us << "]us\n";
+
     std::vector<int> planechans[3]; // fixme: will break with DUNE
     for (auto ch : ap->channels()) {
         auto wpid = ap->resolve(ch);
@@ -83,7 +88,7 @@ int main(int argc, char* argv[])
         std::sort(channels.begin(), channels.end());
 
         /// assume all responses in a plane are the same size.
-        const int nsamps = cr->channel_response(channels[0]).size();
+        const int nsamps = bins.nbins();
         const int nchans = channels.size();
 
         Assert(nsamps>0);

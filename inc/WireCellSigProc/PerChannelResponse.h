@@ -21,6 +21,7 @@ namespace WireCell {
                 
             // IChannelResponse
             virtual const Waveform::realseq_t& channel_response(int channel_ident) const;
+            virtual Binning channel_response_binning() const;
 
             
             // IConfigurable
@@ -29,8 +30,8 @@ namespace WireCell {
 
         private:
             std::string m_filename;
-
             std::unordered_map<int,Waveform::realseq_t> m_cr;
+            Binning m_bins;
         };
 
     }
