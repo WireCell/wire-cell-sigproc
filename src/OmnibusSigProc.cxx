@@ -148,24 +148,37 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
 void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane, int total_offset){
 
   int offset=0;
+  int offset1=0;
   int nwire;
   if (plane==0){
     offset = total_offset;
+    offset1 = 0;
     nwire = nwire_u;
   }else if (plane==1){
     offset = nwire_u + total_offset;
+    offset1 = nwire_u;
     nwire = nwire_v;
   }else if (plane==2){
     offset = nwire_u + nwire_v + total_offset;
+    offset1 = nwire_u + nwire_v;
     nwire = nwire_w;
   }
   
   
   for (int i=0;i!=nwire;i++){
-    ITrace::ChargeSequence charge;
+    ITrace::ChargeSequence charge(m_nticks);
     for (int j=0;j!=m_nticks;j++){
-      charge.push_back(r_data(i,j));
+      charge.at(j) = r_data(i,j);
     }
+    // correct the dead channels ... 
+    if (cmm["bad"].find(i+offset1)!=cmm["bad"].end()){
+      for (size_t k=0;k!=cmm["bad"][i+offset1].size();k++){
+	for (int j=cmm["bad"][i+offset1].at(k).first; j!=cmm["bad"][i+offset1].at(k).second;j++){
+	  charge.at(j)=0;
+	}
+      }
+    }
+    
     SimpleTrace *trace = new SimpleTrace(i+offset, 0, charge);
     itraces.push_back(ITrace::pointer(trace));
   }
@@ -326,7 +339,10 @@ void OmnibusSigProc::decon_2D_init(int plane){
   c_data = Array::dft_rc(r_data,0);
 
   // now apply the ch-by-ch response ...
-  // to be added
+  // to be added ??? 
+
+
+  
   
   //second round of FFT on wire
   c_data = Array::dft_cc(c_data,1);
@@ -442,6 +458,7 @@ void OmnibusSigProc::decon_2D_tightROI(int plane){
 }
 
 void OmnibusSigProc::decon_2D_looseROI(int plane){
+  if (plane == 2) return;
    // apply software filter on time
   //std::cout << "Apply Time Filter! " << std::endl;
   Waveform::realseq_t roi_hf_filter_wf;
@@ -508,8 +525,7 @@ void OmnibusSigProc::decon_2D_looseROI(int plane){
   
   //do the second round of inverse FFT on wire
   r_data = Array::idft_cr(c_data_afterfilter,0);
-  if (plane==2)
-    restore_baseline(r_data);
+  restore_baseline(r_data);
 }
 
 void OmnibusSigProc::decon_2D_hits(int plane){
@@ -564,7 +580,8 @@ void OmnibusSigProc::decon_2D_charge(int plane){
   
   //do the second round of inverse FFT on wire
   r_data = Array::idft_cr(c_data_afterfilter,0);
-  restore_baseline(r_data);
+  if (plane==2)
+    restore_baseline(r_data);
 }
 
 
@@ -581,16 +598,22 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     load_data(in,i);
     // initial decon ... 
     decon_2D_init(i);
+
+    // Form tight ROIs
     decon_2D_tightROI(i);
+    // to do
+    
+    // Form loose ROIs
     decon_2D_looseROI(i);
+    // to do
+    
+    // Refine ROIs
+    // to do
+
+    // merge results ...
     decon_2D_hits(i);
     decon_2D_charge(i);
     
-    // Form ROIs
-    
-    // Refine ROIs
-
-    // merge results ...
     
     // Get results
     save_data(itraces,i);
