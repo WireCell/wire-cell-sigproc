@@ -466,7 +466,7 @@ int main(int argc, char* argv[])
       
       // Wide Gaussian filters for charge
       {
-	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Gaus_tight");
+	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Gaus_wide");
 	auto cfg = incrcfg->default_configuration();
 	cfg["nbins"] = 9594;
 	cfg["max_freq"] = 1 * units::megahertz;
@@ -511,7 +511,7 @@ int main(int argc, char* argv[])
       {
 	auto incrcfg = Factory::lookup<IConfigurable>("HfFilter","Wire_col");
 	auto cfg = incrcfg->default_configuration();
-	cfg["nbins"] = 3256;
+	cfg["nbins"] = 3456;
 	cfg["max_freq"] = 1 ;
 	cfg["sigma"] = 1.0/sqrt(3.1415926)*3.0 ;
 	cfg["power"] = 2;

@@ -25,7 +25,11 @@ namespace WireCell {
       void load_data(const input_pointer& in, int plane);
 
       // deconvolution
-      void decon_2D(int plane);
+      void decon_2D_init(int plane); // main decon code 
+      void decon_2D_tightROI(int plane); 
+      void decon_2D_looseROI(int plane);
+      void decon_2D_hits(int plane);
+      void decon_2D_charge(int plane);
       
       // save data into the out frame
       void save_data(ITrace::vector& itraces, int plane, int total_offset=0);
@@ -33,6 +37,7 @@ namespace WireCell {
       // initialize the overall response function ...
       void init_overall_response();
 
+      void restore_baseline(WireCell::Array::array_xxf& arr);
       
       
       // Anode plane for geometry
@@ -61,7 +66,7 @@ namespace WireCell {
       // data after decon steps before final ifft ...
       Array::array_xxf r_data;
       Array::array_xxc c_data;
-
+      
       //average overall responses
       std::vector<Waveform::realseq_t> overall_resp[3];
       
