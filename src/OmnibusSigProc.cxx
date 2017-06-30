@@ -338,8 +338,11 @@ void OmnibusSigProc::decon_2D_init(int plane){
   // first round of FFT on time
   c_data = Array::dft_rc(r_data,0);
 
+
   // now apply the ch-by-ch response ...
-  // to be added ??? 
+  
+
+  
 
 
   
