@@ -36,11 +36,12 @@ void SigProc::PerChannelResponse::configure(const WireCell::Configuration& cfg)
     }
 
     auto top = Persist::load(m_filename);
-    //const double tick = top["tick"].asFloat();
+    const double tick = top["tick"].asFloat();
     auto jchannels = top["channels"];
     if (jchannels.isNull()) {
         THROW(ValueError() << errmsg{"no channels given in file " + m_filename});
     }
+    
     for (auto jchresp : jchannels) {
         const int ch = jchresp[0].asInt();
         auto jresp = jchresp[1];
@@ -53,7 +54,12 @@ void SigProc::PerChannelResponse::configure(const WireCell::Configuration& cfg)
             resp[ind] = jresp[ind].asFloat();
         }
         m_cr[ch] = resp;
+        if (!m_bins.nbins()) {
+            m_bins = Binning(nsamp, 0, nsamp*tick);
+        }
     }
+
+
 }
 
 
@@ -64,4 +70,9 @@ const Waveform::realseq_t& SigProc::PerChannelResponse::channel_response(int cha
         THROW(KeyError() << errmsg{String::format("no response for channel %d", channel_ident)});
     }
     return it->second;
+}
+
+Binning SigProc::PerChannelResponse::channel_response_binning() const
+{
+    return m_bins;
 }

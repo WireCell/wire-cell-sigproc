@@ -41,7 +41,8 @@ void SigProc::NominalChannelResponse::configure(const WireCell::Configuration& c
     double tmin = get(cfg,"tmin",m_bins.min());
     double tmax = get(cfg,"tmax",m_bins.max());
     Response::ColdElec ce(m_gain, m_shaping);
-    m_cr = ce.generate(Binning(nbins, tmin, tmax));
+    m_bins = Binning(nbins, tmin, tmax);
+    m_cr = ce.generate(m_bins);
     if (m_cr.empty()) {
         THROW(ValueError() << errmsg{"Failed to generate any nominal channel response"});
     }
@@ -51,4 +52,9 @@ void SigProc::NominalChannelResponse::configure(const WireCell::Configuration& c
 const Waveform::realseq_t& SigProc::NominalChannelResponse::channel_response(int channel_ident) const
 {
     return m_cr;
+}
+
+Binning SigProc::NominalChannelResponse::channel_response_binning() const
+{
+    return m_bins;
 }

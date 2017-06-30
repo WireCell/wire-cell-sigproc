@@ -21,7 +21,7 @@ namespace WireCell {
                 
             // IChannelResponse
             virtual const Waveform::realseq_t& channel_response(int channel_ident) const;
-
+            virtual Binning channel_response_binning() const;
             
             // IConfigurable
             virtual void configure(const WireCell::Configuration& config);
