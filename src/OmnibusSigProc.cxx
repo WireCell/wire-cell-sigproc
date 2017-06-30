@@ -7,6 +7,8 @@
 
 #include "WireCellIface/IFieldResponse.h"
 #include "WireCellIface/IFilterWaveform.h"
+#include "WireCellIface/IChannelResponse.h"
+
 
 using namespace WireCell;
 
@@ -338,11 +340,53 @@ void OmnibusSigProc::decon_2D_init(int plane){
   // first round of FFT on time
   c_data = Array::dft_rc(r_data,0);
 
-
+  
   // now apply the ch-by-ch response ...
-  
-
-  
+  bool flag_ch_corr = false;
+  if (flag_ch_corr){
+    auto cr = Factory::find<IChannelResponse>("PerChannelResponse");
+    auto bins = cr->channel_response_binning();
+    assert(bins.binsize()==m_period);
+    //starndard electronics response ... 
+    WireCell::Binning tbins(m_nticks, 0, m_nticks*m_period);
+    Response::ColdElec ce(m_gain, m_shaping_time);
+    auto ewave = ce.generate(tbins);
+    //ch-by-ch electronics response
+    int offset = 0;
+    int nwire = 0;
+    if (plane==0){
+      offset = 0;
+      nwire = nwire_u;
+    }else if (plane==1){
+      offset = nwire_u;
+      nwire = nwire_v;
+    }else{
+      offset = nwire_u + nwire_v;
+      nwire = nwire_w;
+    }
+    std::vector<Waveform::realseq_t> ch_wfs;
+    ch_wfs.resize(nwire);
+    for (int ich=0;ich!=nwire;ich++){
+      ch_wfs.at(ich).resize(m_nticks,0);
+      auto& resp = cr->channel_response(ich+offset);
+      for (size_t i=0;i!=resp.size();i++){
+	ch_wfs.at(ich).at(i) = resp.at(i);
+      }
+      //std::cout << ich << " " << resp.size() << std::endl;
+    }
+    
+    WireCell::Waveform::compseq_t elec = Waveform::dft(ewave);
+    for (int irow = 0; irow != c_data.rows(); irow++){
+      WireCell::Waveform::compseq_t ch_elec = Waveform::dft(ch_wfs.at(irow));
+      for (int icol = 0; icol != c_data.cols(); icol++){
+	if (abs(ch_elec.at(icol))!=0){
+	  c_data(irow,icol) *= elec.at(icol) / ch_elec.at(icol);
+	}else{
+	  c_data(irow,icol) = 0;
+	}
+      }
+    }
+  }
 
 
   
