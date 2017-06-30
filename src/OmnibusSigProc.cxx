@@ -149,7 +149,7 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane, int total_off
 
   int offset=0;
   int offset1=0;
-  int nwire;
+  int nwire = 0;
   if (plane==0){
     offset = total_offset;
     offset1 = 0;
