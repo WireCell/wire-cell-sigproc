@@ -19,8 +19,8 @@ namespace WireCell{
 
       void find_ROI_by_decon_itself(int plane, const Array::array_xxf& r_data);
       void find_ROI_by_decon_itself(int plane, const Array::array_xxf& r_data, const Array::array_xxf& r_data_tight);
-      void extend_ROI_self();
-      void create_ROI_connect_info();
+      void extend_ROI_self(int plane);
+      void create_ROI_connect_info(int plane);
       
       std::vector<std::pair<int,int>>& get_self_rois(int chid) {
 	if (chid < nwire_u){
