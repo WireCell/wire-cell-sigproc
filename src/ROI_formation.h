@@ -3,6 +3,7 @@
 #ifndef WIRECELLSIGPROC_ROIFORMATION
 #define WIRECELLSIGPROC_ROIFORMATION
 
+#include "WireCellUtil/Array.h"
 
 #include <vector>
 
@@ -11,10 +12,14 @@ namespace WireCell{
   namespace SigProc{
     class ROI_formation{
     public:
-      ROI_formation(int nwire_u, int nwire_v, int nwire_w);
+      ROI_formation(int nwire_u, int nwire_v, int nwire_w, float th_factor_ind = 5, float th_factor_col = 5, int pad = 5, float asy = 0.1, int nbins = 9594);
       ~ROI_formation();
 
       void Clear();
+
+      void find_ROI_by_decon_itself(int plane, const Array::array_xxf& r_data);
+      void extend_ROI_self();
+      void create_ROI_connect_info();
       
       std::vector<std::pair<int,int>>& get_self_rois(int chid) {
 	if (chid < nwire_u){
@@ -43,6 +48,13 @@ namespace WireCell{
       
     private:
       int nwire_u, nwire_v, nwire_w;
+      float th_factor_ind, th_factor_col;
+      int pad;
+      float asy;
+      int nbins;
+
+      
+      
       
       std::vector<std::vector<std::pair<int,int>>> self_rois_u; // tight ROIs
       std::vector<std::vector<std::pair<int,int>>> self_rois_v; // tight ROIs
