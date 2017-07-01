@@ -9,6 +9,7 @@
 #include "WireCellIface/IFilterWaveform.h"
 #include "WireCellIface/IChannelResponse.h"
 
+#include "ROI_formation.h"
 
 using namespace WireCell;
 
@@ -507,6 +508,44 @@ void OmnibusSigProc::decon_2D_tightROI(int plane){
   r_data = Array::idft_cr(c_data_afterfilter,0);
   restore_baseline(r_data);
 }
+ 
+void OmnibusSigProc::decon_2D_tighterROI(int plane){
+  // apply software filter on time
+  //std::cout << "Apply Time Filter! " << std::endl;
+  Waveform::realseq_t roi_hf_filter_wf;
+  if (plane ==0){
+    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_U");
+    roi_hf_filter_wf = ncr1->filter_waveform();
+    auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_tighter_lf");
+    auto temp_filter = ncr2->filter_waveform();
+    for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
+      roi_hf_filter_wf.at(i) *= temp_filter.at(i);
+    }
+  }else if (plane==1){
+    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_V");
+    roi_hf_filter_wf = ncr1->filter_waveform();
+    auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_tighter_lf");
+    auto temp_filter = ncr2->filter_waveform();
+    for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
+      roi_hf_filter_wf.at(i) *= temp_filter.at(i);
+    }
+  }else{
+    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_W");
+    roi_hf_filter_wf = ncr1->filter_waveform();
+  }
+
+  Array::array_xxc c_data_afterfilter(r_data.rows(),r_data.cols());
+  for (int irow=0; irow<c_data.rows(); ++irow) {
+    for (int icol=0; icol<c_data.cols(); ++icol) {
+      c_data_afterfilter(irow,icol) = c_data(irow,icol) * roi_hf_filter_wf.at(icol);
+    }
+  }
+  
+  //do the second round of inverse FFT on wire
+  r_data = Array::idft_cr(c_data_afterfilter,0);
+  restore_baseline(r_data);
+}
+ 
 
 void OmnibusSigProc::decon_2D_looseROI(int plane){
   if (plane == 2) return;
@@ -645,6 +684,8 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   init_overall_response();
 
   // create a class for ROIs ... 
+  ROI_formation roi_form(nwire_u, nwire_v, nwire_w, 3, 5, 5, 0.1, m_nticks);
+  
   
   for (int i=0;i!=3;i++){
     // load data into EIGEN matrices ...
@@ -653,8 +694,17 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     decon_2D_init(i);
 
     // Form tight ROIs
-    decon_2D_tightROI(i);
-    // to do
+    if (i!=2){ // induction wire planes
+      decon_2D_tighterROI(i);
+      Array::array_xxf r_data_tight(r_data.rows(),r_data.cols());
+      r_data_tight = r_data;
+      decon_2D_tightROI(i);
+      roi_form.find_ROI_by_decon_itself(i,r_data,r_data_tight);
+    }else{ // collection wire planes
+      decon_2D_tightROI(i);
+      roi_form.find_ROI_by_decon_itself(i,r_data);
+    }
+    
     
     // Form loose ROIs
     decon_2D_looseROI(i);

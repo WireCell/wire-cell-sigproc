@@ -47,9 +47,7 @@ void ROI_formation::Clear(){
 }
 
 
-void ROI_formation::find_ROI_by_decon_itself(int plane, const Array::array_xxf& r_data){
-  
-}
+
 
 void ROI_formation::extend_ROI_self(){
   for (size_t i=0;i!=self_rois_u.size();i++){
@@ -235,5 +233,11 @@ void ROI_formation::create_ROI_connect_info(){
   }
 }
 
+void ROI_formation::find_ROI_by_decon_itself(int plane, const Array::array_xxf& r_data, const Array::array_xxf& r_data_tight){
+  
+}
 
+void ROI_formation::find_ROI_by_decon_itself(int plane, const Array::array_xxf& r_data){
+  
+}
 

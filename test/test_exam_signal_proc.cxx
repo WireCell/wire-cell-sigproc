@@ -486,6 +486,16 @@ int main(int argc, char* argv[])
 	cfg["tau"] = 0.02 * units::megahertz;
 	incrcfg->configure(cfg);
       }
+
+      {
+	auto incrcfg = Factory::lookup<IConfigurable>("LfFilter","ROI_tighter_lf");
+	auto cfg = incrcfg->default_configuration();
+	cfg["nbins"] = 9594;
+	cfg["max_freq"] = 1 * units::megahertz;
+	cfg["tau"] = 0.1 * units::megahertz;
+	incrcfg->configure(cfg);
+      }
+      
       // Loose low frequency filter for ROI
       {
 	auto incrcfg = Factory::lookup<IConfigurable>("LfFilter","ROI_loose_lf");

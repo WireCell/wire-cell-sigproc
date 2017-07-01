@@ -26,7 +26,8 @@ namespace WireCell {
 
       // deconvolution
       void decon_2D_init(int plane); // main decon code 
-      void decon_2D_tightROI(int plane); 
+      void decon_2D_tightROI(int plane);
+      void decon_2D_tighterROI(int plane); 
       void decon_2D_looseROI(int plane);
       void decon_2D_hits(int plane);
       void decon_2D_charge(int plane);
