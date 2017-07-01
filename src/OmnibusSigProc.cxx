@@ -14,7 +14,7 @@ using namespace WireCell;
 
 using namespace WireCell::SigProc;
 
-OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offset, double coarse_time_offset, double period, int nticks, double gain , double shaping_time , double inter_gain , double ADC_mV )
+OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offset, double coarse_time_offset, double period, int nticks, double gain , double shaping_time , double inter_gain , double ADC_mV, bool flag_ch_corr )
   : m_anode_tn (anode_tn)
   , m_fine_time_offset(fine_time_offset)
   , m_coarse_time_offset(coarse_time_offset)
@@ -24,6 +24,7 @@ OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offs
   , m_shaping_time(shaping_time)
   , m_inter_gain(inter_gain)
   , m_ADC_mV(ADC_mV)
+  , m_flag_ch_corr(flag_ch_corr)
 {
   configure(default_configuration());
   // get wires for each plane
@@ -50,6 +51,7 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_inter_gain = get(config,"inter_gain", m_inter_gain);
   m_ADC_mV = get(config,"ADC_mV", m_ADC_mV);
 
+  m_flag_ch_corr = get(config,"ch_corr",m_flag_ch_corr);
   
   m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
   if (!m_anode) {
@@ -92,6 +94,8 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["shaping_time"] = m_shaping_time;
   cfg["inter_gain"] = m_inter_gain;
   cfg["ADC_mV"] = m_ADC_mV;
+
+  cfg["ch_corr"] = m_flag_ch_corr;
   return cfg;
   
 }
@@ -342,8 +346,8 @@ void OmnibusSigProc::decon_2D_init(int plane){
 
   
   // now apply the ch-by-ch response ...
-  bool flag_ch_corr = false;
-  if (flag_ch_corr){
+  //  bool flag_ch_corr = false;
+  if (m_flag_ch_corr){
     auto cr = Factory::find<IChannelResponse>("PerChannelResponse");
     auto bins = cr->channel_response_binning();
     assert(bins.binsize()==m_period);
