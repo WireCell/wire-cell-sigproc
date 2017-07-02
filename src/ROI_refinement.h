@@ -43,6 +43,8 @@ namespace WireCell{
 
       void CleanUpCollectionROIs();
       void CleanUpInductionROIs(int plane);
+      void ShrinkROIs(int plane, ROI_formation& roi_form);
+      void ShrinkROI(SignalROI *roi, ROI_formation& roi_form);
       
       std::map<int,std::vector<std::pair<int,int>>> bad_ch_map;
       
