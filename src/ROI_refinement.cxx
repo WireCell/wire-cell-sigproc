@@ -9,6 +9,35 @@ ROI_refinement::ROI_refinement(int nwire_u, int nwire_v, int nwire_w)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
 {
+  rois_u_tight.resize(nwire_u);
+  rois_u_loose.resize(nwire_u);
+
+  rois_v_tight.resize(nwire_v);
+  rois_v_loose.resize(nwire_v);
+
+  rois_w_tight.resize(nwire_w);
+  
+  for (int i=0;i!=nwire_u;i++){
+    SignalROIList temp_rois;
+    rois_u_tight.at(i) = temp_rois;
+  }
+  for (int i=0;i!=nwire_v;i++){
+    SignalROIList temp_rois;
+    rois_v_tight.at(i) = temp_rois;
+  }
+  for (int i=0;i!=nwire_w;i++){
+    SignalROIList temp_rois;
+    rois_w_tight.at(i) = temp_rois;
+  }
+  
+  for (int i=0;i!=nwire_u;i++){
+    SignalROIList temp_rois;
+    rois_u_loose.at(i) = temp_rois;
+  }
+  for (int i=0;i!=nwire_v;i++){
+    SignalROIList temp_rois;
+    rois_v_loose.at(i) = temp_rois;
+  }
   
 }
 
