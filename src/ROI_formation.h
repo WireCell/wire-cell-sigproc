@@ -13,7 +13,7 @@ namespace WireCell{
   namespace SigProc{
     class ROI_formation{
     public:
-      ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, int nbins = 9594, float th_factor_ind = 3, float th_factor_col = 5, int pad = 5, float asy = 0.1, int rebin =6, double l_factor=3.5, double l_max_th=10000, double l_factor1=0.7, int l_short_length = 3, double l_fixed_threshold = 4000);
+      ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, int nbins = 9594, float th_factor_ind = 3, float th_factor_col = 5, int pad = 5, float asy = 0.1, int rebin =6, double l_factor=3.5, double l_max_th=10000, double l_factor1=0.7, int l_short_length = 3);
       ~ROI_formation();
 
       void Clear();
@@ -23,7 +23,7 @@ namespace WireCell{
       void extend_ROI_self(int plane);
       void create_ROI_connect_info(int plane);
 
-      void find_ROI_loose(int plane, const Array::array_xxf& r_data, int rebin = 6); 
+      void find_ROI_loose(int plane, const Array::array_xxf& r_data); 
       void extend_ROI_loose(int plane);
 
       
@@ -76,7 +76,6 @@ namespace WireCell{
       double l_max_th;
       double l_factor1;
       int l_short_length;
-      double l_fixed_threshold;
       
 
       std::map<int,std::vector<std::pair<int,int>>> bad_ch_map;

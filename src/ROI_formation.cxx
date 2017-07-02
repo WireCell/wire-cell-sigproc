@@ -6,7 +6,7 @@
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
-ROI_formation::ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, int nbins, float th_factor_ind, float th_factor_col, int pad, float asy, int rebin , double l_factor, double l_max_th, double l_factor1, int l_short_length , double l_fixed_threshold )
+ROI_formation::ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, int nbins, float th_factor_ind, float th_factor_col, int pad, float asy, int rebin , double l_factor, double l_max_th, double l_factor1, int l_short_length)
   : nwire_u(nwire_u)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
@@ -20,7 +20,6 @@ ROI_formation::ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwir
   , l_max_th(l_max_th)
   , l_factor1(l_factor1)
   , l_short_length(l_short_length)
-  , l_fixed_threshold(l_fixed_threshold)
 {
   self_rois_u.resize(nwire_u);
   self_rois_v.resize(nwire_v);
@@ -300,11 +299,6 @@ void ROI_formation::find_ROI_by_decon_itself(int plane, const Array::array_xxf& 
     Waveform::realseq_t signal(nbins);
     Waveform::realseq_t signal1(nbins);
     Waveform::realseq_t signal2(nbins);
-
-    for (int icol = 0; icol!=r_data.cols();icol++){
-     
-      
-    }
     
     if (bad_ch_map.find(irow+offset)!=bad_ch_map.end()){
       int ncount = 0;
@@ -512,12 +506,18 @@ int ROI_formation::find_ROI_end(Waveform::realseq_t& signal, int bin, double th 
     }else{
       content = signal.at(end);
     }
-    if (end == int(signal.size())) break;
+    if (end >= int(signal.size())-1) {
+      end = int(signal.size())-1;
+      break;
+    }
   }
 
   while(local_ave(signal,end+1,1) < local_ave(signal,end,1)){
     end++;
-    if (end == int(signal.size())) break;
+    if (end >= int(signal.size())-1) {
+      end = int(signal.size())-1;
+      break;
+    }
   } 
   return end;
 
@@ -533,22 +533,222 @@ int ROI_formation::find_ROI_begin(Waveform::realseq_t& signal, int bin, double t
     }else{
       content = signal.at(begin);
     }
-    if (begin == 0) break;
+    if (begin <= 0) {
+      begin = 0;
+      break;
+    }
   }
   
   // calculate the local average
   // keep going and find the minimum
   while( local_ave(signal,begin-1,1) < local_ave(signal,begin,1)){
     begin --;
-    if (begin == 0) break;
+    if (begin <= 0) {
+      begin = 0;
+      break;
+    }
   }
   
   return begin;
 }
 
 
-void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data, int rebin){
+void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
+  int offset=0;
+  if (plane==0){
+    offset = 0;
+  }else if (plane==1){
+    offset = nwire_u;
+  }else if (plane==2){
+    offset = nwire_u + nwire_v;
+  }
+  
 
+  // form rebinned waveform ... 
+  for (int irow =0; irow!=r_data.rows();irow++){
+    Waveform::realseq_t signal(nbins); // remove bad ones
+    Waveform::realseq_t signal1(nbins); // all signal
+    Waveform::realseq_t signal2(int(nbins/rebin)); // rebinned ones
+    
+    if (bad_ch_map.find(irow+offset)!=bad_ch_map.end()){
+      int ncount = 0;
+      for (int icol=0;icol!=r_data.cols();icol++){
+	bool flag = true;
+	for (size_t i=0; i!=bad_ch_map[irow+offset].size(); i++){
+	  if (icol >= bad_ch_map[irow+offset].at(i).first &&
+	      icol <= bad_ch_map[irow+offset].at(i).second){
+	    flag = false;
+	    break;
+	  }
+	}
+	if (flag){
+	  signal.at(ncount) = r_data(irow,icol);
+	  signal1.at(icol) = r_data(irow,icol);
+	  ncount ++;
+	}else{
+	  signal1.at(icol) = 0;
+	}
+      }
+      signal.resize(ncount);
+    }else{
+      for (int icol = 0; icol!= r_data.cols(); icol++){
+	signal.at(icol) = r_data(irow,icol);
+	signal1.at(icol) = r_data(irow,icol);
+      }
+    }
+            
+    // get rebinned waveform
+    for (size_t i=0;i!=signal2.size();i++){ 
+      double temp = 0;
+      for (int j=0;j!=rebin;j++){
+	temp += signal1.at(rebin * i + j);
+      }
+      signal2.at(i) = temp;
+    }
+    
+    // calculate rms ...
+    float th = cal_RMS(signal) * rebin * l_factor;
+    if (th > l_max_th) th = l_max_th;
+
+    std::vector<std::pair <int,int> > ROIs_1;
+    std::vector<int> max_bins_1;
+    int ntime = signal2.size();
+
+    for (int j=1; j<ntime-1;j++){
+      double content = signal2.at(j);
+      double prev_content = signal2.at(j-1);
+      double next_content = signal2.at(j+1);
+      int flag_ROI = 0;
+      int begin=0;
+      int  end=0;
+      int max_bin=0;
+      if (content > th){
+	begin = find_ROI_begin(signal2,j, th*l_factor1) ;
+	end = find_ROI_end(signal2,j, th*l_factor1) ;
+	max_bin = begin;
+	for (int k=begin;k<=end;k++){
+	  //std::cout << begin << " " << end << " " << max_bin << std::endl;
+	  if (signal2.at(k) > signal2.at(max_bin)){
+	    max_bin = k;
+	  }
+	}
+	flag_ROI = 1;
+      }else{
+	if (content > prev_content && content > next_content){
+	  begin = find_ROI_begin(signal2,j, prev_content);
+	  end = find_ROI_end(signal2,j, next_content );
+	  max_bin = begin;
+	  for (int k=begin;k<=end;k++){
+	    if (signal2.at(k) > signal.at(max_bin)){
+	      max_bin = k;
+	    }
+	  }
+	  if (signal2.at(max_bin) - signal2.at(begin) + signal2.at(max_bin) - signal2.at(end) > th * 2){
+	    flag_ROI = 1;
+	  }
+	  int temp_begin = max_bin-l_short_length;
+	  if (temp_begin < begin) temp_begin = begin;
+	  int temp_end = max_bin + l_short_length;
+	  if (temp_end > end) temp_end = end;
+	  if ((signal2.at(max_bin) - signal2.at(temp_begin) > th *l_factor1 &&
+	       signal2.at(max_bin) - signal2.at(temp_end) > th * l_factor1)){
+	    flag_ROI = 1;
+	  }
+	}
+      }
+      
+       if (flag_ROI == 1){
+    	 if (ROIs_1.size()>0){
+    	   if (begin <= ROIs_1.back().second){
+    	     ROIs_1.back().second = end;
+    	     if (signal2.at(max_bin) > signal2.at(max_bins_1.back()))
+    	       max_bins_1.back() = max_bin;
+    	   }else{
+    	     ROIs_1.push_back(std::make_pair(begin,end));
+    	     max_bins_1.push_back(max_bin);
+    	   }
+    	 }else{
+    	   ROIs_1.push_back(std::make_pair(begin,end));
+    	   max_bins_1.push_back(max_bin);
+    	 }
+	 
+    	 if (end < int(signal2.size())){
+    	   j = end;
+    	 }else{
+    	   j = signal2.size();
+    	 }
+       }
+    }
+     
+    
+     if (ROIs_1.size()==1){
+     }else if (ROIs_1.size()>1){
+       int flag_repeat = 0;
+       //  cout << "Xin1: " << ROIs_1.size() << endl;;
+       while(flag_repeat){
+    	 flag_repeat = 1;
+    	 for (int k=0;k<int(ROIs_1.size()-1);k++){
+    	   int begin = ROIs_1.at(k).first;
+    	   int end = ROIs_1.at(k+1).second;
+	   
+    	   double begin_content = signal2.at(begin);
+    	   double end_content = signal2.at(end);
+	  
+    	   int begin_1 = ROIs_1.at(k).second;
+    	   int end_1 = ROIs_1.at(k+1).first;	
+	  
+    	   int flag_merge = 1;
+    	   //Double_t sum1 = 0, sum2 = 0;
+    	   for (int j=begin_1; j<=end_1;j++){
+    	     double current_content = signal2.at(j);
+    	     double content = current_content - ((end_content - begin_content)*(j*1.-begin)/(end-begin*1.) + begin_content);
+	    
+    	     if (content < th*l_factor1){
+    	       flag_merge = 0;
+    	       break;
+    	     }
+    	     // sum1 += content;
+    	     // sum2 ++;
+    	     // cout << j << " " << content << endl;
+    	   }
+    	   // if (sum2 >0){
+    	   //   if (sum1/sum2 < th*factor1) flag_merge = 0;
+    	   // }
+	   
+    	   if (flag_merge == 1){
+    	     ROIs_1.at(k).second = ROIs_1.at(k+1).second;
+    	     ROIs_1.erase(ROIs_1.begin()+k+1);
+    	     flag_repeat = 1;
+    	     break;
+    	   }
+    	 }
+    	 //	cout << "Xin2: " << ROIs_1.size() << endl;
+	 
+       }
+     }
+     
+     // scale back ... 
+     for (int j = 0; j!=int(ROIs_1.size());j++){
+       int begin = ROIs_1.at(j).first * rebin;
+       int end = ROIs_1.at(j).second *rebin + (rebin-1);
+       
+       ROIs_1.at(j).first = begin;
+       ROIs_1.at(j).second = end;
+       
+       //if (chid ==1195) std::cout << ROIs_1.at(j).first << " " << ROIs_1.at(j).second << std::endl;
+     }
+     
+
+     
+     if (plane==0){
+       loose_rois_u.at(irow) = ROIs_1;
+     }else if (plane==1){
+       loose_rois_v.at(irow) = ROIs_1;
+     }else{
+       loose_rois_w.at(irow) = ROIs_1;
+     }
+     //std::cout << plane << " " << irow << " " << ROIs_1.size() << std::endl;
+  }
   
   extend_ROI_loose(plane);
 }

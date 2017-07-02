@@ -54,9 +54,7 @@ namespace WireCell {
       // bins
       double m_period;
       int m_nticks;
-
       
-
       // gain, shaping time, other applification factors
       double m_gain, m_shaping_time;
       double m_inter_gain, m_ADC_mV;

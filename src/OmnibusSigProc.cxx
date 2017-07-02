@@ -684,7 +684,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   init_overall_response();
 
   // create a class for ROIs ... 
-  ROI_formation roi_form(cmm,nwire_u, nwire_v, nwire_w, 3, 5, 5, 0.1, m_nticks);
+  ROI_formation roi_form(cmm,nwire_u, nwire_v, nwire_w, m_nticks, 3, 5, 5, 0.1,6,3.5,10000,0.7,3);
   
   
   for (int i=0;i!=3;i++){
@@ -693,6 +693,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     // initial decon ... 
     decon_2D_init(i);
 
+    
     // Form tight ROIs
     if (i!=2){ // induction wire planes
       decon_2D_tighterROI(i);
@@ -708,7 +709,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     // Form loose ROIs
     if (i!=2){
       decon_2D_looseROI(i);
-      //      roi_form.find_ROI_loose(i,r_data);
+      roi_form.find_ROI_loose(i,r_data);
     }
    
     
