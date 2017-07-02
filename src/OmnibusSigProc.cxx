@@ -15,7 +15,7 @@ using namespace WireCell;
 
 using namespace WireCell::SigProc;
 
-OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offset, double coarse_time_offset, double period, int nticks, double gain , double shaping_time , double inter_gain , double ADC_mV, bool flag_ch_corr )
+OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offset, double coarse_time_offset, double period, int nticks, double gain , double shaping_time , double inter_gain , double ADC_mV, bool flag_ch_corr, float th_factor_ind, float th_factor_col, int pad, float asy, int rebin, double l_factor, double l_max_th, double l_factor1, int l_short_length )
   : m_anode_tn (anode_tn)
   , m_fine_time_offset(fine_time_offset)
   , m_coarse_time_offset(coarse_time_offset)
@@ -26,6 +26,15 @@ OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offs
   , m_inter_gain(inter_gain)
   , m_ADC_mV(ADC_mV)
   , m_flag_ch_corr(flag_ch_corr)
+  , m_th_factor_ind(th_factor_ind)
+  , m_th_factor_col(th_factor_col)
+  , m_pad(pad)
+  , m_asy(asy)
+  , m_rebin(rebin)
+  , m_l_factor(l_factor)
+  , m_l_max_th(l_max_th)
+  , m_l_factor1(l_factor1)
+  , m_l_short_length(l_short_length)
 {
   configure(default_configuration());
   // get wires for each plane
@@ -53,6 +62,16 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_ADC_mV = get(config,"ADC_mV", m_ADC_mV);
 
   m_flag_ch_corr = get(config,"ch_corr",m_flag_ch_corr);
+
+  m_th_factor_ind = get(config,"troi_ind_th_factor",m_th_factor_ind);
+  m_th_factor_col = get(config,"troi_col_th_factor",m_th_factor_col);
+  m_pad = get(config,"troi_pad",m_pad);
+  m_asy = get(config,"troi_asy",m_asy);
+  m_rebin = get(config,"lroi_rebin",m_rebin);
+  m_l_factor = get(config,"lroi_th_factor",m_l_factor);
+  m_l_max_th = get(config,"lroi_max_th",m_l_max_th);
+  m_l_factor1 = get(config,"lori_th_factor1",m_l_factor1);
+  m_l_short_length = get(config,"lroi_short_length",m_l_short_length);
   
   m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
   if (!m_anode) {
@@ -97,6 +116,19 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["ADC_mV"] = m_ADC_mV;
 
   cfg["ch_corr"] = m_flag_ch_corr;
+
+  cfg["troi_ind_th_factor"] = m_th_factor_ind;
+  cfg["troi_col_th_factor"] = m_th_factor_col;
+  cfg["troi_pad"] = m_pad;
+  cfg["troi_asy"] = m_asy;
+  cfg["lroi_rebin"] = m_rebin; 
+  cfg["lroi_th_factor"] = m_l_factor;
+  cfg["lroi_max_th"] = m_l_max_th;
+  cfg["lori_th_factor1"] = m_l_factor1;
+  cfg["lroi_short_length"] = m_l_short_length; 
+
+      
+      
   return cfg;
   
 }
@@ -684,7 +716,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   init_overall_response();
 
   // create a class for ROIs ... 
-  ROI_formation roi_form(cmm,nwire_u, nwire_v, nwire_w, m_nticks, 3, 5, 5, 0.1,6,3.5,10000,0.7,3);
+  ROI_formation roi_form(cmm,nwire_u, nwire_v, nwire_w, m_nticks, m_th_factor_ind, m_th_factor_col, m_pad, m_asy, m_rebin, m_l_factor, m_l_max_th, m_l_factor1, m_l_short_length);
   
   
   for (int i=0;i!=3;i++){
