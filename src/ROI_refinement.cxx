@@ -79,3 +79,8 @@ void ROI_refinement::Clear(){
   back_rois.clear();
   contained_rois.clear();
 }
+
+
+void ROI_refinement::load_data(int plane, const Array::array_xxf& r_data, ROI_formation& roi_form){
+  
+}

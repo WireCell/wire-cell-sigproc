@@ -2,6 +2,8 @@
 #define WIRECELLSIGPROC_ROIREFINEMENT
 
 #include "SignalROI.h"
+#include "ROI_formation.h"
+#include "WireCellUtil/Array.h"
 
 #include <vector>
 #include <map>
@@ -14,6 +16,9 @@ namespace WireCell{
       ~ROI_refinement();
 
       void Clear();
+
+      // initialize the ROIs
+      void load_data(int plane, const Array::array_xxf& r_data, ROI_formation& roi_form);
       
       SignalROIChList& get_u_rois(){return rois_u_loose;};
       SignalROIChList& get_v_rois(){return rois_v_loose;};
