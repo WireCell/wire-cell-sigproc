@@ -80,6 +80,46 @@ void ROI_refinement::Clear(){
   contained_rois.clear();
 }
 
+void ROI_refinement::unlink(SignalROI* prev_roi, SignalROI* next_roi){
+  if (front_rois.find(prev_roi)!=front_rois.end()){
+    SignalROISelection& temp_rois = front_rois[prev_roi];
+    auto it = find(temp_rois.begin(),temp_rois.end(),next_roi);
+    if (it != temp_rois.end())
+      temp_rois.erase(it);
+  }
+  if (back_rois.find(next_roi)!=back_rois.end()){
+    SignalROISelection& temp_rois = back_rois[next_roi];
+    auto it = find(temp_rois.begin(),temp_rois.end(),prev_roi);
+    if (it != temp_rois.end())
+      temp_rois.erase(it);
+  }
+}
+
+void ROI_refinement::link(SignalROI* prev_roi, SignalROI* next_roi){
+  if (front_rois.find(prev_roi)!=front_rois.end()){
+    SignalROISelection& temp_rois = front_rois[prev_roi];
+    auto it = find(temp_rois.begin(),temp_rois.end(),next_roi);
+    if (it == temp_rois.end())
+      temp_rois.push_back(next_roi);
+  }else{
+    SignalROISelection temp_rois;
+    temp_rois.push_back(next_roi);
+    front_rois[prev_roi] = temp_rois;
+  }
+
+  if (back_rois.find(next_roi)!=back_rois.end()){
+    SignalROISelection& temp_rois = back_rois[next_roi];
+    auto it = find(temp_rois.begin(),temp_rois.end(),prev_roi);
+    if (it == temp_rois.end())
+      temp_rois.push_back(prev_roi);
+  }else{
+    SignalROISelection temp_rois;
+    temp_rois.push_back(prev_roi);
+    back_rois[next_roi] = temp_rois;
+  }
+}
+
+
 
 void ROI_refinement::load_data(int plane, const Array::array_xxf& r_data, ROI_formation& roi_form){
   

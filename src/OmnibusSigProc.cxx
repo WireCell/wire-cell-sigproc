@@ -505,6 +505,33 @@ void OmnibusSigProc::decon_2D_init(int plane){
   
 }
 
+void OmnibusSigProc::decon_2D_ROI_refine(int plane){
+   // apply software filter on time
+  //std::cout << "Apply Time Filter! " << std::endl;
+  Waveform::realseq_t roi_hf_filter_wf;
+  if (plane ==0){
+    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_U");
+    roi_hf_filter_wf = ncr1->filter_waveform();
+  }else if (plane==1){
+    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_V");
+    roi_hf_filter_wf = ncr1->filter_waveform();
+  }else{
+    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_W");
+    roi_hf_filter_wf = ncr1->filter_waveform();
+  }
+
+  Array::array_xxc c_data_afterfilter(r_data.rows(),r_data.cols());
+  for (int irow=0; irow<c_data.rows(); ++irow) {
+    for (int icol=0; icol<c_data.cols(); ++icol) {
+      c_data_afterfilter(irow,icol) = c_data(irow,icol) * roi_hf_filter_wf.at(icol);
+    }
+  }
+  
+  //do the second round of inverse FFT on wire
+  r_data = Array::idft_cr(c_data_afterfilter,0);
+  restore_baseline(r_data);
+}
+
 void OmnibusSigProc::decon_2D_tightROI(int plane){
   // apply software filter on time
   //std::cout << "Apply Time Filter! " << std::endl;
@@ -743,11 +770,11 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     if (i!=2){
       decon_2D_looseROI(i);
       roi_form.find_ROI_loose(i,r_data);
+      decon_2D_ROI_refine(i);
     }
-   
-    
     // Refine ROIs
-    // to do
+    roi_refine.load_data(i,r_data,roi_form);
+
 
     // merge results ...
     decon_2D_hits(i);

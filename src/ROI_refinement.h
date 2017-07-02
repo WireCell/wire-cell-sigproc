@@ -29,6 +29,9 @@ namespace WireCell{
       int nwire_v;
       int nwire_w;
       
+      void unlink(SignalROI *prev_roi, SignalROI *next_roi);
+      void link(SignalROI *prev_roi, SignalROI *next_roi);
+
       
       SignalROIChList rois_u_tight;
       SignalROIChList rois_v_tight;
