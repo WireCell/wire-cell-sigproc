@@ -5,7 +5,7 @@
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
-ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th, int pad, int break_roi_loop)
+ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th, int pad, int break_roi_loop, float th_peak, float sep_peak, float low_peak_sep_threshold_pre)
   : nwire_u(nwire_u)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
@@ -14,6 +14,9 @@ ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nw
   , fake_signal_high_th(fake_signal_high_th)
   , pad(pad)
   , break_roi_loop(break_roi_loop)
+  , th_peak(th_peak)
+  , sep_peak(sep_peak)
+  , low_peak_sep_threshold_pre(low_peak_sep_threshold_pre)
 {
   rois_u_tight.resize(nwire_u);
   rois_u_loose.resize(nwire_u);
@@ -1228,9 +1231,9 @@ void ROI_refinement::ShrinkROI(SignalROI *roi, ROI_formation& roi_form){
   
   float threshold1=0;
   if (plane==0){
-    threshold1 = roi_form.get_uplane_rms().at(chid) * 3.0;
+    threshold1 = roi_form.get_uplane_rms().at(chid) * th_factor;
   }else if (plane==1){
-    threshold1 = roi_form.get_vplane_rms().at(chid-nwire_u)*3.0;
+    threshold1 = roi_form.get_vplane_rms().at(chid-nwire_u)* th_factor;
   }
   
   int channel_save = 1240;
@@ -1467,7 +1470,330 @@ void ROI_refinement::ShrinkROIs(int plane, ROI_formation& roi_form){
 }
 
 void ROI_refinement::BreakROI(SignalROI *roi, float rms){
+  // main algorithm 
+  int start_bin = roi->get_start_bin();
+  int end_bin = roi->get_end_bin();
+  
+  if (start_bin <0 || end_bin <0 ) return;
+  // if (roi->get_chid()==1240){
+  //   std::cout << "xin: " << start_bin << " " << end_bin << std::endl;
+  // }
 
+  Waveform::realseq_t temp_signal(end_bin-start_bin+1,0);
+  // TH1F *htemp = new TH1F("htemp","htemp",end_bin-start_bin+1,start_bin,end_bin+1);
+  std::vector<float>& contents = roi->get_contents();
+  for (size_t i=0;i!=temp_signal.size();i++){
+    temp_signal.at(i) = contents.at(i);
+    //    htemp->SetBinContent(i+1,contents.at(i));
+  }
+  
+  // float th_peak = 3.0;
+  // float sep_peak = 6.0;
+  float low_peak_sep_threshold = low_peak_sep_threshold_pre; // electrons
+  if (low_peak_sep_threshold < sep_peak * rms) 
+    low_peak_sep_threshold = sep_peak * rms;
+  std::set<int> saved_boundaries;
+  
+  // TSpectrum *s = new TSpectrum(200);
+  // Int_t nfound = s->Search(htemp,2,"nobackground new",0.1);
+
+  // if (nfound > 1){
+  //   Int_t npeaks = s->GetNPeaks();
+  //   Double_t *peak_pos = s->GetPositionX();
+  //   Double_t *peak_height = s->GetPositionY();
+  //   int order_peak_pos[205];
+  //   int npeaks_threshold = 0;
+  //   for (Int_t j=0;j!=npeaks;j++){
+  //     order_peak_pos[j] = *(peak_pos+j);
+  //     if (*(peak_height+j)>th_peak*rms){
+  // 	npeaks_threshold ++;
+  //     }
+  //   }
+  //   if (npeaks_threshold >1){
+  //     std::sort(order_peak_pos,order_peak_pos + npeaks);
+  //     float valley_pos[205];
+  //     valley_pos[0] = start_bin;
+
+  //     // find the first real valley
+  //     float min = 1e9;
+  //     for (int k=0; k< order_peak_pos[0]-start_bin;k++){
+  //      	if (htemp->GetBinContent(k+1) < min){
+  //      	  min = htemp->GetBinContent(k+1);
+  // 	  valley_pos[0] = k+start_bin;
+  //      	}
+  //     }
+  //     if (valley_pos[0] != start_bin){
+  // 	for (int j=npeaks-1;j>=0;j--){
+  // 	  order_peak_pos[j+1] = order_peak_pos[j];
+  // 	}
+  // 	npeaks ++;
+  // 	order_peak_pos[0] = start_bin;
+  // 	for (int j=start_bin; j!=valley_pos[0];j++){
+  // 	  if (htemp->GetBinContent(j-start_bin+1) > htemp->GetBinContent(order_peak_pos[0]-start_bin+1))
+  // 	    order_peak_pos[0] = j;
+  // 	}
+  // 	valley_pos[0] = start_bin;
+  //     }
+
+  //     for (Int_t j=0;j!=npeaks-1;j++){
+  // 	Float_t min = 1e9;
+  // 	valley_pos[j+1] = order_peak_pos[j];
+  // 	for (Int_t k = order_peak_pos[j]-start_bin; k< order_peak_pos[j+1]-start_bin;k++){
+  // 	  if (htemp->GetBinContent(k+1) < min){
+  // 	    min = htemp->GetBinContent(k+1);
+  // 	    valley_pos[j+1] = k+start_bin;
+  // 	  }
+  // 	}
+  //     }
+
+  //     //find the end ... 
+  //     valley_pos[npeaks] = end_bin;
+  //     min = 1e9;
+  //     for (int k=order_peak_pos[npeaks-1]-start_bin; k<= end_bin-start_bin;k++){
+  //     	if (htemp->GetBinContent(k+1) < min){
+  //     	  min = htemp->GetBinContent(k+1);
+  //     	  valley_pos[npeaks] = k+start_bin;
+  //     	}
+  //     }
+  //     if (valley_pos[npeaks]!=end_bin){
+  // 	npeaks ++;
+  // 	valley_pos[npeaks] = end_bin;
+  // 	order_peak_pos[npeaks-1] = end_bin;
+  // 	for (int j=valley_pos[npeaks-1];j!=valley_pos[npeaks];j++){
+  // 	  if (htemp->GetBinContent(j-start_bin+1) > htemp->GetBinContent(order_peak_pos[npeaks-1] -start_bin+1))
+  // 	    order_peak_pos[npeaks-1] = j;
+  // 	}
+  //     }
+      
+      
+  //     // if (roi->get_chid() == 1195 && roi->get_plane() == WirePlaneType_t(0)){
+  //     // 	for (int j=0;j!=npeaks;j++){
+  //     // 	  std::cout << valley_pos[j] << " " << htemp->GetBinContent(valley_pos[j]-start_bin+1)<< " " << order_peak_pos[j] << " " << htemp->GetBinContent( order_peak_pos[j]-start_bin+1) << " " << valley_pos[j+1] << " " << htemp->GetBinContent(valley_pos[j+1] - start_bin+1)<< " " << rms * sep_peak << std::endl ;
+  //     // 	}
+  //     // }
+	
+
+      
+  //     // need to organize the peaks and valleys ... 
+  //     float valley_pos1[205];
+  //     float peak_pos1[205];
+  //     int npeaks1 = 0;
+  //     // fill in the first valley;
+  //     valley_pos1[0] = valley_pos[0];
+  //     for (int j=0;j<npeaks;j++){
+  // 	if (npeaks1 >0){
+  // 	  // find the lowest valley except the first peak, except the first one
+  // 	  if (htemp->GetBinContent(valley_pos[j]-start_bin+1)< htemp->GetBinContent(valley_pos1[npeaks1]-start_bin+1)){
+  // 	    valley_pos1[npeaks1] = valley_pos[j];
+  // 	  }
+  // 	}
+
+  // 	// if (roi->get_chid() == 1195 && roi->get_plane() == WirePlaneType_t(0)){
+  // 	//   std::cout << "c: " << order_peak_pos[j] << " " << htemp->GetBinContent(order_peak_pos[j]-start_bin+1) << " " << valley_pos1[npeaks1] << " " << htemp->GetBinContent(valley_pos1[npeaks1]-start_bin+1) << std::endl;
+  // 	// }
+
+  // 	// find the next peak
+  // 	if ( htemp->GetBinContent(order_peak_pos[j]-start_bin+1) - htemp->GetBinContent(valley_pos1[npeaks1]-start_bin+1) > low_peak_sep_threshold){
+  // 	  peak_pos1[npeaks1] = order_peak_pos[j] ;
+  // 	  npeaks1 ++;
+  // 	  int flag1 = 0;
+
+  // 	  for (int k=j+1;k!=npeaks+1;k++){
+  // 	    // find the highest peak before ... 
+  // 	    if (k<=npeaks){
+  // 	      if (htemp->GetBinContent(order_peak_pos[k-1]-start_bin+1) > htemp->GetBinContent(peak_pos1[npeaks1-1]-start_bin+1))
+  // 		peak_pos1[npeaks1-1] = order_peak_pos[k-1];
+  // 	    }
+
+  // 	    if (htemp->GetBinContent(peak_pos1[npeaks1-1]-start_bin+1) - htemp->GetBinContent(valley_pos[k]-start_bin+1) > low_peak_sep_threshold){
+  // 	      valley_pos1[npeaks1] = valley_pos[k];
+  // 	      j = k-1;
+  // 	      flag1 = 1;
+  // 	      break;
+  // 	    }
+  // 	    // find the next valley
+  // 	  }
+  // 	  if (flag1 == 0){
+  // 	    valley_pos1[npeaks1] = valley_pos[npeaks];
+  // 	    j = npeaks;
+  // 	  }
+
+  // 	  // if (roi->get_chid() == 1240 && roi->get_plane() == WirePlaneType_t(0))
+  // 	  //   std::cout << "c: " << npeaks << " " << valley_pos1[npeaks1-1] << " " << peak_pos1[npeaks1-1] << " " << valley_pos1[npeaks1] << " " << rms * sep_peak << std::endl;
+  // 	}
+  //     }
+  //     // fill the last valley
+  //     valley_pos1[npeaks1] = valley_pos[npeaks];
+  //     //std::cout << roi->get_plane() << " " << roi->get_chid() << " " << npeaks << " " << npeaks1 << " " ;
+  //     //std::cout << start_bin << " " << end_bin << std::endl;
+
+
+  //     // if (roi->get_chid() == 1240 && roi->get_plane() == WirePlaneType_t(0)){
+  //     // 	for (int j=0;j!=npeaks1;j++){
+  //     // 	  std::cout << valley_pos1[j] << " " << peak_pos1[j] << " " <<  valley_pos1[j+1] << std::endl ;
+  //     // 	}
+  //     // }
+
+
+     
+
+  //     for (Int_t j=0;j!=npeaks1;j++){
+  // 	Int_t start_pos = valley_pos1[j];
+  // 	Int_t end_pos = valley_pos1[j+1];
+	
+  // 	// if (roi->get_chid()==1195)
+  // 	//   std::cout << "b " << start_pos << " " << end_pos << std::endl;
+	
+  // 	saved_boundaries.insert(start_pos);
+  // 	saved_boundaries.insert(end_pos);
+  //     }
+            
+  //     TH1F *htemp1 = (TH1F*)htemp->Clone("htemp1");
+  //     htemp->Reset();
+  //     for (Int_t j=0;j!=npeaks1;j++){
+  // 	int flag = 0;
+  // 	Int_t start_pos = valley_pos1[j];
+  // 	Double_t start_content = htemp1->GetBinContent(valley_pos1[j]-start_bin+1);
+  // 	Int_t end_pos = valley_pos1[j+1];
+  // 	Double_t end_content = htemp1->GetBinContent(valley_pos1[j+1]-start_bin+1);
+	
+  // 	//	std::cout << "a " << start_pos << " " << end_pos << std::endl;
+
+  // 	if (saved_boundaries.find(start_pos) != saved_boundaries.end() ||
+  // 	    saved_boundaries.find(end_pos) != saved_boundaries.end()){
+  // 	  // if (roi->get_chid() == 1240 && roi->get_plane() == WirePlaneType_t(0))
+  // 	  //   std::cout << "d: " << start_pos << " " << end_pos << std::endl;
+
+  // 	  for (Int_t k = start_pos; k!=end_pos+1;k++){
+  // 	    Double_t temp_content = htemp1->GetBinContent(k-start_bin+1) - (start_content + (end_content-start_content) * (k-start_pos) / (end_pos - start_pos));
+  // 	    htemp->SetBinContent(k-start_bin+1,temp_content);
+  // 	  }
+  // 	}
+  //     }
+  //     delete htemp1;
+
+  //     // loop through the tight ROIs it contains ...
+  //     // if nothing in the range, add things back ... 
+  //     // if (roi->get_chid() == 1151){
+  //     //  	std::cout << "Break:  "  << roi->get_chid() << " " << start_bin << " " << end_bin << " " << nfound << std::endl;
+  //     //  	std::cout << npeaks1 << std::endl;
+  //     // 	std::cout << contained_rois[roi].size() << std::endl;
+      
+  //     for (auto it = contained_rois[roi].begin(); it!= contained_rois[roi].end(); it++){
+  // 	SignalROI *temp_roi = *it;
+  // 	int temp_flag = 0;
+  // 	for (int i=temp_roi->get_start_bin(); i<= temp_roi->get_end_bin(); i++){
+  // 	  if (htemp->GetBinContent(i-roi->get_start_bin()+1)!=0){
+  // 	    temp_flag = 1;
+  // 	    break;
+  // 	  }
+  // 	}
+  // 	//	std::cout << temp_flag << std::endl;
+  // 	if (temp_flag==0){
+  // 	  for (int i=temp_roi->get_start_bin(); i<= temp_roi->get_end_bin(); i++){
+  // 	    htemp->SetBinContent(i-roi->get_start_bin()+1, temp_roi->get_contents().at(i-temp_roi->get_start_bin()));
+  // 	  }
+  // 	}
+	
+  //     }
+  //     // } // if (1151)
+
+  //   }
+  // }
+  
+  
+  // // if (roi->get_chid() == 1151){
+  // //   std::cout << "Break:  "  << roi->get_chid() << " " << start_bin << " " << end_bin << " " << nfound << std::endl;
+  // //   for (int i=0;i<htemp->GetNbinsX();i++){
+  // //     std::cout << htemp->GetBinContent(i+1) <<std::endl;
+  // //   }
+  // // }
+
+  // for (int qx = 0; qx!=2; qx++){
+  //   // Now we should go through the system again and re-adjust the content
+  //   std::vector<std::pair<int,int>> bins;
+  //   for (int i=0;i<htemp->GetNbinsX();i++){
+  //     if (htemp->GetBinContent(i+1) < 3*rms){
+  // 	int start = i;
+  // 	int end = i;
+  // 	for (int j=i+1;j<htemp->GetNbinsX();j++){
+  // 	  if (htemp->GetBinContent(j+1) < 3*rms){
+  // 	    end = j;
+  // 	  }else{
+  // 	    break;
+  // 	  }
+  // 	}
+  // 	bins.push_back(std::make_pair(start,end));
+  // 	// if (roi->get_chid() == 1308)
+  // 	//   std::cout << qx << " " <<  start+start_bin << " " << end + start_bin << " " << 3*rms << " " << htemp->GetBinContent(6529-start_bin+1) << std::endl;
+  // 	i = end;
+  //     }
+  //   }
+
+
+  //   std::vector<int> saved_b;
+  //   for (int i=0;i!=bins.size();i++){
+  //     int start = bins.at(i).first;
+  //     int end = bins.at(i).second;
+  //     // find minimum or zero
+  //     float min = 1e9;
+  //     int bin_min = start;
+  //     for (int j=start;j<=end;j++){
+  // 	if (fabs(htemp->GetBinContent(j+1))< 1e-3){
+  // 	  bin_min = j;
+  // 	  break;
+  // 	}else{
+  // 	  if (htemp->GetBinContent(j+1) < min){
+  // 	    min = htemp->GetBinContent(j+1);
+  // 	    bin_min = j;
+  // 	  }
+  // 	}
+  //     }
+      
+  //     // if (roi->get_chid() == 1308)
+  //     // 	std::cout << bin_min+start_bin << std::endl;
+      
+  //     saved_b.push_back(bin_min);
+  //   }
+
+  //   // test
+    
+  //   if (saved_b.size() >=0){
+  //     TH1F *htemp1 = (TH1F*)htemp->Clone("htemp1");
+  //     htemp->Reset();
+  //     // std::cout << saved_b.size() << " " << bins.size() << " " << htemp->GetNbinsX() << std::endl;
+  //     for (Int_t j=0;j<int(saved_b.size()-1);j++){
+  // 	// if (j==0)
+  // 	//   std::cout << saved_b.size() << " " << j << std::endl;
+
+	
+  // 	int flag = 0;
+  // 	int start_pos = saved_b.at(j);
+  // 	float start_content = htemp1->GetBinContent(start_pos+1);
+  // 	int end_pos = saved_b.at(j+1);
+  // 	float end_content = htemp1->GetBinContent(end_pos+1);
+	
+  // 	for (Int_t k = start_pos; k!=end_pos+1;k++){
+  // 	  Double_t temp_content = htemp1->GetBinContent(k+1) - (start_content + (end_content-start_content) * (k-start_pos) / (end_pos - start_pos));
+  // 	  htemp->SetBinContent(k+1,temp_content);
+  // 	}
+  //     }
+  //     delete htemp1;
+  //   }
+  // }
+
+  // // get back to the original content 
+  // for (Int_t i=0;i!=htemp->GetNbinsX();i++){
+  //   contents.at(i) = htemp->GetBinContent(i+1);
+  // }
+  
+  
+
+
+
+  //  delete s;
+  //  delete htemp;
+   
 }
 
 void ROI_refinement::BreakROI1(SignalROI *roi){

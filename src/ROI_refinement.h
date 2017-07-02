@@ -13,7 +13,7 @@ namespace WireCell{
   namespace SigProc{
     class ROI_refinement{
     public:
-      ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor = 3.0, float fake_signal_low_th = 1200, float fake_signal_high_th = 1500, int pad = 5, int break_roi_loop = 2);
+      ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor = 3.0, float fake_signal_low_th = 1200, float fake_signal_high_th = 1500, int pad = 5, int break_roi_loop = 2, float th_peak = 3.0, float sep_peak = 6.0, float low_peak_sep_threshold_pre = 1200);
       ~ROI_refinement();
 
       void Clear();
@@ -36,6 +36,9 @@ namespace WireCell{
       float fake_signal_high_th;
       int pad;
       int break_roi_loop;
+      float th_peak;
+      float sep_peak;
+      float low_peak_sep_threshold_pre;
       
       void unlink(SignalROI *prev_roi, SignalROI *next_roi);
       void link(SignalROI *prev_roi, SignalROI *next_roi);
