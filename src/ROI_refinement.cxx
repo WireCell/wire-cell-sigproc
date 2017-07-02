@@ -5,13 +5,15 @@
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
-ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th)
+ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th, int pad, int break_roi_loop)
   : nwire_u(nwire_u)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
   , th_factor(th_factor)
   , fake_signal_low_th(fake_signal_low_th)
   , fake_signal_high_th(fake_signal_high_th)
+  , pad(pad)
+  , break_roi_loop(break_roi_loop)
 {
   rois_u_tight.resize(nwire_u);
   rois_u_loose.resize(nwire_u);
@@ -1333,7 +1335,6 @@ void ROI_refinement::ShrinkROI(SignalROI *roi, ROI_formation& roi_form){
   // }
   
   // get the first bin, and last bin, add pad
-  int pad = 5;
   int new_start_bin=start_bin;
   int new_end_bin=end_bin;
   for (size_t i=0;i!= temp_signal.size(); i++){
@@ -1468,9 +1469,123 @@ void ROI_refinement::ShrinkROIs(int plane, ROI_formation& roi_form){
 void ROI_refinement::BreakROI(SignalROI *roi, float rms){
 
 }
+
 void ROI_refinement::BreakROI1(SignalROI *roi){
+  int start_bin = roi->get_start_bin();
+  int end_bin = roi->get_end_bin();
+  if (start_bin <0 || end_bin < 0) return;
+
+  Waveform::realseq_t temp_signal(end_bin-start_bin+1,0);
+  // TH1F *htemp = new TH1F("htemp","htemp",end_bin-start_bin+1,start_bin,end_bin+1);
+  std::vector<float>& contents = roi->get_contents();
+  for (size_t i=0;i!=temp_signal.size();i++){
+    temp_signal.at(i) = contents.at(i);
+    //   htemp->SetBinContent(i+1,contents.at(i));
+  }
+
+  // now create many new ROIs
+  std::vector<int> bins;
+  for (size_t i=0;i!= temp_signal.size(); i++){
+    if (fabs(temp_signal.at(i))<1e-3)
+      bins.push_back(i+start_bin);
+  }
+  int chid = roi->get_chid();
+  int plane = roi->get_plane();
+  SignalROISelection new_rois;
+
+  // if (chid == 1274)
+  //   std::cout << "BreakROI1: " << chid << " " << roi->get_start_bin() << " " << roi->get_end_bin() << " " << bins.size()  << " " << htemp->GetBinContent(1) << " " << htemp->GetBinContent(end_bin-start_bin+1) << std::endl;
+
+  Waveform::realseq_t signal(end_bin+1,0);
+  //  TH1F *h1 = new TH1F("h1","h1",end_bin+1,0,end_bin+1);
+  for (int i=0;i!=int(bins.size()-1);i++){
+    int start_bin1 = bins.at(i);
+    int end_bin1 = bins.at(i+1);
+    // if (chid == 1274)
+    //   std::cout << start_bin1 << " " << end_bin1 << std::endl;
+    signal.clear();
+    signal.resize(end_bin+1,0);
+    //    h1->Reset();
+    for (int j=start_bin1;j<=end_bin1;j++){
+      signal.at(j) = temp_signal.at(j-start_bin);
+      //      h1->SetBinContent(j+1,htemp->GetBinContent(j-start_bin+1));
+    }
+    if (start_bin1 >=0 && end_bin1 >start_bin1){
+      SignalROI *sub_roi = new SignalROI(plane,chid,start_bin1,end_bin1,signal);
+      new_rois.push_back(sub_roi);
+    }
+  }
+
+  // update the list 
+  if (chid < nwire_u){
+    auto it = std::find(rois_u_loose.at(chid).begin(),rois_u_loose.at(chid).end(),roi);
+    rois_u_loose.at(chid).erase(it);
+    for (size_t i=0;i!=new_rois.size();i++){
+      rois_u_loose.at(chid).push_back(new_rois.at(i));
+    }
+  }else if (chid < nwire_u+nwire_v){
+    auto it = std::find(rois_v_loose.at(chid-nwire_u).begin(),rois_v_loose.at(chid-nwire_u).end(),roi);
+    rois_v_loose.at(chid-nwire_u).erase(it);
+    for (size_t i=0;i!=new_rois.size();i++){
+      rois_v_loose.at(chid-nwire_u).push_back(new_rois.at(i));
+    }
+  }
   
+  // update all the maps 
+  // update front map
+  if (front_rois.find(roi)!=front_rois.end()){
+    SignalROISelection next_rois = front_rois[roi];
+    for (size_t i=0;i!=next_rois.size();i++){
+      //unlink the current roi
+      unlink(roi,next_rois.at(i));
+      //loop new rois and link them
+      for (size_t j=0;j!=new_rois.size();j++){
+	if (new_rois.at(j)->overlap(next_rois.at(i)))
+	  link(new_rois.at(j),next_rois.at(i));
+      }
+    }
+    front_rois.erase(roi);
+  }
+  // update back map
+  if (back_rois.find(roi)!=back_rois.end()){
+    SignalROISelection prev_rois = back_rois[roi];
+    for (size_t i=0;i!=prev_rois.size();i++){
+      // unlink the current roi
+      unlink(prev_rois.at(i),roi);
+      // loop new rois and link them
+      for (size_t j=0;j!=new_rois.size();j++){
+	if (new_rois.at(j)->overlap(prev_rois.at(i)))
+	  link(prev_rois.at(i),new_rois.at(j));
+      }
+    }
+    back_rois.erase(roi);
+  }
+  
+  // update contained map 
+  if (contained_rois.find(roi)!=contained_rois.end()){
+    SignalROISelection tight_rois = contained_rois[roi];
+    for (size_t i=0;i!=tight_rois.size();i++){
+      for (size_t j=0;j!=new_rois.size();j++){
+	if (new_rois.at(j)->overlap(tight_rois.at(i))){
+	  if (contained_rois.find(new_rois.at(j)) == contained_rois.end()){
+	    SignalROISelection temp_rois;
+	    temp_rois.push_back(tight_rois.at(i));
+	    contained_rois[new_rois.at(j)] = temp_rois;
+	  }else{
+	    contained_rois[new_rois.at(j)].push_back(tight_rois.at(i));
+	  }
+	}
+      }
+    }
+    contained_rois.erase(roi);
+  }
+  
+  // delete the old ROI
+  delete roi;
+  //  delete h1;
+  //  delete htemp;
 }
+
 void ROI_refinement::BreakROIs(int plane, ROI_formation& roi_form){
   SignalROISelection all_rois;
   if (plane==0){
@@ -1508,7 +1623,34 @@ void ROI_refinement::BreakROIs(int plane, ROI_formation& roi_form){
 
 
 void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
+  //std::cout << "Clean up loose ROIs" << std::endl;
   CleanUpROIs(plane);
+  //std::cout << "Generate more loose ROIs from isolated good tight ROIs" << std::endl;
   generate_merge_ROIs(plane);
+
+  for (int qx = 0; qx!=break_roi_loop; qx++){
+    //  std::cout << "Break loose ROIs" << std::endl;
+    BreakROIs(plane, roi_form);
+    //std::cout << "Clean up ROIs 2nd time" << std::endl;
+    CheckROIs(plane, roi_form);
+    CleanUpROIs(plane);
+  }
+  
+  
+  
+  //  std::cout << "Shrink ROIs" << std::endl;
+  ShrinkROIs(plane, roi_form);
+  //std::cout << "Clean up ROIs 3rd time" << std::endl;
+  CheckROIs(plane, roi_form);
+  CleanUpROIs(plane);
+
+
+  // Further reduce fake hits
+  //std::cout << "Remove fake hits " << std::endl;
+  if (plane==2){
+    CleanUpCollectionROIs();
+  }else{
+    CleanUpInductionROIs(plane);
+  }
   
 }
