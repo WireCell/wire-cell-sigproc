@@ -745,7 +745,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 
   // create a class for ROIs ... 
   ROI_formation roi_form(cmm,nwire_u, nwire_v, nwire_w, m_nticks, m_th_factor_ind, m_th_factor_col, m_pad, m_asy, m_rebin, m_l_factor, m_l_max_th, m_l_factor1, m_l_short_length);
-  ROI_refinement roi_refine(cmm,nwire_u,nwire_v,nwire_w);
+  ROI_refinement roi_refine(cmm,nwire_u,nwire_v,nwire_w,3.0,1200,1500);
   
   for (int i=0;i!=3;i++){
     // load data into EIGEN matrices ...

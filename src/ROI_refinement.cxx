@@ -1,14 +1,17 @@
 #include "ROI_refinement.h"
 #include <iostream>
+#include <set>
 
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
-ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor)
+ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th)
   : nwire_u(nwire_u)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
   , th_factor(th_factor)
+  , fake_signal_low_th(fake_signal_low_th)
+  , fake_signal_high_th(fake_signal_high_th)
 {
   rois_u_tight.resize(nwire_u);
   rois_u_loose.resize(nwire_u);
@@ -937,7 +940,281 @@ void ROI_refinement::CheckROIs(int plane,ROI_formation& roi_form){
   }
 }
 
+void ROI_refinement::CleanUpCollectionROIs(){
+  // deal with tight ROIs, 
+  // scan with all the tight ROIs to look for peaks above certain threshold, put in a temporary set
+  float threshold = fake_signal_low_th; //electrons, about 1/2 of MIP per tick ...
+  std::set<SignalROI*> Good_ROIs;
+  for (int i=0;i!=nwire_w;i++){
+    for (auto it = rois_w_tight.at(i).begin();it!=rois_w_tight.at(i).end();it++){
+      SignalROI* roi = *it;
+      if (roi->get_above_threshold(threshold).size()!=0)
+	Good_ROIs.insert(roi);
+    }
+  }
+  // for a particular ROI if it is not in, or it is not connected with one in the temporary map, then remove it
+  std::list<SignalROI*> Bad_ROIs;
+  for (int i=0;i!=nwire_w;i++){
+    for (auto it = rois_w_tight.at(i).begin();it!=rois_w_tight.at(i).end();it++){
+      SignalROI* roi = *it;
+      
+      if (Good_ROIs.find(roi)!=Good_ROIs.end()) continue;
+      if (front_rois.find(roi)!=front_rois.end()){
+	SignalROISelection next_rois = front_rois[roi];
+	int flag_qx = 0;
+	for (size_t i=0;i!=next_rois.size();i++){
+	  SignalROI* roi1 = next_rois.at(i);
+	  if (Good_ROIs.find(roi1)!=Good_ROIs.end()) {
+	    flag_qx = 1;
+	    continue;
+	  }
+	}
+	if (flag_qx == 1) continue;
+      }
+      
+      if (back_rois.find(roi)!=back_rois.end()){
+	SignalROISelection next_rois = back_rois[roi];
+	int flag_qx = 0;
+	for (size_t i=0;i!=next_rois.size();i++){
+	  SignalROI* roi1 = next_rois.at(i);
+	  if (Good_ROIs.find(roi1)!=Good_ROIs.end()) {
+	    flag_qx = 1;
+	    continue;
+	  }
+	}
+	if (flag_qx == 1) continue;
+      }
+      
+      Bad_ROIs.push_back(roi);
+    }
+  }
+  
+  // remove the ROI and then update the map
+  
+  for (auto it = Bad_ROIs.begin(); it!=Bad_ROIs.end(); it ++){
+    SignalROI* roi = *it;
+    int chid = roi->get_chid()-nwire_u-nwire_v;
+    //std::cout << chid << std::endl;
+    if (front_rois.find(roi)!=front_rois.end()){
+      SignalROISelection next_rois = front_rois[roi];
+      for (size_t i=0;i!=next_rois.size();i++){
+   	//unlink the current roi
+   	unlink(roi,next_rois.at(i));
+      }
+      front_rois.erase(roi);
+    }
+    
+    if (back_rois.find(roi)!=back_rois.end()){
+      SignalROISelection next_rois = back_rois[roi];
+      for (size_t i=0;i!=next_rois.size();i++){
+   	//unlink the current roi
+   	unlink(roi,next_rois.at(i));
+      }
+      back_rois.erase(roi);
+    }
+    auto it1 = find(rois_w_tight.at(chid).begin(), rois_w_tight.at(chid).end(),roi);
+    if (it1 != rois_w_tight.at(chid).end())
+      rois_w_tight.at(chid).erase(it1);
+    
+    delete roi;
+  }
+  
+}
+
+void ROI_refinement::CleanUpInductionROIs(int plane){
+   // deal with loose ROIs
+  // focus on the isolated ones first
+  float threshold = fake_signal_high_th;
+  std::list<SignalROI*> Bad_ROIs;
+  if (plane==0){
+    for (int i=0;i!=nwire_u;i++){
+      for (auto it = rois_u_loose.at(i).begin();it!=rois_u_loose.at(i).end();it++){
+	SignalROI* roi = *it;
+	if (front_rois.find(roi)==front_rois.end() && back_rois.find(roi)==back_rois.end()){
+	  if (roi->get_above_threshold(threshold).size()==0)
+	    Bad_ROIs.push_back(roi);
+	}
+      }
+    }
+    for (auto it = Bad_ROIs.begin(); it!=Bad_ROIs.end(); it ++){
+      SignalROI* roi = *it;
+      int chid = roi->get_chid();
+      auto it1 = find(rois_u_loose.at(chid).begin(), rois_u_loose.at(chid).end(),roi);
+      if (it1 != rois_u_loose.at(chid).end())
+	rois_u_loose.at(chid).erase(it1);
+      delete roi;
+    }
+    Bad_ROIs.clear();
+  }else if (plane==1){
+    for (int i=0;i!=nwire_v;i++){
+      for (auto it = rois_v_loose.at(i).begin();it!=rois_v_loose.at(i).end();it++){
+	SignalROI* roi = *it;
+	if (front_rois.find(roi)==front_rois.end() && back_rois.find(roi)==back_rois.end()){
+	  if (roi->get_above_threshold(threshold).size()==0)
+	    Bad_ROIs.push_back(roi);
+	}
+      }
+    }
+    for (auto it = Bad_ROIs.begin(); it!=Bad_ROIs.end(); it ++){
+      SignalROI* roi = *it;
+      int chid = roi->get_chid()-nwire_u;
+      auto it1 = find(rois_v_loose.at(chid).begin(), rois_v_loose.at(chid).end(),roi);
+      if (it1 != rois_v_loose.at(chid).end())
+	rois_v_loose.at(chid).erase(it1);
+      delete roi;
+    }
+  }
+
+
+  threshold = fake_signal_low_th;
+  std::set<SignalROI*> Good_ROIs;
+  if (plane==0){
+    for (int i=0;i!=nwire_u;i++){
+      for (auto it = rois_u_loose.at(i).begin();it!=rois_u_loose.at(i).end();it++){
+	SignalROI* roi = *it;
+	if (roi->get_above_threshold(threshold).size()!=0)
+	  Good_ROIs.insert(roi);
+      }
+    }
+    Bad_ROIs.clear();
+    for (int i=0;i!=nwire_u;i++){
+      for (auto it = rois_u_loose.at(i).begin();it!=rois_u_loose.at(i).end();it++){
+	SignalROI* roi = *it;
+	
+	if (Good_ROIs.find(roi)!=Good_ROIs.end()) continue;
+	if (front_rois.find(roi)!=front_rois.end()){
+	  SignalROISelection next_rois = front_rois[roi];
+	  int flag_qx = 0;
+	  for (size_t i=0;i!=next_rois.size();i++){
+	    SignalROI* roi1 = next_rois.at(i);
+	    if (Good_ROIs.find(roi1)!=Good_ROIs.end()) {
+	      flag_qx = 1;
+	      continue;
+	    }
+	  }
+	  if (flag_qx == 1) continue;
+	}
+	
+	if (back_rois.find(roi)!=back_rois.end()){
+	  SignalROISelection next_rois = back_rois[roi];
+	  int flag_qx = 0;
+	  for (size_t i=0;i!=next_rois.size();i++){
+	    SignalROI* roi1 = next_rois.at(i);
+	    if (Good_ROIs.find(roi1)!=Good_ROIs.end()) {
+	      flag_qx = 1;
+	      continue;
+	    }
+	  }
+	  if (flag_qx == 1) continue;
+	}
+	
+	Bad_ROIs.push_back(roi);
+      }
+    }
+    for (auto it = Bad_ROIs.begin(); it!=Bad_ROIs.end(); it ++){
+      SignalROI* roi = *it;
+      int chid = roi->get_chid();
+      //std::cout << chid << std::endl;
+      if (front_rois.find(roi)!=front_rois.end()){
+	SignalROISelection next_rois = front_rois[roi];
+	for (size_t i=0;i!=next_rois.size();i++){
+	  //unlink the current roi
+	  unlink(roi,next_rois.at(i));
+	}
+	front_rois.erase(roi);
+      }
+      
+      if (back_rois.find(roi)!=back_rois.end()){
+	SignalROISelection next_rois = back_rois[roi];
+	for (size_t i=0;i!=next_rois.size();i++){
+	  //unlink the current roi
+	  unlink(roi,next_rois.at(i));
+	}
+	back_rois.erase(roi);
+      }
+      auto it1 = find(rois_u_loose.at(chid).begin(), rois_u_loose.at(chid).end(),roi);
+      if (it1 != rois_u_loose.at(chid).end())
+	rois_u_loose.at(chid).erase(it1);
+      
+      delete roi;
+    }
+  }else if (plane==1){
+    
+    Good_ROIs.clear();
+    for (int i=0;i!=nwire_v;i++){
+      for (auto it = rois_v_loose.at(i).begin();it!=rois_v_loose.at(i).end();it++){
+	SignalROI* roi = *it;
+	if (roi->get_above_threshold(threshold).size()!=0)
+	  Good_ROIs.insert(roi);
+      }
+    }
+    Bad_ROIs.clear();
+    for (int i=0;i!=nwire_v;i++){
+      for (auto it = rois_v_loose.at(i).begin();it!=rois_v_loose.at(i).end();it++){
+	SignalROI* roi = *it;
+	
+	if (Good_ROIs.find(roi)!=Good_ROIs.end()) continue;
+	if (front_rois.find(roi)!=front_rois.end()){
+	  SignalROISelection next_rois = front_rois[roi];
+	  int flag_qx = 0;
+	  for (size_t i=0;i!=next_rois.size();i++){
+	    SignalROI* roi1 = next_rois.at(i);
+	    if (Good_ROIs.find(roi1)!=Good_ROIs.end()) {
+	      flag_qx = 1;
+	      continue;
+	    }
+	  }
+	  if (flag_qx == 1) continue;
+	}
+	
+	if (back_rois.find(roi)!=back_rois.end()){
+	  SignalROISelection next_rois = back_rois[roi];
+	  int flag_qx = 0;
+	  for (size_t i=0;i!=next_rois.size();i++){
+	    SignalROI* roi1 = next_rois.at(i);
+	    if (Good_ROIs.find(roi1)!=Good_ROIs.end()) {
+	      flag_qx = 1;
+	      continue;
+	    }
+	  }
+	  if (flag_qx == 1) continue;
+	}
+	
+	Bad_ROIs.push_back(roi);
+      }
+    }
+    for (auto it = Bad_ROIs.begin(); it!=Bad_ROIs.end(); it ++){
+      SignalROI* roi = *it;
+      int chid = roi->get_chid()-nwire_u;
+      //std::cout << chid << std::endl;
+      if (front_rois.find(roi)!=front_rois.end()){
+	SignalROISelection next_rois = front_rois[roi];
+	for (size_t i=0;i!=next_rois.size();i++){
+	  //unlink the current roi
+	  unlink(roi,next_rois.at(i));
+	}
+	front_rois.erase(roi);
+      }
+      
+      if (back_rois.find(roi)!=back_rois.end()){
+	SignalROISelection next_rois = back_rois[roi];
+	for (size_t i=0;i!=next_rois.size();i++){
+	  //unlink the current roi
+	  unlink(roi,next_rois.at(i));
+	}
+	back_rois.erase(roi);
+      }
+      auto it1 = find(rois_v_loose.at(chid).begin(), rois_v_loose.at(chid).end(),roi);
+      if (it1 != rois_v_loose.at(chid).end())
+	rois_v_loose.at(chid).erase(it1);
+      
+      delete roi;
+    }
+  }
+}
+
 void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
   CleanUpROIs(plane);
   generate_merge_ROIs(plane);
+  
 }
