@@ -20,7 +20,7 @@ namespace WireCell{
 
       // initialize the ROIs
       void load_data(int plane, const Array::array_xxf& r_data, ROI_formation& roi_form);
-      void refine_data(int plane);
+      void refine_data(int plane, ROI_formation& roi_form);
       
       SignalROIChList& get_u_rois(){return rois_u_loose;};
       SignalROIChList& get_v_rois(){return rois_v_loose;};
@@ -37,6 +37,7 @@ namespace WireCell{
       void link(SignalROI *prev_roi, SignalROI *next_roi);
       void CleanUpROIs(int plane);
       void generate_merge_ROIs(int plane);
+      void CheckROIs(int plane, ROI_formation& roi_form);
       
       std::map<int,std::vector<std::pair<int,int>>> bad_ch_map;
       

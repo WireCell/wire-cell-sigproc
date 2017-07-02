@@ -775,7 +775,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 
     // Refine ROIs
     roi_refine.load_data(i,r_data,roi_form);
-    roi_refine.refine_data(i);
+    roi_refine.refine_data(i,roi_form);
 
     // merge results ...
     decon_2D_hits(i);

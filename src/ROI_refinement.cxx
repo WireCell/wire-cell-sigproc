@@ -817,7 +817,127 @@ void ROI_refinement::generate_merge_ROIs(int plane){
   }
 }
 
-void ROI_refinement::refine_data(int plane){
+void ROI_refinement::CheckROIs(int plane,ROI_formation& roi_form){
+
+  if (plane==0){
+    std::vector<float>& rms_u = roi_form.get_uplane_rms();
+    
+    // for (int i=0;i!=rois_u_loose.size();i++){
+    //   for (auto it = rois_u_loose.at(i).begin(); it!= rois_u_loose.at(i).end();it++){
+    //     SignalROI *roi = *it;
+    //     int chid = roi->get_chid();
+    //     if (chid != i) 
+    // 	std::cout << roi << std::endl;
+    
+    //     if (front_rois.find(roi)!=front_rois.end()){
+    //  	for (auto it1 = front_rois[roi].begin();it1!=front_rois[roi].end();it1++){
+    // 	  SignalROI *roi1 = *it1;
+    // 	  int chid1 = roi1->get_chid();
+    // 	  if (chid1!=i+1)
+    // 	    std::cout << roi1 << " " << chid << " " << chid1 << std::endl;
+    // 	}
+    //     }
+    //   }
+    // }
+    
+    //loop over u loose
+    for (size_t i=0;i!=rois_u_loose.size();i++){
+      for (auto it = rois_u_loose.at(i).begin(); it!= rois_u_loose.at(i).end();it++){
+	SignalROI *roi = *it;
+	int chid = roi->get_chid();
+	float th;
+	th = th_factor*rms_u.at(chid);
+	
+	if (front_rois.find(roi)!=front_rois.end()){
+	  SignalROISelection temp_rois;
+	  for (auto it1 = front_rois[roi].begin();it1!=front_rois[roi].end();it1++){
+	    SignalROI *roi1 = *it1;
+	    int chid1 = roi1->get_chid();
+	    //std::cout << "F " << i << " " << rois_u_loose.size() << " " << roi1 << " " << chid << " " << chid1 << std::endl;
+	    float th1;
+	    th1 = th_factor*rms_u.at(chid1);
+	    if (roi->overlap(roi1,th,th1)){
+	    }else{
+	      temp_rois.push_back(roi1);
+	      //unlink(roi,roi1);
+	    }
+	  }
+	  for (auto it2 = temp_rois.begin(); it2!= temp_rois.end();it2++){
+	    unlink(roi,*it2);
+	  }
+	}
+
+	if (back_rois.find(roi)!=back_rois.end()){
+	  SignalROISelection temp_rois;
+	  for (auto it1 = back_rois[roi].begin();it1!=back_rois[roi].end();it1++){
+	    SignalROI *roi1 = *it1;
+	    int chid1 = roi1->get_chid();
+	    //std::cout << "B " << roi1 << " " << chid << " " << chid1 << std::endl;
+	    float th1;
+	    th1 = th_factor*rms_u.at(chid1);
+	    if (roi->overlap(roi1,th,th1)){
+	    }else{
+	      temp_rois.push_back(roi1);
+	      //unlink(roi,roi1);
+	    }
+	  }
+	  for (auto it2 = temp_rois.begin(); it2!= temp_rois.end();it2++){
+	    unlink(roi,*it2);
+	  }
+	}
+	
+      }
+    }
+  }else if (plane==1){
+    std::vector<float>& rms_v = roi_form.get_vplane_rms();
+    //loop over v loose
+    for (size_t i=0;i!=rois_v_loose.size();i++){
+      for (auto it = rois_v_loose.at(i).begin(); it!= rois_v_loose.at(i).end();it++){
+	SignalROI *roi = *it;
+	int chid = roi->get_chid()-nwire_u;
+	float th;
+	th = th_factor*rms_v.at(chid);
+	if (front_rois.find(roi)!=front_rois.end()){
+	  SignalROISelection temp_rois;
+	  for (auto it1 = front_rois[roi].begin();it1!=front_rois[roi].end();it1++){
+	    SignalROI *roi1 = *it1;
+	    int chid1 = roi1->get_chid()-nwire_u;
+	    float th1;
+	    th1 = th_factor*rms_v.at(chid1);
+	    if (roi->overlap(roi1,th,th1)){
+	    }else{
+	      temp_rois.push_back(roi1);
+	      // unlink(roi,roi1);
+	    }
+	  }
+	  for (auto it2 = temp_rois.begin(); it2!= temp_rois.end();it2++){
+	    unlink(roi,*it2);
+	  }
+	}
+	
+	if (back_rois.find(roi)!=back_rois.end()){
+	  SignalROISelection temp_rois;
+	  for (auto it1 = back_rois[roi].begin();it1!=back_rois[roi].end();it1++){
+	    SignalROI *roi1 = *it1;
+	    int chid1 = roi1->get_chid()-nwire_u;
+	    float th1;
+	    th1 = th_factor*rms_v.at(chid1);
+	    if (roi->overlap(roi1,th,th1)){
+	    }else{
+	      temp_rois.push_back(roi1);
+	      // unlink(roi,roi1);
+	    }
+	  }
+	  for (auto it2 = temp_rois.begin(); it2!= temp_rois.end();it2++){
+	    unlink(roi,*it2);
+	  }
+	}
+      }
+    }
+  }
+}
+
+void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
   CleanUpROIs(plane);
   generate_merge_ROIs(plane);
 }
