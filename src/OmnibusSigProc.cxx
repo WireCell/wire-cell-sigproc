@@ -705,10 +705,12 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
       roi_form.find_ROI_by_decon_itself(i,r_data);
     }
     
-    
     // Form loose ROIs
-    decon_2D_looseROI(i);
-    // to do
+    if (i!=2){
+      decon_2D_looseROI(i);
+      //      roi_form.find_ROI_loose(i,r_data);
+    }
+   
     
     // Refine ROIs
     // to do
@@ -721,6 +723,24 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     // Get results
     save_data(itraces,i);
   }
+
+  // put threshold into cmm ...
+  std::vector<float>& u_rms = roi_form.get_uplane_rms();
+  std::vector<float>& v_rms = roi_form.get_vplane_rms();
+  std::vector<float>& w_rms = roi_form.get_wplane_rms();
+  Waveform::ChannelMasks temp;
+  cmm["threshold"] = temp;
+  for ( size_t i=0;i!=u_rms.size();i++){
+    cmm["threshold"][i].push_back(std::make_pair(int(u_rms.at(i)*10), 10));
+  }
+  for ( size_t i=0;i!=v_rms.size();i++){
+    cmm["threshold"][i+nwire_u].push_back(std::make_pair(int(v_rms.at(i)*10), 10));
+  }
+  for ( size_t i=0;i!=w_rms.size();i++){
+    cmm["threshold"][i+nwire_u+nwire_v].push_back(std::make_pair(int(w_rms.at(i)*10), 10));
+  }
+  
+  
   
   SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick(), cmm);
   out = IFrame::pointer(sframe);

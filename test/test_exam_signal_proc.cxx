@@ -208,11 +208,11 @@ void save_into_file(const char* filename,IFrame::pointer frame_decon, int nrebin
 	 chid = it1.first;
 	 float threshold = it1.second[0].first/it1.second[0].second;
 	 if (chid < nwire_u){
-	   hu_threshold->SetBinContent(chid+1,threshold);
+	   hu_threshold->SetBinContent(chid+1,threshold*nrebin*3.0);
 	 }else if (chid < nwire_u+nwire_v){
-	   hv_threshold->SetBinContent(chid+1-nwire_u,threshold);
+	   hv_threshold->SetBinContent(chid+1-nwire_u,threshold*nrebin*3.0);
 	 }else{
-	   hw_threshold->SetBinContent(chid+1-nwire_u-nwire_v,threshold);
+	   hw_threshold->SetBinContent(chid+1-nwire_u-nwire_v,threshold*nrebin*3.0);
 	 }
 	 
        }
