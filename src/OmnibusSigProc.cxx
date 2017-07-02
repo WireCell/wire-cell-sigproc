@@ -772,9 +772,10 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
       roi_form.find_ROI_loose(i,r_data);
       decon_2D_ROI_refine(i);
     }
+
     // Refine ROIs
     roi_refine.load_data(i,r_data,roi_form);
-
+    roi_refine.refine_data(i);
 
     // merge results ...
     decon_2D_hits(i);

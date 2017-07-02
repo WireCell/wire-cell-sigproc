@@ -13,13 +13,14 @@ namespace WireCell{
   namespace SigProc{
     class ROI_refinement{
     public:
-      ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w);
+      ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor = 3.0);
       ~ROI_refinement();
 
       void Clear();
 
       // initialize the ROIs
       void load_data(int plane, const Array::array_xxf& r_data, ROI_formation& roi_form);
+      void refine_data(int plane);
       
       SignalROIChList& get_u_rois(){return rois_u_loose;};
       SignalROIChList& get_v_rois(){return rois_v_loose;};
@@ -29,10 +30,13 @@ namespace WireCell{
       int nwire_u;
       int nwire_v;
       int nwire_w;
+
+      float th_factor;
       
       void unlink(SignalROI *prev_roi, SignalROI *next_roi);
       void link(SignalROI *prev_roi, SignalROI *next_roi);
-
+      void CleanUpROIs(int plane);
+      void generate_merge_ROIs(int plane);
       
       std::map<int,std::vector<std::pair<int,int>>> bad_ch_map;
       
