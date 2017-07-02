@@ -1,10 +1,12 @@
 
 #include "ROI_formation.h"
 
+#include <iostream>
+
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
-ROI_formation::ROI_formation(int nwire_u, int nwire_v, int nwire_w, float th_factor_ind, float th_factor_col, int pad, float asy, int nbins)
+ROI_formation::ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor_ind, float th_factor_col, int pad, float asy, int nbins)
   : nwire_u(nwire_u)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
@@ -25,6 +27,17 @@ ROI_formation::ROI_formation(int nwire_u, int nwire_v, int nwire_w, float th_fac
   uplane_rms.resize(nwire_u);
   vplane_rms.resize(nwire_v);
   wplane_rms.resize(nwire_w);
+
+  for (auto it = cmm["bad"].begin(); it!=cmm["bad"].end(); it++){
+    int ch = it->first;
+    std::vector<std::pair<int,int>> temps;
+    bad_ch_map[ch] = temps;
+    for (size_t ind = 0; ind < it->second.size(); ind++){
+      bad_ch_map[ch].push_back(std::make_pair(it->second.at(ind).first, it->second.at(ind).second));
+      //std::cout << ch << " " <<  << std::endl;
+    }
+  }
+  //std::cout << bad_ch_map.size() << std::endl;
   
 }
 
@@ -239,8 +252,152 @@ void ROI_formation::create_ROI_connect_info(int plane){
   }
 }
 
+double ROI_formation::cal_RMS(Waveform::realseq_t signal){
+  double result = 0;
+  if (signal.size()>0){
+    // do quantile ... 
+    float par[3];
+    par[0] = WireCell::Waveform::percentile_binned(signal,0.5 - 0.34);
+    par[1] = WireCell::Waveform::percentile_binned(signal,0.5);
+    par[2] = WireCell::Waveform::percentile_binned(signal,0.5 + 0.34);
+    float rms = sqrt((pow(par[2]-par[1],2)+pow(par[1]-par[0],2))/2.);
+
+    float rms2 = 0;
+    float rms1 = 0;
+    for(size_t i =0; i!=signal.size();i++){
+      if (fabs(signal.at(i)) < 5.0 * rms){
+	rms1 += pow(signal.at(i),2);
+	rms2 ++;
+      }
+    }
+    if (rms2 >0){
+      result = sqrt(rms1/rms2);
+    }
+  }
+  
+  return result;
+}
+
 void ROI_formation::find_ROI_by_decon_itself(int plane, const Array::array_xxf& r_data, const Array::array_xxf& r_data_tight){
-  //
+
+  int offset=0;
+  if (plane==0){
+    offset = 0;
+  }else if (plane==1){
+    offset = nwire_u;
+  }else if (plane==2){
+    offset = nwire_u + nwire_v;
+  }
+  
+  for (int irow = 0; irow!=r_data.rows(); irow++){
+    // calclulate rms for a row of r_data
+    Waveform::realseq_t signal(nbins);
+    Waveform::realseq_t signal1(nbins);
+    Waveform::realseq_t signal2(nbins);
+
+    for (int icol = 0; icol!=r_data.cols();icol++){
+     
+      
+    }
+    
+    if (bad_ch_map.find(irow+offset)!=bad_ch_map.end()){
+      int ncount = 0;
+      for (int icol=0;icol!=r_data.cols();icol++){
+	bool flag = true;
+	for (size_t i=0; i!=bad_ch_map[irow+offset].size(); i++){
+	  if (icol >= bad_ch_map[irow+offset].at(i).first &&
+	      icol <= bad_ch_map[irow+offset].at(i).second){
+	    flag = false;
+	    break;
+	  }
+	}
+	if (flag){
+	  signal.at(ncount) = r_data(irow,icol);
+	  signal1.at(icol) = r_data(irow,icol);
+	  signal2.at(icol) = r_data_tight(irow,icol);
+	  ncount ++;
+	}else{
+	  signal1.at(icol) = 0;
+	  signal2.at(icol) = 0;
+	}
+      }
+      signal.resize(ncount);
+    }else{
+      for (int icol = 0; icol!= r_data.cols(); icol++){
+	signal.at(icol) = r_data(irow,icol);
+	signal1.at(icol) = r_data(irow,icol);
+	signal2.at(icol) = r_data_tight(irow,icol);
+      }
+    }
+    // do threshold and fill rms 
+    double rms = cal_RMS(signal);
+    double threshold = 0;
+    if (plane==0){
+      threshold = th_factor_ind * rms + 1;
+      uplane_rms.at(irow) = rms;
+    }else if (plane==1){
+      threshold = th_factor_ind * rms + 1;
+      vplane_rms.at(irow) = rms;
+    }else if (plane==2){
+      threshold = th_factor_col * rms + 1;
+      wplane_rms.at(irow) = rms;
+    }
+    // std::cout << plane << " " << signal.size() << " " << irow << " " << rms << std::endl;
+    
+    // create rois
+    int roi_begin=-1;
+    int roi_end=-1;
+    
+    std::vector<std::pair<int,int>> temp_rois;
+    // now find ROI, above five sigma, and pad with +- six time ticks
+    for (int j=0;j<int(signal1.size())-1;j++){
+      double content = signal1.at(j);
+      double content_tight = signal2.at(j);
+
+      if (content > threshold || 
+    	  (content_tight > threshold )){
+    	roi_begin = j;
+    	roi_end = j;
+    	for (int k=j+1;k< int(signal1.size());k++){
+    	  if (signal1.at(k) > threshold ||
+    	      (signal2.at(k) > threshold)){
+    	    roi_end = k;
+    	  }else{
+    	    break;
+    	  }
+    	}
+    	int temp_roi_begin = roi_begin ; // filter_pad;
+    	if (temp_roi_begin <0 ) temp_roi_begin = 0;
+    	int temp_roi_end = roi_end ; // filter_pad;
+    	if (temp_roi_end >int(signal1.size())-1) temp_roi_end = int(signal1.size())-1;
+
+    	//if (chid == 1151) std::cout << temp_roi_begin << " " << temp_roi_end << std::endl;
+
+	
+    	if (temp_rois.size() == 0){
+    	  temp_rois.push_back(std::make_pair(temp_roi_begin,temp_roi_end));
+    	}else{
+    	  if (temp_roi_begin <= temp_rois.back().second){
+    	    temp_rois.back().second = temp_roi_end;
+    	  }else{
+    	    temp_rois.push_back(std::make_pair(temp_roi_begin,temp_roi_end));
+    	  }
+    	}
+    	j = roi_end + 1;
+      }
+    }
+
+    
+    // fill rois ...
+    if (plane==0){
+      self_rois_u.at(irow) = temp_rois;
+    }else if (plane==1){
+      self_rois_v.at(irow) = temp_rois;
+    }else{
+      self_rois_w.at(irow) = temp_rois;
+    }
+    //    std::cout << plane << " " << irow << " " << temp_rois.size() << std::endl;
+  }
   
   extend_ROI_self(plane);
   create_ROI_connect_info(plane);

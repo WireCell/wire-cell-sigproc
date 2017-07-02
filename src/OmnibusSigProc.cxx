@@ -684,7 +684,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   init_overall_response();
 
   // create a class for ROIs ... 
-  ROI_formation roi_form(nwire_u, nwire_v, nwire_w, 3, 5, 5, 0.1, m_nticks);
+  ROI_formation roi_form(cmm,nwire_u, nwire_v, nwire_w, 3, 5, 5, 0.1, m_nticks);
   
   
   for (int i=0;i!=3;i++){

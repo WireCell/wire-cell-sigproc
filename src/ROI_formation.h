@@ -4,15 +4,16 @@
 #define WIRECELLSIGPROC_ROIFORMATION
 
 #include "WireCellUtil/Array.h"
+#include "WireCellUtil/Waveform.h"
 
 #include <vector>
-
+#include <map>
 
 namespace WireCell{
   namespace SigProc{
     class ROI_formation{
     public:
-      ROI_formation(int nwire_u, int nwire_v, int nwire_w, float th_factor_ind = 3, float th_factor_col = 5, int pad = 5, float asy = 0.1, int nbins = 9594);
+      ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor_ind = 3, float th_factor_col = 5, int pad = 5, float asy = 0.1, int nbins = 9594);
       ~ROI_formation();
 
       void Clear();
@@ -48,11 +49,15 @@ namespace WireCell{
       
       
     private:
+      double cal_RMS(Waveform::realseq_t signal);
+      
       int nwire_u, nwire_v, nwire_w;
       float th_factor_ind, th_factor_col;
       int pad;
       float asy;
       int nbins;
+
+      std::map<int,std::vector<std::pair<int,int>>> bad_ch_map;
       
       std::vector<std::vector<std::pair<int,int>>> self_rois_u; // tight ROIs
       std::vector<std::vector<std::pair<int,int>>> self_rois_v; // tight ROIs
