@@ -1465,6 +1465,48 @@ void ROI_refinement::ShrinkROIs(int plane, ROI_formation& roi_form){
   }
 }
 
+void ROI_refinement::BreakROI(SignalROI *roi, float rms){
+
+}
+void ROI_refinement::BreakROI1(SignalROI *roi){
+  
+}
+void ROI_refinement::BreakROIs(int plane, ROI_formation& roi_form){
+  SignalROISelection all_rois;
+  if (plane==0){
+    std::vector<float>& rms_u = roi_form.get_uplane_rms();
+    for (size_t i=0;i!=rois_u_loose.size();i++){
+      for (auto it = rois_u_loose.at(i).begin(); it!= rois_u_loose.at(i).end(); it++){
+	BreakROI(*it,rms_u.at(i));
+	all_rois.push_back(*it);
+	
+      }
+    }
+  }else if (plane==1){
+    std::vector<float>& rms_v = roi_form.get_vplane_rms();
+    for (size_t i=0;i!=rois_v_loose.size();i++){
+      for (auto it = rois_v_loose.at(i).begin(); it!= rois_v_loose.at(i).end(); it++){
+	BreakROI(*it,rms_v.at(i));
+	all_rois.push_back(*it);
+      }
+    }
+  }
+  
+  for (size_t i=0;i!=all_rois.size();i++){
+    // if (all_rois.at(i)->get_chid()==1151){
+    //   std::cout << all_rois.at(i)->get_chid() << " " << all_rois.at(i)->get_start_bin() << " " << all_rois.at(i)->get_end_bin() << std::endl;
+    //   for (int j=0;j!=all_rois.at(i)->get_contents().size();j++){
+    // 	std::cout << j << " " << all_rois.at(i)->get_contents().at(j) << std::endl;  
+    //   }
+    // }
+    
+    BreakROI1(all_rois.at(i));
+  }
+
+  
+}
+
+
 void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
   CleanUpROIs(plane);
   generate_merge_ROIs(plane);
