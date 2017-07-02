@@ -4,7 +4,7 @@
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
-ROI_refinement::ROI_refinement(int nwire_u, int nwire_v, int nwire_w)
+ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w)
   : nwire_u(nwire_u)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
@@ -37,6 +37,16 @@ ROI_refinement::ROI_refinement(int nwire_u, int nwire_v, int nwire_w)
   for (int i=0;i!=nwire_v;i++){
     SignalROIList temp_rois;
     rois_v_loose.at(i) = temp_rois;
+  }
+
+  for (auto it = cmm["bad"].begin(); it!=cmm["bad"].end(); it++){
+    int ch = it->first;
+    std::vector<std::pair<int,int>> temps;
+    bad_ch_map[ch] = temps;
+    for (size_t ind = 0; ind < it->second.size(); ind++){
+      bad_ch_map[ch].push_back(std::make_pair(it->second.at(ind).first, it->second.at(ind).second));
+      //std::cout << ch << " " <<  << std::endl;
+    }
   }
   
 }
@@ -118,8 +128,6 @@ void ROI_refinement::link(SignalROI* prev_roi, SignalROI* next_roi){
     back_rois[next_roi] = temp_rois;
   }
 }
-
-
 
 void ROI_refinement::load_data(int plane, const Array::array_xxf& r_data, ROI_formation& roi_form){
   
