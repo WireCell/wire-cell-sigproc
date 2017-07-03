@@ -408,7 +408,11 @@ void ROI_refinement::load_data(int plane, const Array::array_xxf& r_data, ROI_fo
 	      }else{
 		contained_rois[loose_roi].push_back(tight_roi);
 	      }
+	      // if (tight_roi->get_start_bin() < loose_roi->get_start_bin())
+	      // 	std::cout << tight_roi->get_start_bin() << " " << loose_roi->get_start_bin() << " " << tight_roi->get_chid() << " " << tight_roi->get_plane() << std::endl;
 	    }
+
+
 	  }
 	}else if (plane==1){
 	  rois_v_loose[chid-nwire_u].push_back(loose_roi);
@@ -1471,6 +1475,9 @@ void ROI_refinement::ShrinkROIs(int plane, ROI_formation& roi_form){
 }
 
 void ROI_refinement::BreakROI(SignalROI *roi, float rms){
+
+  //  std::cout << "haha " << std::endl;
+  
   // main algorithm 
   int start_bin = roi->get_start_bin();
   int end_bin = roi->get_end_bin();
@@ -1509,11 +1516,14 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
     int order_peak_pos[205];
     int npeaks_threshold = 0;
     for (int j=0;j!=npeaks;j++){
-      order_peak_pos[j] = *(peak_pos+j);
+      order_peak_pos[j] = *(peak_pos+j) + start_bin;
       if (*(peak_height+j)>th_peak*rms){
    	npeaks_threshold ++;
       }
     }
+
+    
+    
     if (npeaks_threshold >1){
       std::sort(order_peak_pos,order_peak_pos + npeaks);
       float valley_pos[205];
@@ -1540,18 +1550,25 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
    	}
    	valley_pos[0] = start_bin;
       }
+
+      //   std::cout << "kaka1 " << npeaks << std::endl;
       
       for (int j=0;j!=npeaks-1;j++){
 	float min = 1e9;
    	valley_pos[j+1] = order_peak_pos[j];
-   	for (int k = order_peak_pos[j]-start_bin; k< order_peak_pos[j+1]-start_bin;k++){
+
+	//	std::cout << order_peak_pos[j]-start_bin << " " << order_peak_pos[j+1]-start_bin << std::endl;
+	
+	for (int k = order_peak_pos[j]-start_bin; k< order_peak_pos[j+1]-start_bin;k++){
    	  if (temp_signal.at(k) < min){
    	    min = temp_signal.at(k);
    	    valley_pos[j+1] = k+start_bin;
    	  }
    	}
       }
-
+      
+      // std::cout << "kaka1 " << npeaks << std::endl;
+      
       //find the end ... 
       valley_pos[npeaks] = end_bin;
       min = 1e9;
@@ -1561,6 +1578,9 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
        	  valley_pos[npeaks] = k+start_bin;
        	}
       }
+
+      //  std::cout << "kaka1 " << npeaks << std::endl;
+      
       if (valley_pos[npeaks]!=end_bin){
    	npeaks ++;
    	valley_pos[npeaks] = end_bin;
@@ -1570,7 +1590,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
 	    order_peak_pos[npeaks-1] = j;
 	}
       }
-      
+
+      // std::cout << "kaka1 " << npeaks << std::endl;
       
       // if (roi->get_chid() == 1195 && roi->get_plane() == WirePlaneType_t(0)){
       // 	for (int j=0;j!=npeaks;j++){
@@ -1588,6 +1609,7 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
       valley_pos1[0] = valley_pos[0];
       for (int j=0;j<npeaks;j++){
   	if (npeaks1 >0){
+	  //std::cout << valley_pos[j]-start_bin << " " << valley_pos1[npeaks1]-start_bin << std::endl;
   	  // find the lowest valley except the first peak, except the first one
   	  if (temp_signal.at(valley_pos[j]-start_bin) < temp_signal.at(valley_pos1[npeaks1]-start_bin)){
   	    valley_pos1[npeaks1] = valley_pos[j];
@@ -1639,9 +1661,9 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
       // 	  std::cout << valley_pos1[j] << " " << peak_pos1[j] << " " <<  valley_pos1[j+1] << std::endl ;
       // 	}
       // }
+      
 
-
-     
+      //      std::cout << "kaka1 " << std::endl;
 
       for (int j=0;j!=npeaks1;j++){
 	int start_pos = valley_pos1[j];
@@ -1680,6 +1702,7 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
       }
       //     delete htemp1;
 
+      //std::cout << "kaka2 " << std::endl;
       // loop through the tight ROIs it contains ...
       // if nothing in the range, add things back ... 
       // if (roi->get_chid() == 1151){
@@ -1691,15 +1714,19 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
   	SignalROI *temp_roi = *it;
   	int temp_flag = 0;
   	for (int i=temp_roi->get_start_bin(); i<= temp_roi->get_end_bin(); i++){
-  	  if (temp_signal.at(i-roi->get_start_bin())!=0){
-  	    temp_flag = 1;
-  	    break;
-  	  }
+	  //std::cout << i-roi->get_start_bin() << " " << i << " " << temp_roi->get_start_bin() << " " << temp_roi->get_end_bin() << " " << roi->get_start_bin() << " " << roi->get_end_bin() << " " << roi->get_chid() << " " << roi->get_plane() << std::endl;
+	  if (i-int(roi->get_start_bin())>=0 && i-int(roi->get_start_bin()) < int(temp_signal.size()))
+	    if (temp_signal.at(i-roi->get_start_bin())!=0){
+	      temp_flag = 1;
+	      break;
+	    }
   	}
   	//	std::cout << temp_flag << std::endl;
   	if (temp_flag==0){
   	  for (int i=temp_roi->get_start_bin(); i<= temp_roi->get_end_bin(); i++){
-	    temp_signal.at(i-roi->get_start_bin()) = temp_roi->get_contents().at(i-temp_roi->get_start_bin());
+	    // std::cout << i-roi->get_start_bin() << " " << i-temp_roi->get_start_bin() << std::endl;
+	     if (i-int(roi->get_start_bin())>=0 && i-int(roi->get_start_bin()) < int(temp_signal.size()))
+	      temp_signal.at(i-roi->get_start_bin()) = temp_roi->get_contents().at(i-temp_roi->get_start_bin());
 	    //	    htemp->SetBinContent(i-roi->get_start_bin()+1, );
   	  }
   	}
@@ -1709,6 +1736,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
 
     }
   }
+
+  //std::cout << "kaka3 " << std::endl;
   
   
   // if (roi->get_chid() == 1151){
@@ -1738,7 +1767,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
   	i = end;
       }
     }
-    
+
+    // std::cout << "kaka4 " << std::endl;
 
     std::vector<int> saved_b;
     for (int i=0;i!=int(bins.size());i++){
@@ -1764,7 +1794,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
       
       saved_b.push_back(bin_min);
     }
-    
+
+    // std::cout << "kaka5 " << std::endl;
     // test
     
     if (saved_b.size() >=0){
@@ -1792,6 +1823,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
     }
   }
 
+  // std::cout << "kaka6 " << std::endl;
+  
   // get back to the original content 
   for (int i=0;i!=int(temp_signal.size());i++){
     contents.at(i) = temp_signal.at(i);//htemp->GetBinContent(i+1);
@@ -1920,10 +1953,12 @@ void ROI_refinement::BreakROI1(SignalROI *roi){
 
 void ROI_refinement::BreakROIs(int plane, ROI_formation& roi_form){
   SignalROISelection all_rois;
+
   if (plane==0){
     std::vector<float>& rms_u = roi_form.get_uplane_rms();
     for (size_t i=0;i!=rois_u_loose.size();i++){
       for (auto it = rois_u_loose.at(i).begin(); it!= rois_u_loose.at(i).end(); it++){
+	
 	BreakROI(*it,rms_u.at(i));
 	all_rois.push_back(*it);
 	
@@ -1938,6 +1973,7 @@ void ROI_refinement::BreakROIs(int plane, ROI_formation& roi_form){
       }
     }
   }
+
   
   for (size_t i=0;i!=all_rois.size();i++){
     // if (all_rois.at(i)->get_chid()==1151){
@@ -1955,30 +1991,30 @@ void ROI_refinement::BreakROIs(int plane, ROI_formation& roi_form){
 
 
 void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
-  //std::cout << "Clean up loose ROIs" << std::endl;
+  std::cout << "Clean up loose ROIs" << std::endl;
   CleanUpROIs(plane);
-  //std::cout << "Generate more loose ROIs from isolated good tight ROIs" << std::endl;
+  std::cout << "Generate more loose ROIs from isolated good tight ROIs" << std::endl;
   generate_merge_ROIs(plane);
 
   for (int qx = 0; qx!=break_roi_loop; qx++){
-    //  std::cout << "Break loose ROIs" << std::endl;
+    std::cout << "Break loose ROIs" << std::endl;
     BreakROIs(plane, roi_form);
-    //std::cout << "Clean up ROIs 2nd time" << std::endl;
+    std::cout << "Clean up ROIs 2nd time" << std::endl;
     CheckROIs(plane, roi_form);
     CleanUpROIs(plane);
   }
   
   
   
-  //  std::cout << "Shrink ROIs" << std::endl;
+  std::cout << "Shrink ROIs" << std::endl;
   ShrinkROIs(plane, roi_form);
-  //std::cout << "Clean up ROIs 3rd time" << std::endl;
+  std::cout << "Clean up ROIs 3rd time" << std::endl;
   CheckROIs(plane, roi_form);
   CleanUpROIs(plane);
 
 
   // Further reduce fake hits
-  //std::cout << "Remove fake hits " << std::endl;
+  std::cout << "Remove fake hits " << std::endl;
   if (plane==2){
     CleanUpCollectionROIs();
   }else{
