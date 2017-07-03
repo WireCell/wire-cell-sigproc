@@ -11,7 +11,7 @@ namespace WireCell {
   namespace SigProc {
     class OmnibusSigProc : public WireCell::IFrameFilter, public WireCell::IConfigurable {
     public:
-      OmnibusSigProc(const std::string anode_tn = "AnodePlane", double fine_time_offset = 0.2 * units::microsecond, double coarse_time_offset = -8.5 * units::microsecond, double period = 0.5*units::microsecond, int nticks = 9594, double gain = 14.0 * units::mV/units::fC, double shaping_time = 2.0 * units::microsecond, double inter_gain = 1.2, double ADC_mV = 4096/2000., bool flag_ch_corr = false, float th_factor_ind = 3, float th_factor_col = 5, int pad = 5, float asy = 0.1, int rebin =6, double l_factor=3.5, double l_max_th=10000, double l_factor1=0.7, int l_short_length = 3, double r_th_factor = 3.0, double r_fake_signal_low_th = 1200, double r_fake_signal_high_th=1500, int r_pad = 5, int r_break_roi_loop = 2, double r_th_peak = 3.0, double r_sep_peak=6.0, double r_low_peak_sep_threshold_pre = 1200, int r_max_npeaks = 200, double r_sigma = 2.0, double r_th_percent = 0.1 );
+      OmnibusSigProc(const std::string anode_tn = "AnodePlane", double fine_time_offset = 0.2 * units::microsecond, double coarse_time_offset = -8.5 * units::microsecond, double period = 0.5*units::microsecond, int nticks = 9594, double gain = 14.0 * units::mV/units::fC, double shaping_time = 2.0 * units::microsecond, double inter_gain = 1.2, double ADC_mV = 4096/2000., bool flag_ch_corr = false, float th_factor_ind = 3, float th_factor_col = 5, int pad = 5, float asy = 0.1, int rebin =6, double l_factor=3.5, double l_max_th=10000, double l_factor1=0.7, int l_short_length = 3, double r_th_factor = 3.0, double r_fake_signal_low_th = 1200, double r_fake_signal_high_th=1500, int r_pad = 5, int r_break_roi_loop = 2, double r_th_peak = 3.0, double r_sep_peak=6.0, double r_low_peak_sep_threshold_pre = 1200, int r_max_npeaks = 200, double r_sigma = 2.0, double r_th_percent = 0.1, int charge_ch_offset = 10000 );
       virtual ~OmnibusSigProc();
       
       virtual bool operator()(const input_pointer& in, output_pointer& out);
@@ -85,6 +85,9 @@ namespace WireCell {
       int m_r_max_npeaks;
       double m_r_sigma;
       double m_r_th_percent;
+
+      // channel offset
+      int m_charge_ch_offset;
       
       // Some global data useful
       int nwire_u, nwire_v, nwire_w;

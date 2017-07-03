@@ -103,6 +103,11 @@ void ROI_refinement::Clear(){
   contained_rois.clear();
 }
 
+void ROI_refinement::apply_roi(int plane, Array::array_xxf& r_data){
+  
+}
+
+
 void ROI_refinement::unlink(SignalROI* prev_roi, SignalROI* next_roi){
   if (front_rois.find(prev_roi)!=front_rois.end()){
     SignalROISelection& temp_rois = front_rois[prev_roi];

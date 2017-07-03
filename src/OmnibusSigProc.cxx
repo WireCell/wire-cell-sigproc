@@ -16,7 +16,7 @@ using namespace WireCell;
 
 using namespace WireCell::SigProc;
 
-OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offset, double coarse_time_offset, double period, int nticks, double gain , double shaping_time , double inter_gain , double ADC_mV, bool flag_ch_corr, float th_factor_ind, float th_factor_col, int pad, float asy, int rebin, double l_factor, double l_max_th, double l_factor1, int l_short_length, double r_th_factor , double r_fake_signal_low_th , double r_fake_signal_high_th, int r_pad , int r_break_roi_loop , double r_th_peak , double r_sep_peak, double r_low_peak_sep_threshold_pre , int r_max_npeaks , double r_sigma , double r_th_percent   )
+OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offset, double coarse_time_offset, double period, int nticks, double gain , double shaping_time , double inter_gain , double ADC_mV, bool flag_ch_corr, float th_factor_ind, float th_factor_col, int pad, float asy, int rebin, double l_factor, double l_max_th, double l_factor1, int l_short_length, double r_th_factor , double r_fake_signal_low_th , double r_fake_signal_high_th, int r_pad , int r_break_roi_loop , double r_th_peak , double r_sep_peak, double r_low_peak_sep_threshold_pre , int r_max_npeaks , double r_sigma , double r_th_percent , int charge_ch_offset  )
   : m_anode_tn (anode_tn)
   , m_fine_time_offset(fine_time_offset)
   , m_coarse_time_offset(coarse_time_offset)
@@ -47,6 +47,7 @@ OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offs
   , m_r_max_npeaks(r_max_npeaks)
   , m_r_sigma(r_sigma)
   , m_r_th_percent(r_th_percent)
+  , m_charge_ch_offset(charge_ch_offset)
 {
   configure(default_configuration());
   // get wires for each plane
@@ -98,6 +99,7 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_r_sigma = get(config,"r_sigma",m_r_sigma);
   m_r_th_percent = get(config,"r_th_percent",m_r_th_percent);
 
+  m_charge_ch_offset = get(config,"charge_ch_offset",m_charge_ch_offset);
   
   m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
   if (!m_anode) {
@@ -165,7 +167,8 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["r_sigma"] = m_r_sigma;
   cfg["r_th_precent"] = m_r_th_percent;
       
-      
+  cfg["charge_ch_offset"] = m_charge_ch_offset;
+  
   return cfg;
   
 }
@@ -816,11 +819,14 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 
     // merge results ...
     decon_2D_hits(i);
-    decon_2D_charge(i);
-    
-    
-    // Get results
+    roi_refine.apply_roi(i,r_data);
     save_data(itraces,i);
+    
+    decon_2D_charge(i);
+    roi_refine.apply_roi(i,r_data);
+    save_data(itraces,i,m_charge_ch_offset);
+    
+    
   }
 
   // put threshold into cmm ...
