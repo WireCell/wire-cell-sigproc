@@ -16,7 +16,7 @@ using namespace WireCell;
 
 using namespace WireCell::SigProc;
 
-OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offset, double coarse_time_offset, double period, int nticks, double gain , double shaping_time , double inter_gain , double ADC_mV, bool flag_ch_corr, float th_factor_ind, float th_factor_col, int pad, float asy, int rebin, double l_factor, double l_max_th, double l_factor1, int l_short_length )
+OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offset, double coarse_time_offset, double period, int nticks, double gain , double shaping_time , double inter_gain , double ADC_mV, bool flag_ch_corr, float th_factor_ind, float th_factor_col, int pad, float asy, int rebin, double l_factor, double l_max_th, double l_factor1, int l_short_length, double r_th_factor , double r_fake_signal_low_th , double r_fake_signal_high_th, int r_pad , int r_break_roi_loop , double r_th_peak , double r_sep_peak, double r_low_peak_sep_threshold_pre , int r_max_npeaks , double r_sigma , double r_th_percent   )
   : m_anode_tn (anode_tn)
   , m_fine_time_offset(fine_time_offset)
   , m_coarse_time_offset(coarse_time_offset)
@@ -36,6 +36,17 @@ OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offs
   , m_l_max_th(l_max_th)
   , m_l_factor1(l_factor1)
   , m_l_short_length(l_short_length)
+  , m_r_th_factor(r_th_factor)
+  , m_r_fake_signal_low_th(r_fake_signal_low_th)
+  , m_r_fake_signal_high_th(r_fake_signal_high_th)
+  , m_r_pad(r_pad)
+  , m_r_break_roi_loop(r_break_roi_loop)
+  , m_r_th_peak(r_th_peak)
+  , m_r_sep_peak(r_sep_peak)
+  , m_r_low_peak_sep_threshold_pre(r_low_peak_sep_threshold_pre)
+  , m_r_max_npeaks(r_max_npeaks)
+  , m_r_sigma(r_sigma)
+  , m_r_th_percent(r_th_percent)
 {
   configure(default_configuration());
   // get wires for each plane
@@ -73,6 +84,20 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_l_max_th = get(config,"lroi_max_th",m_l_max_th);
   m_l_factor1 = get(config,"lori_th_factor1",m_l_factor1);
   m_l_short_length = get(config,"lroi_short_length",m_l_short_length);
+
+
+  m_r_th_factor = get(config,"r_th_factor",m_r_th_factor);
+  m_r_fake_signal_low_th = get(config,"r_fake_signal_low_th",m_r_fake_signal_low_th);
+  m_r_fake_signal_high_th = get(config,"r_fake_signal_high_th",m_r_fake_signal_high_th);
+  m_r_pad = get(config,"r_pad",m_r_pad);
+  m_r_break_roi_loop = get(config,"r_break_roi_loop",m_r_break_roi_loop);
+  m_r_th_peak = get(config,"r_th_peak",m_r_th_peak);
+  m_r_sep_peak = get(config,"r_sep_peak",m_r_sep_peak);
+  m_r_low_peak_sep_threshold_pre = get(config,"r_low_peak_sep_threshold_pre",m_r_low_peak_sep_threshold_pre);
+  m_r_max_npeaks = get(config,"r_max_npeaks",m_r_max_npeaks);
+  m_r_sigma = get(config,"r_sigma",m_r_sigma);
+  m_r_th_percent = get(config,"r_th_percent",m_r_th_percent);
+
   
   m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
   if (!m_anode) {
@@ -128,6 +153,17 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["lori_th_factor1"] = m_l_factor1;
   cfg["lroi_short_length"] = m_l_short_length; 
 
+  cfg["r_th_factor"] = m_r_th_factor;
+  cfg["r_fake_signal_low_th"] = m_r_fake_signal_low_th;
+  cfg["r_fake_signal_high_th"] = m_r_fake_signal_high_th;
+  cfg["r_pad"] = m_r_pad;
+  cfg["r_break_roi_loop"] = m_r_break_roi_loop;
+  cfg["r_th_peak"] = m_r_th_peak;
+  cfg["r_sep_peak"] = m_r_sep_peak;
+  cfg["r_low_peak_sep_threshold_pre"] = m_r_low_peak_sep_threshold_pre;
+  cfg["r_max_npeaks"] = m_r_max_npeaks;
+  cfg["r_sigma"] = m_r_sigma;
+  cfg["r_th_precent"] = m_r_th_percent;
       
       
   return cfg;
@@ -745,7 +781,8 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 
   // create a class for ROIs ... 
   ROI_formation roi_form(cmm,nwire_u, nwire_v, nwire_w, m_nticks, m_th_factor_ind, m_th_factor_col, m_pad, m_asy, m_rebin, m_l_factor, m_l_max_th, m_l_factor1, m_l_short_length);
-  ROI_refinement roi_refine(cmm,nwire_u,nwire_v,nwire_w,3.0,1200,1500,5,2);
+  ROI_refinement roi_refine(cmm,nwire_u,nwire_v,nwire_w,m_r_th_factor,m_r_fake_signal_low_th,m_r_fake_signal_high_th,m_r_pad,m_r_break_roi_loop,m_r_th_peak,m_r_sep_peak,m_r_low_peak_sep_threshold_pre,m_r_max_npeaks,m_r_sigma,m_r_th_percent);//
+
   
   for (int i=0;i!=3;i++){
     // load data into EIGEN matrices ...

@@ -6,7 +6,7 @@
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
-ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th, int pad, int break_roi_loop, float th_peak, float sep_peak, float low_peak_sep_threshold_pre)
+ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th, int pad, int break_roi_loop, float th_peak, float sep_peak, float low_peak_sep_threshold_pre, int max_npeaks, float sigma, float th_percent)
   : nwire_u(nwire_u)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
@@ -18,6 +18,9 @@ ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nw
   , th_peak(th_peak)
   , sep_peak(sep_peak)
   , low_peak_sep_threshold_pre(low_peak_sep_threshold_pre)
+  , max_npeaks(max_npeaks)
+  , sigma(sigma)
+  , th_percent(th_percent)
 {
   rois_u_tight.resize(nwire_u);
   rois_u_loose.resize(nwire_u);
@@ -1502,7 +1505,7 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
     low_peak_sep_threshold = sep_peak * rms;
   std::set<int> saved_boundaries;
 
-  PeakFinding s(200,2,0.1);
+  PeakFinding s(max_npeaks, sigma, th_percent);
   int nfound = s.find_peak(temp_signal);
   // TSpectrum *s = new TSpectrum(200);
   // Int_t nfound = s->Search(htemp,2,"nobackground new",0.1);
@@ -1513,7 +1516,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
     int npeaks = s.GetNPeaks();
     double *peak_pos = s.GetPositionX();
     double  *peak_height = s.GetPositionY();
-    int order_peak_pos[205];
+    const int temp_length = max_npeaks + 5;
+    int order_peak_pos[temp_length];
     int npeaks_threshold = 0;
     for (int j=0;j!=npeaks;j++){
       order_peak_pos[j] = *(peak_pos+j) + start_bin;

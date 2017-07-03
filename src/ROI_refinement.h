@@ -12,15 +12,11 @@
 namespace WireCell{
   namespace SigProc{
     
-    int SearchHighRes(double *source,double *destVector, int ssize,
-		      double *fPositionX, int fMaxPeaks = 200,
-		      double sigma = 1, double threshold = 0.05,
-		      bool backgroundRemove = false,int deconIterations =3 ,
-		      bool markov = true, int averWindow = 3);
+    
     
     class ROI_refinement{
     public:
-      ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor = 3.0, float fake_signal_low_th = 1200, float fake_signal_high_th = 1500, int pad = 5, int break_roi_loop = 2, float th_peak = 3.0, float sep_peak = 6.0, float low_peak_sep_threshold_pre = 1200);
+      ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor = 3.0, float fake_signal_low_th = 1200, float fake_signal_high_th = 1500, int pad = 5, int break_roi_loop = 2, float th_peak = 3.0, float sep_peak = 6.0, float low_peak_sep_threshold_pre = 1200, int max_npeaks = 200, float sigma = 2, float th_percent = 0.1);
       ~ROI_refinement();
 
       void Clear();
@@ -46,6 +42,11 @@ namespace WireCell{
       float th_peak;
       float sep_peak;
       float low_peak_sep_threshold_pre;
+
+      //peak finding ones
+      int max_npeaks;
+      float sigma;
+      float th_percent;
       
       void unlink(SignalROI *prev_roi, SignalROI *next_roi);
       void link(SignalROI *prev_roi, SignalROI *next_roi);
