@@ -104,7 +104,72 @@ void ROI_refinement::Clear(){
 }
 
 void ROI_refinement::apply_roi(int plane, Array::array_xxf& r_data){
-  
+  if (plane==0){
+    for (int irow = 0 ; irow != r_data.rows(); irow++){
+      //refresh ... 
+      Waveform::realseq_t signal(r_data.cols(),0);
+      // loop ROIs and assign data
+      for (auto it = rois_u_loose.at(irow).begin(); it!= rois_u_loose.at(irow).end(); it++){
+	SignalROI *roi =  *it;
+	int start_bin = roi->get_start_bin();
+	int end_bin = roi->get_end_bin();
+	float start_content = r_data(irow,start_bin);
+	float end_content = r_data(irow,end_bin);
+	for (int i=start_bin; i<end_bin+1; i++){
+	  int content = r_data(irow,i) - ((end_content - start_content)*(i-start_bin)/(end_bin-start_bin) + start_content);
+	  signal.at(i) = content;
+	  //	  htemp_signal->SetBinContent(i+1,content);
+	}
+      }
+      // load data back ..
+      for (int icol = 0; icol!=r_data.cols();icol++){
+	r_data(irow,icol) = signal.at(icol);
+      }
+    }
+  }else if (plane==1){
+    for (int irow = 0 ; irow != r_data.rows(); irow++){
+      //refresh ... 
+      Waveform::realseq_t signal(r_data.cols(),0);
+      // loop ROIs and assign data
+      for (auto it = rois_v_loose.at(irow).begin(); it!= rois_v_loose.at(irow).end(); it++){
+	SignalROI *roi =  *it;
+	int start_bin = roi->get_start_bin();
+	int end_bin = roi->get_end_bin();
+	float start_content = r_data(irow,start_bin);
+	float end_content = r_data(irow,end_bin);
+	for (int i=start_bin; i<end_bin+1; i++){
+	  int content = r_data(irow,i) - ((end_content - start_content)*(i-start_bin)/(end_bin-start_bin) + start_content);
+	  signal.at(i) = content;
+	  //htemp_signal->SetBinContent(i+1,content);
+	}
+      }
+      // load data back ..
+      for (int icol = 0; icol!=r_data.cols();icol++){
+	r_data(irow,icol) = signal.at(icol);
+      }
+    }
+  }else{
+    for (int irow = 0 ; irow != r_data.rows(); irow++){
+      //refresh ... 
+      Waveform::realseq_t signal(r_data.cols(),0);
+      // loop ROIs and assign data
+      for (auto it = rois_w_tight.at(irow).begin(); it!= rois_w_tight.at(irow).end(); it++){
+	SignalROI *roi =  *it;
+	int start_bin = roi->get_start_bin();
+	int end_bin = roi->get_end_bin();
+	float start_content = r_data(irow,start_bin);
+	float end_content = r_data(irow,end_bin);
+	for (int i=start_bin; i<end_bin+1; i++){
+	  int content = r_data(irow,i) - ((end_content - start_content)*(i-start_bin)/(end_bin-start_bin) + start_content);
+	  signal.at(i) = content;
+	}
+      }
+      // load data back ..
+      for (int icol = 0; icol!=r_data.cols();icol++){
+	r_data(irow,icol) = signal.at(icol);
+      }
+    }
+  }
 }
 
 
@@ -1491,6 +1556,7 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
   int end_bin = roi->get_end_bin();
   
   if (start_bin <0 || end_bin <0 ) return;
+
   // if (roi->get_chid()==1240){
   //   std::cout << "xin: " << start_bin << " " << end_bin << std::endl;
   // }
@@ -1655,8 +1721,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
    	    j = npeaks;
 	  }
 
-  	  // if (roi->get_chid() == 1240 && roi->get_plane() == WirePlaneType_t(0))
-  	  //   std::cout << "c: " << npeaks << " " << valley_pos1[npeaks1-1] << " " << peak_pos1[npeaks1-1] << " " << valley_pos1[npeaks1] << " " << rms * sep_peak << std::endl;
+	  // if (roi->get_chid() == 1240 && roi->get_plane() == 0)
+	  //   std::cout << "c: " << npeaks << " " << valley_pos1[npeaks1-1] << " " << peak_pos1[npeaks1-1] << " " << valley_pos1[npeaks1] << " " << rms * sep_peak << std::endl;
 	}
       }
       // fill the last valley
@@ -1665,10 +1731,10 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
       //std::cout << start_bin << " " << end_bin << std::endl;
 
 
-      // if (roi->get_chid() == 1240 && roi->get_plane() == WirePlaneType_t(0)){
+      // if (roi->get_chid() == 1240 && roi->get_plane() == 0){
       // 	for (int j=0;j!=npeaks1;j++){
-      // 	  std::cout << valley_pos1[j] << " " << peak_pos1[j] << " " <<  valley_pos1[j+1] << std::endl ;
-      // 	}
+      //  	  std::cout << valley_pos1[j] << " " << peak_pos1[j] << " " <<  valley_pos1[j+1] << std::endl ;
+      //  	}
       // }
       
 
@@ -1700,8 +1766,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
 
    	if (saved_boundaries.find(start_pos) != saved_boundaries.end() ||
    	    saved_boundaries.find(end_pos) != saved_boundaries.end()){
-   	  // if (roi->get_chid() == 1240 && roi->get_plane() == WirePlaneType_t(0))
-   	  //   std::cout << "d: " << start_pos << " " << end_pos << std::endl;
+	  // if (roi->get_chid() == 1240 && roi->get_plane() == 0)
+	  //   std::cout << "d: " << start_pos << " " << end_pos << std::endl;
 
    	  for (int k = start_pos; k!=end_pos+1;k++){
    	    double temp_content = temp1_signal.at(k-start_bin) -  (start_content + (end_content-start_content) * (k-start_pos) / (end_pos - start_pos));
@@ -1771,8 +1837,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
   	  }
   	}
   	bins.push_back(std::make_pair(start,end));
-  	// if (roi->get_chid() == 1308)
-  	//   std::cout << qx << " " <<  start+start_bin << " " << end + start_bin << " " << 3*rms << " " << htemp->GetBinContent(6529-start_bin+1) << std::endl;
+	// if (roi->get_chid() == 1240)
+	//   std::cout << qx << " " <<  start+start_bin << " " << end + start_bin << " " << 3*rms  << std::endl;
   	i = end;
       }
     }
@@ -1814,8 +1880,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
       //      htemp->Reset();
       // std::cout << saved_b.size() << " " << bins.size() << " " << htemp->GetNbinsX() << std::endl;
       for (int j=0;j<int(saved_b.size())-1;j++){
-  	// if (j==0)
-  	//   std::cout << saved_b.size() << " " << j << std::endl;
+	// if (irow==1240)
+	//   std::cout << saved_b.size() << " " << j << " " << saved<< std::endl;
 
 	
   	//int flag = 0;
@@ -2000,30 +2066,30 @@ void ROI_refinement::BreakROIs(int plane, ROI_formation& roi_form){
 
 
 void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
-  std::cout << "Clean up loose ROIs" << std::endl;
+  //std::cout << "Clean up loose ROIs" << std::endl;
   CleanUpROIs(plane);
-  std::cout << "Generate more loose ROIs from isolated good tight ROIs" << std::endl;
+  //std::cout << "Generate more loose ROIs from isolated good tight ROIs" << std::endl;
   generate_merge_ROIs(plane);
 
   for (int qx = 0; qx!=break_roi_loop; qx++){
-    std::cout << "Break loose ROIs" << std::endl;
+    // std::cout << "Break loose ROIs" << std::endl;
     BreakROIs(plane, roi_form);
-    std::cout << "Clean up ROIs 2nd time" << std::endl;
+    // std::cout << "Clean up ROIs 2nd time" << std::endl;
     CheckROIs(plane, roi_form);
     CleanUpROIs(plane);
   }
   
   
   
-  std::cout << "Shrink ROIs" << std::endl;
+  //  std::cout << "Shrink ROIs" << std::endl;
   ShrinkROIs(plane, roi_form);
-  std::cout << "Clean up ROIs 3rd time" << std::endl;
+  // std::cout << "Clean up ROIs 3rd time" << std::endl;
   CheckROIs(plane, roi_form);
   CleanUpROIs(plane);
 
 
   // Further reduce fake hits
-  std::cout << "Remove fake hits " << std::endl;
+  // std::cout << "Remove fake hits " << std::endl;
   if (plane==2){
     CleanUpCollectionROIs();
   }else{

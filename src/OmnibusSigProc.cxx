@@ -697,10 +697,14 @@ void OmnibusSigProc::decon_2D_looseROI(int plane){
   Array::array_xxc c_data_afterfilter(r_data.rows(),r_data.cols());
   for (int irow=0; irow<c_data.rows(); ++irow) {
     if (plane == 0 || plane == 1){
-      if (cmm["lf_noisy"].find(nwire_u*plane+irow)==cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf;
-      }else{
+      if (cmm["lf_noisy"].find(nwire_u*plane+irow)!=cmm["lf_noisy"].end()){
 	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow+1)!=cmm["lf_noisy"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow-1)!=cmm["lf_noisy"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else{	
+	roi_hf_filter_wf2 = roi_hf_filter_wf;
       }
       //Waveform::realseq_t roi_hf_filter_wf;
     }else{
@@ -789,11 +793,15 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   
   for (int i=0;i!=3;i++){
     // load data into EIGEN matrices ...
+    //  std::cout << "Load data" << std::endl;
     load_data(in,i);
+
+    // std::cout << "Initial decon " << i << std::endl;
     // initial decon ... 
     decon_2D_init(i);
 
-    
+
+    //std::cout << "Form tight ROIs " << i  << std::endl;
     // Form tight ROIs
     if (i!=2){ // induction wire planes
       decon_2D_tighterROI(i);
@@ -805,23 +813,35 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
       decon_2D_tightROI(i);
       roi_form.find_ROI_by_decon_itself(i,r_data);
     }
+
     
     // Form loose ROIs
     if (i!=2){
+      // std::cout << "Form loose ROIs " << i << std::endl;
       decon_2D_looseROI(i);
+
+      //save_data(itraces,i);
+      
       roi_form.find_ROI_loose(i,r_data);
       decon_2D_ROI_refine(i);
     }
 
+    //std::cout << "Refine ROIs " << i << std::endl;
     // Refine ROIs
     roi_refine.load_data(i,r_data,roi_form);
     roi_refine.refine_data(i,roi_form);
 
+    // if (i==2)
+    //   save_data(itraces,i);
+    
+    
     // merge results ...
+    //std::cout << "save data for hits " << i <<std::endl;
     decon_2D_hits(i);
     roi_refine.apply_roi(i,r_data);
     save_data(itraces,i);
-    
+
+    // std::cout << "save data for charge" << i << std::endl;
     decon_2D_charge(i);
     roi_refine.apply_roi(i,r_data);
     save_data(itraces,i,m_charge_ch_offset);

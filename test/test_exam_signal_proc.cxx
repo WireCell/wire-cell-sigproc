@@ -95,10 +95,11 @@ void save_into_file(const char* filename,IFrame::pointer frame_decon, int nrebin
       float acc_charge = 0;
       
       for (auto q : charges) {
-	rebin_counter ++;
 	if (rebin_counter < nrebin){
 	  acc_charge += q;
-	}else if (rebin_counter == nrebin){
+	  rebin_counter ++;
+	}
+	if (rebin_counter == nrebin){
 	  counter ++;
 	  hu_decon->SetBinContent(ch+1,tbin+counter,acc_charge); 
 	  //reset ... 
@@ -113,10 +114,12 @@ void save_into_file(const char* filename,IFrame::pointer frame_decon, int nrebin
       float acc_charge = 0;
       
       for (auto q : charges) {
-	rebin_counter ++;
+	
 	if (rebin_counter < nrebin){
 	  acc_charge += q;
-	}else if (rebin_counter == nrebin){
+	  rebin_counter ++;
+	}
+	if (rebin_counter == nrebin){
 	  counter ++;
 	  hv_decon->SetBinContent(ch+1-nwire_u,tbin+counter,acc_charge); 
 	  //reset ... 
@@ -139,10 +142,12 @@ void save_into_file(const char* filename,IFrame::pointer frame_decon, int nrebin
       float acc_charge = 0;
       
       for (auto q : charges) {
-	rebin_counter ++;
+	
 	if (rebin_counter < nrebin){
 	  acc_charge += q;
-	}else if (rebin_counter == nrebin){
+	  rebin_counter ++;
+	}
+	if (rebin_counter == nrebin){
 	  counter ++;
 	  hw_decon->SetBinContent(ch+1-nwire_u-nwire_v,tbin+counter,acc_charge); 
 	  //reset ... 

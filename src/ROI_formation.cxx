@@ -563,12 +563,15 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
     offset = nwire_u + nwire_v;
   }
   
-
+ 
+  
   // form rebinned waveform ... 
   for (int irow =0; irow!=r_data.rows();irow++){
     Waveform::realseq_t signal(nbins); // remove bad ones
     Waveform::realseq_t signal1(nbins); // all signal
     Waveform::realseq_t signal2(int(nbins/rebin)); // rebinned ones
+
+    //std::cout << "xin1" << std::endl;
     
     if (bad_ch_map.find(irow+offset)!=bad_ch_map.end()){
       int ncount = 0;
@@ -596,7 +599,9 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
 	signal1.at(icol) = r_data(irow,icol);
       }
     }
-            
+
+    //std::cout << "xin2" << std::endl;
+    
     // get rebinned waveform
     for (size_t i=0;i!=signal2.size();i++){ 
       double temp = 0;
@@ -605,11 +610,15 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
       }
       signal2.at(i) = temp;
     }
+
+    //std::cout << "xin3" << " " << signal.size() << " " << signal2.size() << std::endl;
     
     // calculate rms ...
     float th = cal_RMS(signal) * rebin * l_factor;
+    //if (irow==1240) std::cout << "a " << l_factor << " " << rebin << " " << th << " " << l_max_th << std::endl;
     if (th > l_max_th) th = l_max_th;
-
+    
+    
     std::vector<std::pair <int,int> > ROIs_1;
     std::vector<int> max_bins_1;
     int ntime = signal2.size();
@@ -626,6 +635,7 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
 	begin = find_ROI_begin(signal2,j, th*l_factor1) ;
 	end = find_ROI_end(signal2,j, th*l_factor1) ;
 	max_bin = begin;
+	//	if (irow==1240) std::cout << "a: " << begin << " " << end << " " << j << std::endl;
 	for (int k=begin;k<=end;k++){
 	  //std::cout << begin << " " << end << " " << max_bin << std::endl;
 	  if (signal2.at(k) > signal2.at(max_bin)){
@@ -639,7 +649,7 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
 	  end = find_ROI_end(signal2,j, next_content );
 	  max_bin = begin;
 	  for (int k=begin;k<=end;k++){
-	    if (signal2.at(k) > signal.at(max_bin)){
+	    if (signal2.at(k) > signal2.at(max_bin)){
 	      max_bin = k;
 	    }
 	  }
@@ -650,36 +660,58 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
 	  if (temp_begin < begin) temp_begin = begin;
 	  int temp_end = max_bin + l_short_length;
 	  if (temp_end > end) temp_end = end;
-	  if ((signal2.at(max_bin) - signal2.at(temp_begin) > th *l_factor1 &&
+	  if ((signal2.at(max_bin) - signal2.at(temp_begin) > th * l_factor1 &&
 	       signal2.at(max_bin) - signal2.at(temp_end) > th * l_factor1)){
 	    flag_ROI = 1;
 	  }
 	}
       }
+
+
       
-       if (flag_ROI == 1){
-    	 if (ROIs_1.size()>0){
-    	   if (begin <= ROIs_1.back().second){
-    	     ROIs_1.back().second = end;
-    	     if (signal2.at(max_bin) > signal2.at(max_bins_1.back()))
-    	       max_bins_1.back() = max_bin;
-    	   }else{
-    	     ROIs_1.push_back(std::make_pair(begin,end));
-    	     max_bins_1.push_back(max_bin);
-    	   }
-    	 }else{
-    	   ROIs_1.push_back(std::make_pair(begin,end));
-    	   max_bins_1.push_back(max_bin);
-    	 }
-	 
-    	 if (end < int(signal2.size())){
-    	   j = end;
-    	 }else{
-    	   j = signal2.size();
-    	 }
-       }
+      if (flag_ROI == 1){
+	// if (irow==1240) {
+	//   std::cout << begin << " " << end << " " << j << " " << content << " " << th << " " << prev_content << " " << next_content << std::endl;
+	//   for (int kk = begin; kk!=end; kk++){
+	//     std::cout << kk << " a " << signal2.at(kk) << " " << th*l_factor1 << " " << local_ave(signal2,kk,1) << std::endl;
+	//     for (int kkk=0;kkk!=6;kkk++){
+	//       std::cout << "b " << signal.at(kk*6+kkk) << std::endl;
+	//     }
+	//   }
+	// }
+	
+	if (ROIs_1.size()>0){
+	  if (begin <= ROIs_1.back().second){
+	    ROIs_1.back().second = end;
+	    if (signal2.at(max_bin) > signal2.at(max_bins_1.back()))
+	      max_bins_1.back() = max_bin;
+	  }else{
+	    ROIs_1.push_back(std::make_pair(begin,end));
+	    max_bins_1.push_back(max_bin);
+	  }
+	}else{
+	  ROIs_1.push_back(std::make_pair(begin,end));
+	  max_bins_1.push_back(max_bin);
+	}
+	
+	if (end < int(signal2.size())){
+	  j = end;
+	}else{
+	  j = signal2.size();
+	}
+      }
     }
-     
+
+    //std::cout << "xin4" << std::endl;
+
+
+    // for (int j = 0; j!=int(ROIs_1.size());j++){
+    //    int begin = ROIs_1.at(j).first * rebin;
+    //    int end = ROIs_1.at(j).second *rebin + (rebin-1);
+    //    if (irow ==1240) std::cout << "b " << begin << " " << end << std::endl;
+    //  }
+
+
     
      if (ROIs_1.size()==1){
      }else if (ROIs_1.size()>1){
@@ -726,7 +758,8 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
 	 
        }
      }
-     
+
+     //std::cout << "xin5" << std::endl;
      // scale back ... 
      for (int j = 0; j!=int(ROIs_1.size());j++){
        int begin = ROIs_1.at(j).first * rebin;
@@ -735,7 +768,7 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
        ROIs_1.at(j).first = begin;
        ROIs_1.at(j).second = end;
        
-       //if (chid ==1195) std::cout << ROIs_1.at(j).first << " " << ROIs_1.at(j).second << std::endl;
+       // if (irow ==1240) std::cout << ROIs_1.at(j).first << " " << ROIs_1.at(j).second << std::endl;
      }
      
 
@@ -750,5 +783,8 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
      //std::cout << plane << " " << irow << " " << ROIs_1.size() << std::endl;
   }
   
+  //  std::cout << "xin6" << std::endl;
+  
   extend_ROI_loose(plane);
+  //std::cout << "xin7" << std::endl;
 }
