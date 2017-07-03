@@ -21,13 +21,41 @@ PeakFinding::PeakFinding(int fMaxPeaks,
 }
 
 PeakFinding::~PeakFinding(){
+  Clear();
+}
 
+void PeakFinding::Clear(){
+  delete source;
+  delete destVector;
+  delete fPositionX;
+  delete fPositionY;
+}
+
+int PeakFinding::find_peak(Waveform::realseq_t& signal){
+  ssize = int(signal.size());
+  source = new double[ssize];
+  for (size_t i = 0; i!=signal.size();i++){
+    *(source+i) = signal.at(i);
+  }
+
+  destVector = new double[ssize];
+  fPositionX = new double[ssize];
+  fPositionY = new double[ssize];
+  npeaks = SearchHighRes(); 
+
+  //fill fPositionY
+  for (int i=0; i<npeaks; i++){
+      int peak_pos1 = std::round(fPositionX[i]);
+      fPositionY[i] = source[peak_pos1];
+  }
+  
+
+  return npeaks;
 }
 
 
 
-int  PeakFinding::SearchHighRes(double *source,double *destVector, int ssize,
-                    double *fPositionX)
+int  PeakFinding::SearchHighRes()
 {
     const int PEAK_WINDOW = 1024;
 

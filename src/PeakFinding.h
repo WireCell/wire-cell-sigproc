@@ -1,6 +1,8 @@
 #ifndef WIRECELLSIGPROC_PEAKFINDING
 #define WIRECELLSIGPROC_PEAKFINDING
 
+#include "WireCellUtil/Waveform.h"
+
 namespace WireCell{
   namespace SigProc{
 
@@ -11,6 +13,15 @@ namespace WireCell{
 		  bool backgroundRemove = false,int deconIterations =3 ,
 		  bool markov = true, int averWindow = 3);
       ~PeakFinding();
+
+      int find_peak(Waveform::realseq_t& signal);
+
+      void Clear();
+
+      int GetNPeaks(){return npeaks;};
+      double* GetPositionX(){return fPositionX;};
+      double* GetPositionY(){return fPositionY;};
+      
       
     private:
       int fMaxPeaks;
@@ -20,9 +31,19 @@ namespace WireCell{
       int deconIterations;
       bool markov;
       int averWindow;
+
+      // data ... 
+      double* source;
+      int ssize;
+
+      double *destVector;
+      double *fPositionX;
+      double *fPositionY;
+
+      int npeaks;
       
-      int SearchHighRes(double *source,double *destVector, int ssize,
-			double *fPositionX);
+      // actual search function ... 
+      int SearchHighRes();
     };
   } 
 }
