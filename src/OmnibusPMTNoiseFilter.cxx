@@ -17,7 +17,7 @@ using namespace WireCell::SigProc;
 
 std::vector<PMTNoiseROI*> PMT_ROIs;
 
-OmnibusPMTNoiseFilter::OmnibusPMTNoiseFilter(const std::string anode_tn, int pad_window, int min_window_length, int threshold, float rms_threshold, int sort_wires, float ind_th1, float ind_th2 )
+OmnibusPMTNoiseFilter::OmnibusPMTNoiseFilter(const std::string anode_tn, int pad_window, int min_window_length, int threshold, float rms_threshold, int sort_wires, float ind_th1, float ind_th2, int nwire_pmt_col_th )
   : m_anode_tn(anode_tn)
   , m_pad_window(pad_window)
   , m_min_window_length(min_window_length)
@@ -26,6 +26,7 @@ OmnibusPMTNoiseFilter::OmnibusPMTNoiseFilter(const std::string anode_tn, int pad
   , m_sort_wires(sort_wires)
   , m_ind_th1(ind_th1)
   , m_ind_th2(ind_th2)
+  , m_nwire_pmt_col_th(nwire_pmt_col_th)
 {
   configure(default_configuration());
 }
@@ -48,6 +49,7 @@ void OmnibusPMTNoiseFilter::configure(const WireCell::Configuration& config)
   m_sort_wires = get(config,"sort_wires",m_sort_wires);
   m_ind_th1 = get(config,"ind_th1",m_ind_th1);
   m_ind_th2 = get(config,"ind_th2",m_ind_th2);
+  m_nwire_pmt_col_th = get(config,"nwire_pmt_col_th",m_nwire_pmt_col_th);
 }
 WireCell::Configuration OmnibusPMTNoiseFilter::default_configuration() const
 {
@@ -60,6 +62,7 @@ WireCell::Configuration OmnibusPMTNoiseFilter::default_configuration() const
     cfg["sort_wires"]=m_sort_wires;
     cfg["ind_th1"]=m_ind_th1;
     cfg["ind_th2"]=m_ind_th2;
+    cfg["nwire_pmt_col_th"] = m_nwire_pmt_col_th;
     return cfg;
 }
 
@@ -97,7 +100,7 @@ bool OmnibusPMTNoiseFilter::operator()(const input_pointer& in, output_pointer& 
   for (auto cs : bychan_coll) {
     // ignore dead channels ... 
     if (by_chan_rms[cs.first]>m_rms_threshold)
-      RemovePMTSignalCollection(bychan_coll[cs.first],by_chan_rms[cs.first],cs.first);
+      IDPMTSignalCollection(bychan_coll[cs.first],by_chan_rms[cs.first],cs.first);
   }
 
   
@@ -117,16 +120,16 @@ bool OmnibusPMTNoiseFilter::operator()(const input_pointer& in, output_pointer& 
 
   for (int i=0;i!=int(PMT_ROIs.size());i++){
     PMT_ROIs.at(i)->sort_wires(m_sort_wires);
-    int flag_qx = 0;
+    //int flag_qx = 0;
     if (PMT_ROIs.at(i)->get_sorted_uwires().size() > 0 && PMT_ROIs.at(i)->get_sorted_vwires().size() > 0){
       for (int j=0;j!=int(PMT_ROIs.at(i)->get_sorted_uwires().size());j++){
 	if (PMT_ROIs.at(i)->get_average_uwires_peak_height(j) < m_ind_th1* PMT_ROIs.at(i)->get_average_wwires_peak_height() &&
 	    PMT_ROIs.at(i)->get_max_uwires_peak_height(j) < m_ind_th2 * PMT_ROIs.at(i)->get_max_wwires_peak_height() && 
 	    PMT_ROIs.at(i)->get_sorted_uwires().at(j).size() <= PMT_ROIs.at(i)->get_sorted_wwires().size()
 	    ){
-	  flag_qx = 1;
+	  //	  flag_qx = 1;
 	  for (int k=0;k!=int(PMT_ROIs.at(i)->get_sorted_uwires().at(j).size());k++){
-	    RemovePMTSignalInduction(bychan_indu[PMT_ROIs.at(i)->get_sorted_uwires().at(j).at(k)],PMT_ROIs.at(i)->get_start_bin(),PMT_ROIs.at(i)->get_end_bin());
+	    RemovePMTSignal(bychan_indu[PMT_ROIs.at(i)->get_sorted_uwires().at(j).at(k)],PMT_ROIs.at(i)->get_start_bin(),PMT_ROIs.at(i)->get_end_bin());
 	    //RemovePMTSignalInduction(hu[PMT_ROIs.at(i)->get_sorted_uwires().at(j).at(k)],PMT_ROIs.at(i)->get_start_bin(),PMT_ROIs.at(i)->get_end_bin());
 	  }
 	  
@@ -139,14 +142,22 @@ bool OmnibusPMTNoiseFilter::operator()(const input_pointer& in, output_pointer& 
 	    PMT_ROIs.at(i)->get_max_vwires_peak_height(j) < m_ind_th2 * PMT_ROIs.at(i)->get_max_wwires_peak_height() &&
 	    PMT_ROIs.at(i)->get_sorted_vwires().at(j).size() <= PMT_ROIs.at(i)->get_sorted_wwires().size() 
 		){
-	  flag_qx = 1;
+	  //flag_qx = 1;
 	  for (int k=0;k!=int(PMT_ROIs.at(i)->get_sorted_vwires().at(j).size());k++){
-	    RemovePMTSignalInduction(bychan_indv[PMT_ROIs.at(i)->get_sorted_vwires().at(j).at(k)],PMT_ROIs.at(i)->get_start_bin(),PMT_ROIs.at(i)->get_end_bin());
+	    RemovePMTSignal(bychan_indv[PMT_ROIs.at(i)->get_sorted_vwires().at(j).at(k)],PMT_ROIs.at(i)->get_start_bin(),PMT_ROIs.at(i)->get_end_bin());
 	    //RemovePMTSignalInduction(hv[PMT_ROIs.at(i)->get_sorted_vwires().at(j).at(k)],PMT_ROIs.at(i)->get_start_bin(),PMT_ROIs.at(i)->get_end_bin());
 	  }
 	  //  std::cout << i << " " <<  PMT_ROIs.at(i)->get_peaks().at(0) << " " << PMT_ROIs.at(i)->get_peaks().size() << " " << PMT_ROIs.at(i)->get_sorted_vwires().at(j).size() << " " << j << " " << PMT_ROIs.at(i)->get_average_vwires_peak_height(j) << " " <<   PMT_ROIs.at(i)->get_average_wwires_peak_height() << " " << PMT_ROIs.at(i)->get_max_vwires_peak_height(j) << " " <<  PMT_ROIs.at(i)->get_max_wwires_peak_height() << " " << PMT_ROIs.at(i)->get_sorted_vwires().at(j).size() << " " <<  PMT_ROIs.at(i)->get_sorted_wwires().size() << std::endl;
 	}
       }
+
+      if (int(PMT_ROIs.at(i)->get_sorted_wwires().size()) >= m_nwire_pmt_col_th){
+	for (int j=0;j!=int(PMT_ROIs.at(i)->get_sorted_wwires().size());j++){
+	  RemovePMTSignal(bychan_coll[PMT_ROIs.at(i)->get_sorted_wwires().at(j)],PMT_ROIs.at(i)->get_start_bin(),PMT_ROIs.at(i)->get_end_bin());
+	}
+      }
+      
+      
       //if (flag_qx == 1) std::cout << i << " " <<  PMT_ROIs.at(i)->get_peaks().at(0) << " " <<  PMT_ROIs.at(i)->get_peaks().size() << " " << PMT_ROIs.at(i)->get_uwires().size() << " " << PMT_ROIs.at(i)->get_vwires().size() << " " << PMT_ROIs.at(i)->get_sorted_uwires().size() << " " << PMT_ROIs.at(i)->get_sorted_vwires().size() << " " << PMT_ROIs.at(i)->get_sorted_wwires().size() << " " << PMT_ROIs.at(i)->get_average_uwires_peak_height() << " " << PMT_ROIs.at(i)->get_average_vwires_peak_height() << " " << PMT_ROIs.at(i)->get_average_wwires_peak_height() << " " << PMT_ROIs.at(i)->get_max_uwires_peak_height() << " " << PMT_ROIs.at(i)->get_max_vwires_peak_height() << " " << PMT_ROIs.at(i)->get_max_wwires_peak_height() << std::endl;
     }
     delete PMT_ROIs.at(i);
@@ -180,7 +191,7 @@ bool OmnibusPMTNoiseFilter::operator()(const input_pointer& in, output_pointer& 
 }
 
 
-void OmnibusPMTNoiseFilter::RemovePMTSignalCollection(Waveform::realseq_t& signal,double rms, int ch){
+void OmnibusPMTNoiseFilter::IDPMTSignalCollection(Waveform::realseq_t& signal,double rms, int ch){
   
   int flag_start = 0;
   int start_bin=0;
@@ -231,28 +242,28 @@ void OmnibusPMTNoiseFilter::RemovePMTSignalCollection(Waveform::realseq_t& signa
 	  flag_start = 0;
 
 
-	   //adaptive baseline
-	    float start_content =signal.at(start_bin);
-	    for (int j=start_bin;j>=start_bin - m_pad_window;j--){
-	      if (j<0) continue;
-	      if (fabs(signal.at(j)) < fabs(start_content)){
-		start_bin = j;
-		start_content = signal.at(start_bin);
-	      }
-	    }
-	    float end_content = signal.at(end_bin);
-	    for (int j=end_bin; j<=end_bin+m_pad_window;j++){
-	      if (j>=int(signal.size())) continue;
-	      if (fabs(signal.at(j)) < fabs(end_content)){
-		end_bin = j;
-		end_content = signal.at(end_bin);
-	      }
-	    }
+	   // //adaptive baseline
+	   //  float start_content =signal.at(start_bin);
+	   //  for (int j=start_bin;j>=start_bin - m_pad_window;j--){
+	   //    if (j<0) continue;
+	   //    if (fabs(signal.at(j)) < fabs(start_content)){
+	   // 	start_bin = j;
+	   // 	start_content = signal.at(start_bin);
+	   //    }
+	   //  }
+	   //  float end_content = signal.at(end_bin);
+	   //  for (int j=end_bin; j<=end_bin+m_pad_window;j++){
+	   //    if (j>=int(signal.size())) continue;
+	   //    if (fabs(signal.at(j)) < fabs(end_content)){
+	   // 	end_bin = j;
+	   // 	end_content = signal.at(end_bin);
+	   //    }
+	   //  }
 	    
-	    for (int j=start_bin;j<=end_bin;j++){
-	      float content = start_content + (end_content - start_content) * (j - start_bin) / (end_bin - start_bin*1.0);
-	      signal.at(j)=content;
-	    }
+	   //  for (int j=start_bin;j<=end_bin;j++){
+	   //    float content = start_content + (end_content - start_content) * (j - start_bin) / (end_bin - start_bin*1.0);
+	   //    signal.at(j)=content;
+	   //  }
 	  
 	  
 	}
@@ -301,7 +312,7 @@ void OmnibusPMTNoiseFilter::IDPMTSignalInduction(Waveform::realseq_t& signal, do
   }
 }
 
-void OmnibusPMTNoiseFilter::RemovePMTSignalInduction(Waveform::realseq_t& signal, int start_bin, int end_bin){
+void OmnibusPMTNoiseFilter::RemovePMTSignal(Waveform::realseq_t& signal, int start_bin, int end_bin){
     
   //int flag_start = 0;
 	    

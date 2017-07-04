@@ -16,7 +16,7 @@ namespace WireCell {
       typedef std::vector< std::vector<int> > grouped_channels_t;
       
       /// Create an OmnibusPMTNoiseFilter.
-      OmnibusPMTNoiseFilter(const std::string anode_tn = "AnodePlane", int pad_window = 5, int min_window_length = 4, int threshold = 4, float rms_threshold = 0.5, int sort_wires = 4, float ind_th1 = 2.0, float ind_th2 = 0.5);
+      OmnibusPMTNoiseFilter(const std::string anode_tn = "AnodePlane", int pad_window = 5, int min_window_length = 4, int threshold = 4, float rms_threshold = 0.5, int sort_wires = 4, float ind_th1 = 2.0, float ind_th2 = 0.5, int nwire_pmt_col_th = 6);
       virtual ~OmnibusPMTNoiseFilter();
       
       /// IFrameFilter interface.
@@ -28,9 +28,9 @@ namespace WireCell {
       
       
       /// Explicitly inject required services
-      void RemovePMTSignalCollection(Waveform::realseq_t& signal,double rms, int ch);
+      void IDPMTSignalCollection(Waveform::realseq_t& signal,double rms, int ch);
       void IDPMTSignalInduction(Waveform::realseq_t& signal, double rms, int ch, int plane);
-      void RemovePMTSignalInduction(Waveform::realseq_t& signal, int start_bin, int end_bin);
+      void RemovePMTSignal(Waveform::realseq_t& signal, int start_bin, int end_bin);
       
     private:
       std::string m_anode_tn;
@@ -44,6 +44,7 @@ namespace WireCell {
       int m_sort_wires;
       float m_ind_th1;
       float m_ind_th2;
+      int m_nwire_pmt_col_th;
       
     };
   }
