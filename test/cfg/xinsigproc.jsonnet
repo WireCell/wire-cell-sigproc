@@ -1,0 +1,38 @@
+// Example jsonnet command line: 
+// $ jsonnet -J cfg -V detector=uboone -V input=foo.root sio/test/cfg/xinsigproc.jsonnet
+// Similar wire-cell command line.
+
+local params = import "params/chooser.jsonnet";
+local wc = import "wirecell.jsonnet";
+local anodes = import "multi/anodes.jsonnet";
+local bits = import "bits.jsonnet";
+local filters = import "filters.jsonnet";
+local omni = import "omni.jsonnet";
+[
+
+    bits.xinsource,
+
+    anodes.nominal,
+
+    bits.fieldresponse,
+
+] + filters + [
+
+    bits.perchanresp,
+
+    bits.xinsink,
+
+    // omni.noisefilter,
+    omni.sigproc,
+
+    {
+        type: "Omnibus",
+        data: {
+            source: wc.tn(bits.xinsource),
+            sink: wc.tn(bits.xinsink),
+            filters: [wc.tn(omni.sigproc)],
+        }
+    },
+
+
+]
