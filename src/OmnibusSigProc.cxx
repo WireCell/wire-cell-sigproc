@@ -12,6 +12,12 @@
 #include "ROI_formation.h"
 #include "ROI_refinement.h"
 
+#include "WireCellUtil/NamedFactory.h"
+
+WIRECELL_FACTORY(OmnibusSigProc, WireCell::SigProc::OmnibusSigProc,
+                 WireCell::IFrameFilter, WireCell::IConfigurable);
+
+
 using namespace WireCell;
 
 using namespace WireCell::SigProc;

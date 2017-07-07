@@ -7,6 +7,11 @@
 #include "WireCellIface/SimpleFrame.h"
 #include "WireCellIface/SimpleTrace.h"
 
+#include "WireCellUtil/NamedFactory.h"
+
+WIRECELL_FACTORY(OmnibusNoiseFilter, WireCell::SigProc::OmnibusNoiseFilter,
+                 WireCell::IFrameFilter, WireCell::IConfigurable);
+
 using namespace WireCell;
 
 using namespace WireCell::SigProc;
