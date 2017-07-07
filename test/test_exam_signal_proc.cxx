@@ -578,6 +578,8 @@ int main(int argc, char* argv[])
     
     
     SigProc::OmnibusSigProc bus;
+    bus.configure(bus.default_configuration());
+
 
     IFrame::pointer frame_decon;
     

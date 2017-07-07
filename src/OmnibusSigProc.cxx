@@ -49,7 +49,6 @@ OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offs
   , m_r_th_percent(r_th_percent)
   , m_charge_ch_offset(charge_ch_offset)
 {
-  configure(default_configuration());
   // get wires for each plane
 
  
