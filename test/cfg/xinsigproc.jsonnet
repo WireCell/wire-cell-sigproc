@@ -10,7 +10,7 @@ local filters = import "filters.jsonnet";
 local omni = import "omni.jsonnet";
 [
 
-    bits.xinsource,
+    bits.magnifysource,
 
     anodes.nominal,
 
@@ -28,7 +28,7 @@ local omni = import "omni.jsonnet";
     {
         type: "Omnibus",
         data: {
-            source: wc.tn(bits.xinsource),
+            source: wc.tn(bits.magnifysource),
             sink: wc.tn(bits.xinsink),
             filters: [wc.tn(omni.sigproc)],
         }

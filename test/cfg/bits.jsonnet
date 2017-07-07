@@ -1,7 +1,7 @@
 local anodes = import "multi/anodes.jsonnet";
 {
-    xinsource : {
-        type: "XinFileSource",
+    magnifysource : {
+        type: "MagnifySource",
         data: {
             filename: std.extVar("input"),
             histtype: "raw",
