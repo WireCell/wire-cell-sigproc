@@ -18,13 +18,13 @@ local wc = import "wirecell.jsonnet";
     gauss : {
 
         tight : $.basic {
-            name: "hf_gauss_tight",
+            name: "Gaus_tight",
             data: super.data {
 	        sigma: 1.11408e-01 * wc.megahertz,
             },
         },
         wide : $.basic {
-            name: "hf_gauss_wide",
+            name: "Gaus_wide",
             data: super.data {
 	        sigma: 0.14 * wc.megahertz,
             },
@@ -34,21 +34,21 @@ local wc = import "wirecell.jsonnet";
     weiner : {
         tight : {
             u : $.basic {
-                name: "hf_wiener_tight_u",
+                name: "Wiener_tight_U",
                 data: super.data {
                     sigma: 5.75416e+01/800.0*2 * wc.megahertz,
 	            power: 4.10358e+00,
                 }
             },
             v : $.basic {
-                name: "hf_wiener_tight_v",
+                name: "Wiener_tight_V",
                 data: super.data {
                     sigma: 5.99306e+01/800.0*2 * wc.megahertz,
 	            power: 4.20820e+00,
                 }
             },
             w : $.basic {
-                name: "hf_wiener_tight_w",
+                name: "Wiener_tight_W",
                 data: super.data {
                     sigma: 5.88802e+01/800.0*2 * wc.megahertz,
 	            power: 4.17455e+00,
@@ -57,21 +57,21 @@ local wc = import "wirecell.jsonnet";
         },
         wide :{
             u : $.basic {
-                name: "hf_wiener_wide_u",
+                name: "Wiener_wide_U",
                 data: super.data {
                     sigma: 1.78695e+01/200.0*2 * wc.megahertz,
 	            power: 5.33129e+00,
                 }
             },
             v : $.basic {
-                name: "hf_wiener_wide_v",
+                name: "Wiener_wide_V",
                 data: super.data {
                     sigma: 1.84666e+01/200.0*2 * wc.megahertz,
 	            power: 5.60489e+00,
                 }
             },
             w : $.basic {
-                name: "hf_wiener_wide_w",
+                name: "Wiener_wide_W",
                 data: super.data {
                     sigma: 1.83044e+01/200.0*2 * wc.megahertz,
 	            power: 5.44945e+00,
