@@ -20,7 +20,7 @@ local omni = import "omni.jsonnet";
 
     bits.perchanresp,
 
-    bits.xinsink,
+    bits.magnifysink,
 
     // omni.noisefilter,
     omni.sigproc,
@@ -29,7 +29,7 @@ local omni = import "omni.jsonnet";
         type: "Omnibus",
         data: {
             source: wc.tn(bits.magnifysource),
-            sink: wc.tn(bits.xinsink),
+            sink: wc.tn(bits.magnifysink),
             filters: [wc.tn(omni.sigproc)],
         }
     },

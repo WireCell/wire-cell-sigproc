@@ -22,11 +22,13 @@ local anodes = import "multi/anodes.jsonnet";
         },
     },
     
-    xinsink: {
-        type: "XinFileSink",
+    magnifysink: {
+        type: "MagnifySink",
         data: {
             rebin: 6,
-            filename: std.extVar("output"),
+            // fixme: giving an input file here is evil.
+            input_filename: std.extVar("input"),
+            output_filename: std.extVar("output"),
         },
     }
 
