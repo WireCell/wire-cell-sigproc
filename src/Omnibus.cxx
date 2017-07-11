@@ -1,6 +1,9 @@
 #include "WireCellSigProc/Omnibus.h"
 
+#include "WireCellUtil/Exceptions.h"
 #include "WireCellUtil/NamedFactory.h"
+
+#include <iostream>
 
 WIRECELL_FACTORY(Omnibus, WireCell::SigProc::Omnibus, WireCell::IApplication, WireCell::IConfigurable);
 
@@ -18,16 +21,23 @@ SigProc::Omnibus::~Omnibus()
 WireCell::Configuration SigProc::Omnibus::default_configuration() const
 {
     Configuration cfg;
-    cfg["source"] = "";
+    cfg["source"] = "";         // required
     cfg["filters"] = Json::arrayValue;
-    cfg["sink"] = "";
+    cfg["sink"] = "";           // optional
     return cfg;
 }
 
 void SigProc::Omnibus::configure(const WireCell::Configuration& cfg)
 {
     m_input = Factory::find_tn<IFrameSource>(cfg["source"].asString());
-    m_output = Factory::find_tn<IFrameSink>(cfg["sink"].asString());
+    std::string sink_tn = cfg["sink"].asString();
+    if (sink_tn.empty()) {
+        std::cerr << "Omnibus has no data sink, will produce no output\n";
+        m_output = nullptr;
+    }
+    else {
+        m_output = Factory::find_tn<IFrameSink>(cfg["sink"].asString());
+    }
     m_filters.clear();
     auto jffl = cfg["filters"];
     for (auto jff : jffl) {
@@ -40,22 +50,41 @@ void SigProc::Omnibus::execute()
 {
     IFrame::pointer frame;
     if (!(*m_input)(frame)) {
-        std::cerr << "Failed to get input frame\n";
-        return;
+        std::cerr << "Omnibus: failed to get input frame\n";
+        THROW(RuntimeError() << errmsg{"Omnibus: failed to get input frame"});
+    }
+    if (!frame) {
+        std::cerr << "Omnibus: got null frame, forwarding, assuming we have reached EOS\n";
+    }
+    else {
+        std::cerr << "Omnibus: got frame with " << frame->traces()->size() << " traces\n";
     }
 
     for (auto ff : m_filters) {
         IFrame::pointer nextframe;
         if (!(*ff)(frame, nextframe)) {
             std::cerr << "Failed to filter frame\n"; // fixme, give more info
-            return;
+            THROW(RuntimeError() << errmsg{"failed to filter frame"});
         }
+        if (!nextframe && !frame) {
+            continue;           // processing EOS
+        }
+        if (!nextframe) {
+            std::cerr << "Omnibus: filter returned a null frame\n";
+            THROW(RuntimeError() << errmsg{"filter returned a null frame"});
+        }
+
         frame = nextframe;
         nextframe = nullptr;
+        if (frame) {
+            std::cerr << "Omnibus: filtered frame now with " << frame->traces()->size() << " traces\n";
+        }
     }
 
-    if (!(*m_output)(frame)) {
-        std::cerr << "Failed to get output frame\n";
-        return;
+    if (m_output) {
+        if (!(*m_output)(frame)) {
+            std::cerr << "Omnibus: failed to send output frame\n";
+            THROW(RuntimeError() << errmsg{"failed to send output frame"});
+        }
     }
 }

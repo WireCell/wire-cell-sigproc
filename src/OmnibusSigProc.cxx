@@ -785,6 +785,13 @@ void OmnibusSigProc::decon_2D_charge(int plane){
 
 bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 {
+  if (!in) {
+    // A null input indicates end of stream and is to let us flush
+    // any data we may have buffered.  Since we do not buffer,
+    // just return.
+    out = nullptr;
+    return true;
+  }
   cmm = in->masks();
   ITrace::vector itraces;
 
@@ -877,3 +884,8 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   
   return true;
 }
+
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:
