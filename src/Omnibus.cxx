@@ -57,7 +57,7 @@ void SigProc::Omnibus::execute()
         std::cerr << "Omnibus: got null frame, forwarding, assuming we have reached EOS\n";
     }
     else {
-        std::cerr << "Omnibus: got frame with " << frame->traces()->size() << " traces\n";
+        std::cerr << "Omnibus: got input frame with " << frame->traces()->size() << " traces\n";
     }
 
     for (auto ff : m_filters) {

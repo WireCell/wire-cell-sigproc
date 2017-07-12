@@ -106,11 +106,8 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
 
   m_charge_ch_offset = get(config,"charge_ch_offset",m_charge_ch_offset);
   
+  // this throws if not found
   m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
-  if (!m_anode) {
-    THROW(KeyError() << errmsg{"failed to get IAnodePlane: " + m_anode_tn});
-  }
-
 
   // give the configuration, trying to understand how many wires are there for each plane
   nwire_u = 0;
