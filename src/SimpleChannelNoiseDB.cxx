@@ -11,10 +11,10 @@ SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
     , m_default_baseline(0.0)
     , m_default_gain(1.0)
     , m_default_offset(0.0)
-    , m_default_pad_f(0)
-    , m_default_pad_b(0)
     , m_default_min_rms(0.5)
     , m_default_max_rms(10)
+    , m_default_pad_f(0)
+    , m_default_pad_b(0)
 {
     set_sampling(tick, nsamples);
 }
@@ -23,14 +23,6 @@ SimpleChannelNoiseDB::~SimpleChannelNoiseDB()
 }
 
 
-void SimpleChannelNoiseDB::configure(const WireCell::Configuration& config)
-{
-}
-WireCell::Configuration SimpleChannelNoiseDB::default_configuration() const
-{
-    Configuration cfg;
-    return cfg;
-}
 
 double SimpleChannelNoiseDB::nominal_baseline(int channel) const
 {
@@ -60,7 +52,7 @@ double SimpleChannelNoiseDB::response_offset(int channel) const
 
 }
 
-float SimpleChannelNoiseDB::min_rms_cut(int channel) const
+double SimpleChannelNoiseDB::min_rms_cut(int channel) const
 {
     const int ind = chind(channel);
     if (0 <= ind && ind < (int)m_min_rms.size()) {
@@ -69,7 +61,7 @@ float SimpleChannelNoiseDB::min_rms_cut(int channel) const
     return m_default_min_rms;
 }
 
-float SimpleChannelNoiseDB::max_rms_cut(int channel) const
+double SimpleChannelNoiseDB::max_rms_cut(int channel) const
 {
     const int ind = chind(channel);
     if (0 <= ind && ind < (int)m_max_rms.size()) {
@@ -247,7 +239,7 @@ void SimpleChannelNoiseDB::set_response_offset(const std::vector<int>& channels,
 
 
 
-void SimpleChannelNoiseDB::set_min_rms_cut(const std::vector<int>& channels, float min_rms)
+void SimpleChannelNoiseDB::set_min_rms_cut(const std::vector<int>& channels, double min_rms)
 {
     for (auto ch : channels) {
 	int ind = chind(ch);
@@ -255,7 +247,7 @@ void SimpleChannelNoiseDB::set_min_rms_cut(const std::vector<int>& channels, flo
     }
 }
 
-void SimpleChannelNoiseDB::set_min_rms_cut_one(int ch, float min_rms)
+void SimpleChannelNoiseDB::set_min_rms_cut_one(int ch, double min_rms)
 {
 
     int ind = chind(ch);
@@ -264,7 +256,7 @@ void SimpleChannelNoiseDB::set_min_rms_cut_one(int ch, float min_rms)
 
 
 
-void SimpleChannelNoiseDB::set_max_rms_cut(const std::vector<int>& channels, float max_rms)
+void SimpleChannelNoiseDB::set_max_rms_cut(const std::vector<int>& channels, double max_rms)
 {
     for (auto ch : channels) {
 	int ind = chind(ch);
@@ -272,7 +264,7 @@ void SimpleChannelNoiseDB::set_max_rms_cut(const std::vector<int>& channels, flo
     }
 }
 
-void SimpleChannelNoiseDB::set_max_rms_cut_one(int ch, float max_rms)
+void SimpleChannelNoiseDB::set_max_rms_cut_one(int ch, double max_rms)
 {
     int ind = chind(ch);
     set_one(ind, max_rms, m_max_rms, m_default_max_rms);

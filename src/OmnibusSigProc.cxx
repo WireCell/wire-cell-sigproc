@@ -195,31 +195,48 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
   }
 
 
+  auto& bad = cmm["bad"];
+  int nbad = 0;
+
   //fix me, this mapping needs to be fixed ... 
   for (auto trace : *traces.get()) {
-    int tbin = trace->tbin();
     int ch = trace->channel();
-    auto charges = trace->charge();
-
-
-    if (plane==ch_plane_map[ch]){
-      int counter = 0;
-      for (auto q : charges) {
-	r_data(ch - offset, tbin + counter) = q;
-	counter ++;
-      }
-
-      //ensure dead channels are indeed dead ...
-      if (cmm["bad"].find(ch)!=cmm["bad"].end()){
-	for (size_t ind = 0; ind < cmm["bad"][ch].size();++ind){
- 	  for (int i=cmm["bad"][ch][ind].first; i!=cmm["bad"][ch][ind].second; i++){
- 	    r_data(ch-offset,i) = 0;
- 	  }
- 	}
-      }
-      
+    if (plane != ch_plane_map[ch]) {
+      continue;
     }
+
+    int tbin = trace->tbin();
+    auto const& charges = trace->charge();
+    int counter = 0;
+    for (auto q : charges) {
+      r_data(ch - offset, tbin + counter) = q;
+      counter ++;
+    }
+
+    //ensure dead channels are indeed dead ...
+    auto const& badch = bad.find(ch);
+    if (badch == bad.end()) {
+      continue;
+    }
+
+    auto const& binranges = badch->second;
+    for (auto const& br : binranges) {
+      ++nbad;
+      for (int i = br.first; i != br.second; ++i) {
+        r_data(ch-offset, i) = 0;
+      }
+      //std::cerr << plane << " " << ch << ": [" << br.first << "," << br.second << "]\n";
+    }
+      // if (cmm["bad"].find(ch)!=cmm["bad"].end()){
+      //   for (size_t ind = 0; ind < cmm["bad"][ch].size();++ind){
+      //     for (int i=cmm["bad"][ch][ind].first; i!=cmm["bad"][ch][ind].second; i++){
+      //       r_data(ch-offset,i) = 0;
+      //     }
+      //   }
+      // }
+      
   }
+  std::cerr << "OmnibusSigProc: plane index: " << plane << " configured with " << nbad << " bad regions\n";
   
   // std::cout << r_data(14,2000) << " " << r_data(1000,2000) << " " << r_data(1000,3000) << std::endl;
   
@@ -246,6 +263,7 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane, int total_off
   }
   
   
+  double qtot = 0.0;
   for (int i=0;i!=nwire;i++){
     ITrace::ChargeSequence charge(m_nticks);
     for (int j=0;j!=m_nticks;j++){
@@ -260,9 +278,15 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane, int total_off
       }
     }
     
+    // debug
+    for (int j=0;j!=m_nticks;j++){
+      qtot += charge.at(j);
+    }
+
     SimpleTrace *trace = new SimpleTrace(i+offset, 0, charge);
     itraces.push_back(ITrace::pointer(trace));
   }
+  std::cerr << "OmnibusSigProc: plane index " << plane << " Qtot=" << qtot << "\n";
   
 }
 
@@ -853,8 +877,9 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     // std::cout << "save data for charge" << i << std::endl;
     decon_2D_charge(i);
     roi_refine.apply_roi(i,r_data);
+#ifdef BREAK_DATA_MODEL
     save_data(itraces,i,m_charge_ch_offset);
-    
+#endif    
     
   }
 
