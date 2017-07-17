@@ -9,6 +9,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <unordered_set>
 
 #include "TCanvas.h"
 #include "TGraph.h"
@@ -107,8 +108,57 @@ local anodes = import "multi/anodes.jsonnet";
 )JSONNET";
 
 
+
+
 using namespace WireCell;
 using namespace std;
+
+
+typedef std::unordered_set<const WireCell::IChannelNoiseDatabase::filter_t*> filter_bag_t;
+
+
+void plot_spec(const filter_bag_t& specs, const std::string& name)
+{
+
+    std::vector<TGraph*> graphs;
+    std::vector<float> tmp;
+    for (auto spec: specs) {
+        TGraph* graph = new TGraph();
+        graphs.push_back(graph);
+        for (size_t ind=0; ind<spec->size(); ++ind) {
+            double amp = std::abs(spec->at(ind));
+            graph->SetPoint(ind, ind, amp);
+            tmp.push_back(amp);
+        }
+    }
+    auto mme = std::minmax_element(tmp.begin(), tmp.end());
+    float ymin = *mme.first;
+    float ymax = *mme.second;
+
+    const int ncolors=5;
+    int colors[ncolors] = {1,2,4,6,8};
+    for (size_t igraph = 0; igraph<graphs.size(); ++igraph) {
+        TGraph* graph = graphs[igraph];
+        graph->SetLineColor(colors[igraph%ncolors]);
+        graph->SetLineWidth(2);
+
+        if (!igraph) {
+            auto frame = graph->GetHistogram();
+            frame->SetTitle(name.c_str());
+            frame->GetXaxis()->SetTitle("frequency bins");
+            frame->GetYaxis()->SetTitle("amplitude");
+            graph->Draw("AL");
+            frame->SetMinimum(ymin);
+            frame->SetMaximum(ymax);
+            cerr << name << " ymin=" << ymin << ", ymax=" << ymax << endl;
+        }
+        else {
+            graph->Draw("L");
+        }
+    }
+}
+
+
 int main(int argc, char* argv[])
 {
     /// User code should never do this.
@@ -155,7 +205,8 @@ int main(int argc, char* argv[])
     gStyle->SetOptStat(0);
     TCanvas canvas("canvas","canvas",500,500);
     canvas.Print(Form("%s.pdf[",argv[0]),"pdf");
-
+    canvas.SetGridx(1);
+    canvas.SetGridy(1);
     int nticks = db.number_samples();
     double tick = db.sample_time();
     cerr << nticks << " at " << tick/units::us << " us.\n";
@@ -179,6 +230,8 @@ int main(int argc, char* argv[])
     for (size_t ind=0; ind<scalars.size(); ++ind) {
         auto& graph = scalars[ind];
         graph.SetName(scalar_names[ind].c_str());
+        graph.SetLineColor(2);
+        graph.SetLineWidth(3);
         graph.Draw("AL");
 
         auto frame = graph.GetHistogram();
@@ -186,6 +239,38 @@ int main(int argc, char* argv[])
         frame->GetXaxis()->SetTitle("channels");
         canvas.Print(Form("%s.pdf",argv[0]),"pdf");
     }
+
+
+    // find all unique
+    std::vector<filter_bag_t> specs(4);
+
+    for (int ch=0; ch<nchannels; ++ch) {
+        auto const& f0 = db.rcrc(ch);
+        if (specs[0].find(&f0) == specs[0].end()) {
+            specs[0].insert(&f0);
+        }
+        auto const& f1 = db.config(ch);
+        if (specs[1].find(&f1) == specs[1].end()) {
+            specs[1].insert(&f1);
+        }
+        auto const& f2 = db.noise(ch);
+        if (specs[2].find(&f2) == specs[2].end()) {
+            specs[2].insert(&f2);
+        }
+        auto const& f3 = db.response(ch);
+        if (specs[3].find(&f3) == specs[3].end()) {
+            specs[3].insert(&f3);
+        }
+    }
+
+    const std::string spec_names[4] = { "RCRC", "Misconfig", "Noise Mask", "Response" };
+
+    for (int ind=0; ind<4; ++ind) {
+        cerr << spec_names[ind] << ": " << specs[ind].size() << " spectra\n";
+        plot_spec(specs[ind], spec_names[ind]);
+        canvas.Print(Form("%s.pdf",argv[0]),"pdf");
+    }
+
 
 
     canvas.Print(Form("%s.pdf]",argv[0]),"pdf");
