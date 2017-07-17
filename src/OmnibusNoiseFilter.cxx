@@ -18,32 +18,50 @@ using namespace WireCell::SigProc;
 
 OmnibusNoiseFilter::OmnibusNoiseFilter()
 {
-    configure(default_configuration());
 }
 OmnibusNoiseFilter::~OmnibusNoiseFilter()
 {
 }
 
-void OmnibusNoiseFilter::configure(const WireCell::Configuration& config)
+void OmnibusNoiseFilter::configure(const WireCell::Configuration& cfg)
 {
-    auto jmm = config["maskmap"];
-
+    auto jmm = cfg["maskmap"];
     for (auto name : jmm.getMemberNames()) {
         m_maskmap[name] = jmm[name].asString();
 	//	std::cerr << name << " " << m_maskmap[name] << std::endl;
     }
 
-    
+    for (auto jf : cfg["channel_filters"]) {
+        auto filt = Factory::find_tn<IChannelFilter>(jf.asString());
+        m_perchan.push_back(filt);
+    }
+    for (auto jf : cfg["channel_status_filters"]) {
+        auto filt = Factory::find_tn<IChannelFilter>(jf.asString());
+        m_perchan_status.push_back(filt);
+    }
+    for (auto jf : cfg["grouped_filters"]) {
+        auto filt = Factory::find_tn<IChannelFilter>(jf.asString());
+        m_grouped.push_back(filt);
+    }
+
+    auto jcndb = cfg["channel_noisedb"];
+    m_noisedb = Factory::find_tn<IChannelNoiseDatabase>(jcndb.asString());
 }
+
 WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
 {
-    Configuration cfg1;
-    cfg1["chirp"] = "bad";
-    cfg1["noisy"] = "bad";
-    
     Configuration cfg;
-    cfg["maskmap"] = cfg1;
+    cfg["maskmap"]["chirp"] = "bad";
+    cfg["maskmap"]["noisy"] = "bad";
     
+    cfg["channel_filters"][0] = "mbOneChannelNoise";
+    cfg["channel_status_filters"][0] = "mbOneChannelStatus";
+    cfg["grouped_filters"][0] = "mbCoherentNoiseSub";
+
+    // user must supply.  "OmniChannelNoiseDB" is a likely choice.
+    // Avoid SimpleChannelNoiseDB.
+    cfg["channel_noisedb"] = ""; 
+
     return cfg;
 }
 

@@ -12,6 +12,18 @@
 #include <iostream>
 #include <set>
 
+// Register the components defined here
+WIRECELL_FACTORY(mbCoherentNoiseSub, WireCell::SigProc::Microboone::CoherentNoiseSub,
+                 WireCell::IChannelFilter);
+WIRECELL_FACTORY(mbOneChannelNoise, WireCell::SigProc::Microboone::OneChannelNoise,
+                 WireCell::IChannelFilter, WireCell::IConfigurable);
+WIRECELL_FACTORY(mbOneChannelStatus, WireCell::SigProc::Microboone::OneChannelStatus,
+                 WireCell::IChannelFilter, WireCell::IConfigurable);
+WIRECELL_FACTORY(mbADCBitShift, WireCell::SigProc::Microboone::ADCBitShift,
+                 WireCell::IChannelFilter, WireCell::IConfigurable);
+
+
+
 using namespace WireCell::SigProc;
 
 double filter_time(double freq){
@@ -575,7 +587,6 @@ bool Microboone::RemoveFilterFlags(WireCell::Waveform::realseq_t& sig)
 Microboone::CoherentNoiseSub::CoherentNoiseSub(const std::string anode_tn )
     : m_anode_tn(anode_tn)
 {
-    configure(default_configuration());
 }
 Microboone::CoherentNoiseSub::~CoherentNoiseSub()
 {
@@ -653,7 +664,6 @@ Microboone::OneChannelNoise::OneChannelNoise(const std::string anode_tn )
     , m_check_partial() // fixme, here too.
     , m_anode_tn(anode_tn)
 {
-    configure(default_configuration());
 }
 Microboone::OneChannelNoise::~OneChannelNoise()
 {
@@ -990,7 +1000,6 @@ Microboone::OneChannelStatus::OneChannelStatus(const std::string anode_tn, doubl
     , m_nbins(nbins)
     , m_cut(cut)
 {
-    configure(default_configuration());
 }
 Microboone::OneChannelStatus::~OneChannelStatus()
 {

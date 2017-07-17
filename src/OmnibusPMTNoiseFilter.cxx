@@ -28,7 +28,6 @@ OmnibusPMTNoiseFilter::OmnibusPMTNoiseFilter(const std::string anode_tn, int pad
   , m_ind_th2(ind_th2)
   , m_nwire_pmt_col_th(nwire_pmt_col_th)
 {
-  configure(default_configuration());
 }
 OmnibusPMTNoiseFilter::~OmnibusPMTNoiseFilter()
 {

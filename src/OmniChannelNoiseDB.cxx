@@ -3,6 +3,9 @@
 #include "WireCellUtil/NamedFactory.h"
 
 
+WIRECELL_FACTORY(OmniChannelNoiseDB, WireCell::SigProc::OmniChannelNoiseDB,
+                 WireCell::IChannelNoiseDatabase, WireCell::IConfigurable);
+
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
@@ -271,32 +274,6 @@ OmniChannelNoiseDB::ChannelInfo& OmniChannelNoiseDB::get_ci(int chid)
     return m_db.at(chid);
 }
 
-
-// OmniChannelNoiseDB::ChannelInfo* OmniChannelNoiseDB::make_ci(int chid, Json::Value cfg)
-// {
-//     auto ci = get_ci(chid);
-//     if (ci) { return ci; }
-//     ci = new OmniChannelNoiseDB::ChannelInfo;
-//     ci->chid = chid;
-//     ci->nominal_baseline = get(cfg, "nominal_baseline", 0.0);
-//     ci->gain_correction = get(cfg, "gain_correction", 1.0);
-//     ci->response_offset = get(cfg, "response_offset", 79);
-//     ci->min_rms_cut = get(cfg, "min_rms_cut", 1.0);
-//     ci->max_rms_cut = get(cfg, "max_rms_cut", 5.0);
-//     ci->pad_window_front = get(cfg, "pad_window_front", 20);
-//     ci->pad_window_back = get(cfg, "pad_window_back", 10);
-//     // rcrc
-//     ci->rcrc = parse_rcrc(cfg["rcrc"]);
-//     // config
-//     ci->config = parse_reconfig(cfg["reconfig"]);
-//     // noise
-//     ci->noise = parse_freqmasks(cfg["freqmasks"]);
-//     // response
-//     ci->response = parse_reconfig(cfg["response"]);
-//     add_ci(ci);
-//     return ci;
-// }
-
 void OmniChannelNoiseDB::update_channels(Json::Value cfg)
 {
     auto chans = parse_channels(cfg["channels"]);
@@ -380,49 +357,6 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         }
     }
 
-
-
-    // ci.nominal_baseline = get(cfg, "nominal_baseline", ci.nominal_baseline);
-    // ci.gain_correction = get(cfg, "gain_correction", ci.gain_correction);
-    // ci.response_offset = get(cfg, "response_offset", ci.response_offset);
-    // ci.min_rms_cut = get(cfg, "min_rms_cut", ci.min_rms_cut);
-    // ci.max_rms_cut = get(cfg, "max_rms_cut", ci.max_rms_cut);
-    // ci.pad_window_front = get(cfg, "pad_window_front", ci.pad_window_front);
-    // ci.pad_window_back = get(cfg, "pad_window_back", ci.pad_window_back);
-
-
-
-    // // rcrc
-    // {
-    //     auto jrcrc = cfg["rcrc"];
-    //     if (!jrcrc.isNull()) {
-    //         ci.rcrc = parse_rcrc(jrcrc);
-    //     }
-    // }
-
-    // // config
-    // {
-    //     auto jreconfig = cfg["reconfig"];
-    //     if (!jreconfig.empty()) {
-    //         ci.config = parse_reconfig(jreconfig);
-    //     }
-    // }
-    // // noise
-    // {
-    //     auto jfreqmasks = cfg["freqmasks"];
-    //     if (!jfreqmasks.empty()) {
-    //         ci.noise = parse_freqmasks(jfreqmasks);
-    //     }
-    // }
-
-    // // response
-    // {
-    //     auto jresponse = cfg["response"];
-    //     if (!jresponse.empty()) {
-    //         ci.response = parse_response(jresponse);
-    //     }
-    // }
-
 }
 
 
@@ -455,8 +389,6 @@ void OmniChannelNoiseDB::configure(const WireCell::Configuration& cfg)
     for (auto jci : cfg["channel_info"]) {
         update_channels(jci);
     }
-    
-
 }
 
 

@@ -1,6 +1,12 @@
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
 #include "WireCellUtil/Response.h"
-//#include <iostream> //debug
+
+#include "WireCellUtil/NamedFactory.h"
+
+WIRECELL_FACTORY(SimpleChannelNoiseDB, WireCell::SigProc::SimpleChannelNoiseDB,
+                 WireCell::IChannelNoiseDatabase)
+
+
 
 using namespace WireCell;
 using namespace WireCell::SigProc;

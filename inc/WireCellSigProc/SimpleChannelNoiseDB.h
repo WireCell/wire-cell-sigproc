@@ -120,9 +120,8 @@ namespace WireCell {
 	    int m_nsamples;
 
 	    double m_default_baseline, m_default_gain, m_default_offset;
-	    int m_default_pad_f, m_default_pad_b;
-
 	    double m_default_min_rms, m_default_max_rms;
+	    int m_default_pad_f, m_default_pad_b;
 
 	    std::vector<double> m_baseline, m_gain, m_offset, m_min_rms, m_max_rms;
 	    std::vector<int> m_pad_f, m_pad_b;

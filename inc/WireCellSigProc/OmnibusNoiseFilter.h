@@ -44,23 +44,19 @@ namespace WireCell {
 	    virtual WireCell::Configuration default_configuration() const;
 
 
-	    /// Explicitly inject required services
 
-	    /// Set per-channel filters.
+
+            // Local methods. Real code should not use these.  Expose for unit tests
+
 	    void set_channel_filters(std::vector<WireCell::IChannelFilter::pointer> filters) {
 		m_perchan = filters;
 	    }
-	    /// Set per-channel status.
 	    void set_channel_status_filters(std::vector<WireCell::IChannelFilter::pointer> filters) {
 		m_perchan_status = filters;
 	    }
-	    
-	    /// Set the grouped channel filters.
 	    void set_grouped_filters(std::vector<WireCell::IChannelFilter::pointer> filters) {
 		m_grouped = filters;
 	    }
-
-	    /** Set the sampling used when digitizing the waveform. */
 	    void set_channel_noisedb(WireCell::IChannelNoiseDatabase::pointer ndb) {
 		m_noisedb = ndb;
 	    }
