@@ -10,10 +10,10 @@ namespace WireCell {
   namespace SigProc {
     class HfFilter : public IFilterWaveform, public IConfigurable {
     public :
-      HfFilter(int nbins = 100, double max_freq = 1 * units::megahertz, double sigma = 3.0* units::megahertz, double power = 2, bool flag = true);
+      HfFilter(double max_freq = 1 * units::megahertz, double sigma = 3.0* units::megahertz, double power = 2, bool flag = true);
       virtual ~HfFilter();
 
-      virtual const Waveform::realseq_t filter_waveform() const ;
+      virtual const Waveform::realseq_t filter_waveform(int nfbins) const ;
 
       // IConfigurable
       virtual void configure(const WireCell::Configuration& config);
@@ -21,8 +21,6 @@ namespace WireCell {
       
       
     private:
-      // number of bins ...
-      int m_nbins;
       double m_max_freq;
       double m_sigma;
       double m_power;

@@ -48,8 +48,9 @@ int main(int argc, char* argv[]){
   auto ncr = Factory::find<IFilterWaveform>(ncr_tn,"lf1");
   auto ncr1 = Factory::find<IFilterWaveform>(ncr_tn1,"hf1");
   
-  auto wfs = ncr->filter_waveform();
-  auto wfs1 = ncr1->filter_waveform();
+  const int nfbins = 100;
+  auto wfs = ncr->filter_waveform(nfbins);
+  auto wfs1 = ncr1->filter_waveform(nfbins);
 
   TFile *file = new TFile("temp1.root","RECREATE");
   TGraph *g1 = new TGraph();

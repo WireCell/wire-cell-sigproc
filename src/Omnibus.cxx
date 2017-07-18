@@ -2,6 +2,7 @@
 
 #include "WireCellUtil/Exceptions.h"
 #include "WireCellUtil/NamedFactory.h"
+#include "WireCellUtil/ExecMon.h"
 
 #include <iostream>
 
@@ -48,6 +49,8 @@ void SigProc::Omnibus::configure(const WireCell::Configuration& cfg)
 
 void SigProc::Omnibus::execute()
 {
+    ExecMon em("omnibus starts");
+
     IFrame::pointer frame;
     if (!(*m_input)(frame)) {
         std::cerr << "Omnibus: failed to get input frame\n";
@@ -59,6 +62,8 @@ void SigProc::Omnibus::execute()
     else {
         std::cerr << "Omnibus: got input frame with " << frame->traces()->size() << " traces\n";
     }
+
+    em("sourced frame");
 
     for (auto ff : m_filters) {
         IFrame::pointer nextframe;
@@ -73,6 +78,7 @@ void SigProc::Omnibus::execute()
             std::cerr << "Omnibus: filter returned a null frame\n";
             THROW(RuntimeError() << errmsg{"filter returned a null frame"});
         }
+        em("filtered frame");
 
         frame = nextframe;
         nextframe = nullptr;
@@ -87,4 +93,7 @@ void SigProc::Omnibus::execute()
             THROW(RuntimeError() << errmsg{"failed to send output frame"});
         }
     }
+    em("sunk frame");
+
+    std::cerr << em.summary() << std::endl;
 }

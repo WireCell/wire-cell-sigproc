@@ -8,9 +8,8 @@ WIRECELL_FACTORY(HfFilter,WireCell::SigProc::HfFilter,
 
 using namespace WireCell;
 
-SigProc::HfFilter::HfFilter(int nbins, double max_freq, double sigma, double power, bool flag)
-  : m_nbins(nbins)
-  , m_max_freq(max_freq)
+SigProc::HfFilter::HfFilter(double max_freq, double sigma, double power, bool flag)
+  : m_max_freq(max_freq)
   , m_sigma(sigma)
   , m_power(power)
   , m_flag(flag)
@@ -24,7 +23,6 @@ SigProc::HfFilter::~HfFilter()
 WireCell::Configuration SigProc::HfFilter::default_configuration() const
 {
     Configuration cfg;
-    cfg["nbins"] = m_nbins;
     cfg["sigma"] = m_sigma;
     cfg["power"] = m_power;
     cfg["flag"] = m_flag;
@@ -34,7 +32,6 @@ WireCell::Configuration SigProc::HfFilter::default_configuration() const
 
 void SigProc::HfFilter::configure(const WireCell::Configuration& cfg)
 {
-  m_nbins = get(cfg,"nbins",m_nbins);
   m_sigma = get(cfg,"sigma",m_sigma);
   m_power = get(cfg,"power",m_power);
   m_flag = get(cfg,"flag",m_flag);
@@ -43,9 +40,9 @@ void SigProc::HfFilter::configure(const WireCell::Configuration& cfg)
 }
 
 
-const Waveform::realseq_t SigProc::HfFilter::filter_waveform() const
+const Waveform::realseq_t SigProc::HfFilter::filter_waveform(int nbins) const
 {
-  Waveform::realseq_t m_wfs(m_nbins);
+  Waveform::realseq_t m_wfs(nbins);
 
   Response::HfFilter hf_filter(m_sigma,m_power,m_flag);
 

@@ -1,6 +1,8 @@
 #include "WireCellSigProc/OmnibusSigProc.h"
 
 #include "WireCellUtil/NamedFactory.h"
+#include "WireCellUtil/Exceptions.h"
+#include "WireCellUtil/String.h"
 
 #include "WireCellIface/SimpleFrame.h"
 #include "WireCellIface/SimpleTrace.h"
@@ -22,12 +24,40 @@ using namespace WireCell;
 
 using namespace WireCell::SigProc;
 
-OmnibusSigProc::OmnibusSigProc(const std::string anode_tn, double fine_time_offset, double coarse_time_offset, double period, int nticks, double gain , double shaping_time , double inter_gain , double ADC_mV, bool flag_ch_corr, float th_factor_ind, float th_factor_col, int pad, float asy, int rebin, double l_factor, double l_max_th, double l_factor1, int l_short_length, double r_th_factor , double r_fake_signal_low_th , double r_fake_signal_high_th, int r_pad , int r_break_roi_loop , double r_th_peak , double r_sep_peak, double r_low_peak_sep_threshold_pre , int r_max_npeaks , double r_sigma , double r_th_percent , int charge_ch_offset  )
+OmnibusSigProc::OmnibusSigProc(const std::string anode_tn,
+                               double fine_time_offset,
+                               double coarse_time_offset,
+                               double gain, 
+                               double shaping_time,
+                               double inter_gain , 
+                               double ADC_mV,
+                               bool flag_ch_corr,
+                               float th_factor_ind,
+                               float th_factor_col,
+                               int pad,
+                               float asy,
+                               int rebin,
+                               double l_factor,
+                               double l_max_th,
+                               double l_factor1,
+                               int l_short_length,
+                               double r_th_factor ,
+                               double r_fake_signal_low_th ,
+                               double r_fake_signal_high_th,
+                               int r_pad ,
+                               int r_break_roi_loop ,
+                               double r_th_peak ,
+                               double r_sep_peak,
+                               double r_low_peak_sep_threshold_pre ,
+                               int r_max_npeaks ,
+                               double r_sigma ,
+                               double r_th_percent ,
+                               int charge_ch_offset  )
   : m_anode_tn (anode_tn)
   , m_fine_time_offset(fine_time_offset)
   , m_coarse_time_offset(coarse_time_offset)
-  , m_period(period)
-  , m_nticks(nticks)
+  , m_period(0)
+  , m_nticks(0)
   , m_gain(gain)
   , m_shaping_time(shaping_time)
   , m_inter_gain(inter_gain)
@@ -177,11 +207,11 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
 
 void OmnibusSigProc::load_data(const input_pointer& in, int plane){
   if (plane ==0){
-    r_data = Array::array_xxf::Zero(nwire_u,m_nticks);
+    m_r_data = Array::array_xxf::Zero(nwire_u,m_nticks);
   }else if (plane==1){
-    r_data = Array::array_xxf::Zero(nwire_v,m_nticks);
+    m_r_data = Array::array_xxf::Zero(nwire_v,m_nticks);
   }else if (plane==2){
-    r_data = Array::array_xxf::Zero(nwire_w,m_nticks);
+    m_r_data = Array::array_xxf::Zero(nwire_w,m_nticks);
   }
   
   auto traces = in->traces();
@@ -193,24 +223,27 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
   }else if (plane==2){
     offset = nwire_u+nwire_v;
   }
+  else {
+    THROW(RuntimeError() << errmsg{String::format("Unknown plane index: %d", plane)});
+  }
 
 
   auto& bad = cmm["bad"];
   int nbad = 0;
 
-  //fix me, this mapping needs to be fixed ... 
+  //fixme, this mapping needs to be fixed ... 
   for (auto trace : *traces.get()) {
     int ch = trace->channel();
     if (plane != ch_plane_map[ch]) {
       continue;
     }
 
+    // fixme: this code uses tbin() but other places in this file will barf if tbin!=0.
     int tbin = trace->tbin();
     auto const& charges = trace->charge();
-    int counter = 0;
-    for (auto q : charges) {
-      r_data(ch - offset, tbin + counter) = q;
-      counter ++;
+    const int ntbins = std::min((int)charges.size(), m_nticks);
+    for (int qind = 0; qind < ntbins; ++qind) {
+      m_r_data(ch - offset, tbin + qind) = charges[qind];
     }
 
     //ensure dead channels are indeed dead ...
@@ -223,7 +256,7 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
     for (auto const& br : binranges) {
       ++nbad;
       for (int i = br.first; i != br.second; ++i) {
-        r_data(ch-offset, i) = 0;
+        m_r_data(ch-offset, i) = 0;
       }
       //std::cerr << plane << " " << ch << ": [" << br.first << "," << br.second << "]\n";
     }
@@ -238,7 +271,7 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
   }
   std::cerr << "OmnibusSigProc: plane index: " << plane << " configured with " << nbad << " bad regions\n";
   
-  // std::cout << r_data(14,2000) << " " << r_data(1000,2000) << " " << r_data(1000,3000) << std::endl;
+  // std::cout << m_r_data(14,2000) << " " << m_r_data(1000,2000) << " " << m_r_data(1000,3000) << std::endl;
   
 }
 
@@ -267,7 +300,7 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane, int total_off
   for (int i=0;i!=nwire;i++){
     ITrace::ChargeSequence charge(m_nticks);
     for (int j=0;j!=m_nticks;j++){
-      charge.at(j) = r_data(i,j);
+      charge.at(j) = m_r_data(i,j);
     }
     // correct the dead channels ... 
     if (cmm["bad"].find(i+offset1)!=cmm["bad"].end()){
@@ -291,7 +324,24 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane, int total_off
 }
 
 
-void OmnibusSigProc::init_overall_response(){
+void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
+{
+  m_period = frame->tick();
+  {
+    std::vector<int> tbins;
+    for (auto trace : *frame->traces()) {
+      const int tbin = trace->tbin();
+      const int nbins = trace->charge().size();
+      tbins.push_back(tbin);
+      tbins.push_back(tbin+nbins);
+    }
+    auto mme = std::minmax_element(tbins.begin(), tbins.end());
+    int tbinmin = *mme.first;
+    int tbinmax = *mme.second;
+    m_nticks = tbinmax-tbinmin;
+    std::cerr <<"OmnibusSigProc: nticks=" << m_nticks << " tbinmin="<<tbinmin << " tbinmax="<<tbinmax<<std::endl;
+  }
+
   auto ifr = Factory::find<IFieldResponse>("FieldResponse");
   // Get full, "fine-grained" field responses defined at impact
   // positions.
@@ -441,7 +491,7 @@ void OmnibusSigProc::decon_2D_init(int plane){
 
   // data part ... 
   // first round of FFT on time
-  c_data = Array::dft_rc(r_data,0);
+  m_c_data = Array::dft_rc(m_r_data,0);
 
   
   // now apply the ch-by-ch response ...
@@ -479,13 +529,13 @@ void OmnibusSigProc::decon_2D_init(int plane){
     }
     
     WireCell::Waveform::compseq_t elec = Waveform::dft(ewave);
-    for (int irow = 0; irow != c_data.rows(); irow++){
+    for (int irow = 0; irow != m_c_data.rows(); irow++){
       WireCell::Waveform::compseq_t ch_elec = Waveform::dft(ch_wfs.at(irow));
-      for (int icol = 0; icol != c_data.cols(); icol++){
+      for (int icol = 0; icol != m_c_data.cols(); icol++){
 	if (abs(ch_elec.at(icol))!=0){
-	  c_data(irow,icol) *= elec.at(icol) / ch_elec.at(icol);
+	  m_c_data(irow,icol) *= elec.at(icol) / ch_elec.at(icol);
 	}else{
-	  c_data(irow,icol) = 0;
+	  m_c_data(irow,icol) = 0;
 	}
       }
     }
@@ -495,10 +545,10 @@ void OmnibusSigProc::decon_2D_init(int plane){
   
   
   //second round of FFT on wire
-  c_data = Array::dft_cc(c_data,1);
+  m_c_data = Array::dft_cc(m_c_data,1);
   
   //response part ...
-  Array::array_xxf r_resp = Array::array_xxf::Zero(r_data.rows(),m_nticks);
+  Array::array_xxf r_resp = Array::array_xxf::Zero(m_r_data.rows(),m_nticks);
   for (size_t i=0;i!=overall_resp[plane].size();i++){
     for (int j=0;j!=m_nticks;j++){
       r_resp(i,j) = overall_resp[plane].at(i).at(j);
@@ -512,59 +562,59 @@ void OmnibusSigProc::decon_2D_init(int plane){
 
   
   //make ratio to the response and apply wire filter
-  c_data = c_data/c_resp;
+  m_c_data = m_c_data/c_resp;
   //std::cout << "Apply Wire Filter! " << std::endl;
   // apply software filter on wire
   Waveform::realseq_t wire_filter_wf;
   if (plane ==0 || plane == 1){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wire_ind");
-    wire_filter_wf = ncr1->filter_waveform();
+    wire_filter_wf = ncr1->filter_waveform(m_c_data.rows());
   }else{
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wire_col");
-    wire_filter_wf = ncr1->filter_waveform();
+    wire_filter_wf = ncr1->filter_waveform(m_c_data.rows());
   }
-  for (int irow=0; irow<c_data.rows(); ++irow) {
-    for (int icol=0; icol<c_data.cols(); ++icol) {
-      float val = abs(c_data(irow,icol));
+  for (int irow=0; irow<m_c_data.rows(); ++irow) {
+    for (int icol=0; icol<m_c_data.cols(); ++icol) {
+      float val = abs(m_c_data(irow,icol));
       if (std::isnan(val)) {
-	c_data(irow,icol) = -0.0;
+	m_c_data(irow,icol) = -0.0;
       }
       if (std::isinf(val)) {
-	c_data(irow,icol) = 0.0;
+	m_c_data(irow,icol) = 0.0;
       }
-      c_data(irow,icol) *= wire_filter_wf.at(irow);
+      m_c_data(irow,icol) *= wire_filter_wf.at(irow);
     }
   }
   
   //do the first round of inverse FFT on wire
-  c_data = Array::idft_cc(c_data,1);
+  m_c_data = Array::idft_cc(m_c_data,1);
 
   // do the second round of inverse FFT on time
-  r_data = Array::idft_cr(c_data,0);
+  m_r_data = Array::idft_cr(m_c_data,0);
 
   // do the shift in wire 
-  int nrows = r_data.rows();
-  int ncols = r_data.cols();
+  int nrows = m_r_data.rows();
+  int ncols = m_r_data.cols();
   {    // std::cout << nrows << " " << ncols << " " << m_wire_shift[plane] << std::endl;
     Array::array_xxf arr1(m_wire_shift[plane], ncols) ;
-    arr1 = r_data.block(nrows-m_wire_shift[plane] , 0 , m_wire_shift[plane], ncols);
+    arr1 = m_r_data.block(nrows-m_wire_shift[plane] , 0 , m_wire_shift[plane], ncols);
     Array::array_xxf arr2(nrows-m_wire_shift[plane],ncols);
-    arr2 = r_data.block(0,0,nrows-m_wire_shift[plane],ncols);
-    r_data.block(0,0,m_wire_shift[plane],ncols) = arr1;
-    r_data.block(m_wire_shift[plane],0,nrows-m_wire_shift[plane],ncols) = arr2;
+    arr2 = m_r_data.block(0,0,nrows-m_wire_shift[plane],ncols);
+    m_r_data.block(0,0,m_wire_shift[plane],ncols) = arr1;
+    m_r_data.block(m_wire_shift[plane],0,nrows-m_wire_shift[plane],ncols) = arr2;
   }
   
   //do the shift in time
   int time_shift = (m_coarse_time_offset + m_intrinsic_time_offset)/m_period;
   if (time_shift > 0){
     Array::array_xxf arr1(nrows,ncols - time_shift);
-    arr1 = r_data.block(0,0,nrows,ncols - time_shift);
+    arr1 = m_r_data.block(0,0,nrows,ncols - time_shift);
     Array::array_xxf arr2(nrows,time_shift);
-    arr2 = r_data.block(0,ncols-time_shift,nrows,time_shift);
-    r_data.block(0,0,nrows,time_shift) = arr2;
-    r_data.block(0,time_shift,nrows,ncols-time_shift) = arr1;
+    arr2 = m_r_data.block(0,ncols-time_shift,nrows,time_shift);
+    m_r_data.block(0,0,nrows,time_shift) = arr2;
+    m_r_data.block(0,time_shift,nrows,ncols-time_shift) = arr1;
   }
-  c_data = Array::dft_rc(r_data,0);
+  m_c_data = Array::dft_rc(m_r_data,0);
   
   
   
@@ -576,25 +626,25 @@ void OmnibusSigProc::decon_2D_ROI_refine(int plane){
   Waveform::realseq_t roi_hf_filter_wf;
   if (plane ==0){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_U");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }else if (plane==1){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_V");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }else{
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_W");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }
 
-  Array::array_xxc c_data_afterfilter(r_data.rows(),r_data.cols());
-  for (int irow=0; irow<c_data.rows(); ++irow) {
-    for (int icol=0; icol<c_data.cols(); ++icol) {
-      c_data_afterfilter(irow,icol) = c_data(irow,icol) * roi_hf_filter_wf.at(icol);
+  Array::array_xxc c_data_afterfilter(m_r_data.rows(),m_r_data.cols());
+  for (int irow=0; irow<m_c_data.rows(); ++irow) {
+    for (int icol=0; icol<m_c_data.cols(); ++icol) {
+      c_data_afterfilter(irow,icol) = m_c_data(irow,icol) * roi_hf_filter_wf.at(icol);
     }
   }
   
   //do the second round of inverse FFT on wire
-  r_data = Array::idft_cr(c_data_afterfilter,0);
-  restore_baseline(r_data);
+  m_r_data = Array::idft_cr(c_data_afterfilter,0);
+  restore_baseline(m_r_data);
 }
 
 void OmnibusSigProc::decon_2D_tightROI(int plane){
@@ -603,35 +653,35 @@ void OmnibusSigProc::decon_2D_tightROI(int plane){
   Waveform::realseq_t roi_hf_filter_wf;
   if (plane ==0){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_U");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
     auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_tight_lf");
-    auto temp_filter = ncr2->filter_waveform();
+    auto temp_filter = ncr2->filter_waveform(m_c_data.cols());
     for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
       roi_hf_filter_wf.at(i) *= temp_filter.at(i);
     }
   }else if (plane==1){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_V");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
     auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_tight_lf");
-    auto temp_filter = ncr2->filter_waveform();
+    auto temp_filter = ncr2->filter_waveform(m_c_data.cols());
     for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
       roi_hf_filter_wf.at(i) *= temp_filter.at(i);
     }
   }else{
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_W");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }
 
-  Array::array_xxc c_data_afterfilter(r_data.rows(),r_data.cols());
-  for (int irow=0; irow<c_data.rows(); ++irow) {
-    for (int icol=0; icol<c_data.cols(); ++icol) {
-      c_data_afterfilter(irow,icol) = c_data(irow,icol) * roi_hf_filter_wf.at(icol);
+  Array::array_xxc c_data_afterfilter(m_r_data.rows(),m_r_data.cols());
+  for (int irow=0; irow<m_c_data.rows(); ++irow) {
+    for (int icol=0; icol<m_c_data.cols(); ++icol) {
+      c_data_afterfilter(irow,icol) = m_c_data(irow,icol) * roi_hf_filter_wf.at(icol);
     }
   }
   
   //do the second round of inverse FFT on wire
-  r_data = Array::idft_cr(c_data_afterfilter,0);
-  restore_baseline(r_data);
+  m_r_data = Array::idft_cr(c_data_afterfilter,0);
+  restore_baseline(m_r_data);
 }
  
 void OmnibusSigProc::decon_2D_tighterROI(int plane){
@@ -640,35 +690,35 @@ void OmnibusSigProc::decon_2D_tighterROI(int plane){
   Waveform::realseq_t roi_hf_filter_wf;
   if (plane ==0){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_U");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
     auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_tighter_lf");
-    auto temp_filter = ncr2->filter_waveform();
+    auto temp_filter = ncr2->filter_waveform(m_c_data.cols());
     for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
       roi_hf_filter_wf.at(i) *= temp_filter.at(i);
     }
   }else if (plane==1){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_V");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
     auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_tighter_lf");
-    auto temp_filter = ncr2->filter_waveform();
+    auto temp_filter = ncr2->filter_waveform(m_c_data.cols());
     for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
       roi_hf_filter_wf.at(i) *= temp_filter.at(i);
     }
   }else{
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_W");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }
 
-  Array::array_xxc c_data_afterfilter(r_data.rows(),r_data.cols());
-  for (int irow=0; irow<c_data.rows(); ++irow) {
-    for (int icol=0; icol<c_data.cols(); ++icol) {
-      c_data_afterfilter(irow,icol) = c_data(irow,icol) * roi_hf_filter_wf.at(icol);
+  Array::array_xxc c_data_afterfilter(m_r_data.rows(),m_r_data.cols());
+  for (int irow=0; irow<m_c_data.rows(); ++irow) {
+    for (int icol=0; icol<m_c_data.cols(); ++icol) {
+      c_data_afterfilter(irow,icol) = m_c_data(irow,icol) * roi_hf_filter_wf.at(icol);
     }
   }
   
   //do the second round of inverse FFT on wire
-  r_data = Array::idft_cr(c_data_afterfilter,0);
-  restore_baseline(r_data);
+  m_r_data = Array::idft_cr(c_data_afterfilter,0);
+  restore_baseline(m_r_data);
 }
  
 
@@ -681,47 +731,47 @@ void OmnibusSigProc::decon_2D_looseROI(int plane){
   Waveform::realseq_t roi_hf_filter_wf2;
   if (plane ==0){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_U");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
     roi_hf_filter_wf1 = roi_hf_filter_wf;
     {
       auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_loose_lf");
-      auto temp_filter = ncr2->filter_waveform();
+      auto temp_filter = ncr2->filter_waveform(m_c_data.cols());
       for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
 	roi_hf_filter_wf.at(i) *= temp_filter.at(i);
       }
     }
     {
       auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_tight_lf");
-      auto temp_filter = ncr2->filter_waveform();
+      auto temp_filter = ncr2->filter_waveform(m_c_data.cols());
       for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
 	roi_hf_filter_wf1.at(i) *= temp_filter.at(i);
       }
     }
   }else if (plane==1){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_V");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
     roi_hf_filter_wf1 = roi_hf_filter_wf;
     {
       auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_loose_lf");
-      auto temp_filter = ncr2->filter_waveform();
+      auto temp_filter = ncr2->filter_waveform(m_c_data.cols());
       for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
 	roi_hf_filter_wf.at(i) *= temp_filter.at(i);
       }
     }
      {
       auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_tight_lf");
-      auto temp_filter = ncr2->filter_waveform();
+      auto temp_filter = ncr2->filter_waveform(m_c_data.cols());
       for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
 	roi_hf_filter_wf1.at(i) *= temp_filter.at(i);
       }
     }
   }else{
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_W");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }
 
-  Array::array_xxc c_data_afterfilter(r_data.rows(),r_data.cols());
-  for (int irow=0; irow<c_data.rows(); ++irow) {
+  Array::array_xxc c_data_afterfilter(m_r_data.rows(),m_r_data.cols());
+  for (int irow=0; irow<m_c_data.rows(); ++irow) {
     if (plane == 0 || plane == 1){
       if (cmm["lf_noisy"].find(nwire_u*plane+irow)!=cmm["lf_noisy"].end()){
 	roi_hf_filter_wf2 = roi_hf_filter_wf1;
@@ -737,14 +787,14 @@ void OmnibusSigProc::decon_2D_looseROI(int plane){
       roi_hf_filter_wf2 = roi_hf_filter_wf;
     }
     
-    for (int icol=0; icol<c_data.cols(); ++icol) {
-      c_data_afterfilter(irow,icol) = c_data(irow,icol) * roi_hf_filter_wf2.at(icol);
+    for (int icol=0; icol<m_c_data.cols(); ++icol) {
+      c_data_afterfilter(irow,icol) = m_c_data(irow,icol) * roi_hf_filter_wf2.at(icol);
     }
   }
   
   //do the second round of inverse FFT on wire
-  r_data = Array::idft_cr(c_data_afterfilter,0);
-  restore_baseline(r_data);
+  m_r_data = Array::idft_cr(c_data_afterfilter,0);
+  restore_baseline(m_r_data);
 }
 
 void OmnibusSigProc::decon_2D_hits(int plane){
@@ -753,26 +803,26 @@ void OmnibusSigProc::decon_2D_hits(int plane){
   Waveform::realseq_t roi_hf_filter_wf;
   if (plane ==0){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_wide_U");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }else if (plane==1){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_wide_V");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }else{
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_wide_W");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }
 
-  Array::array_xxc c_data_afterfilter(r_data.rows(),r_data.cols());
-  for (int irow=0; irow<c_data.rows(); ++irow) {
-    for (int icol=0; icol<c_data.cols(); ++icol) {
-      c_data_afterfilter(irow,icol) = c_data(irow,icol) * roi_hf_filter_wf.at(icol);
+  Array::array_xxc c_data_afterfilter(m_r_data.rows(),m_r_data.cols());
+  for (int irow=0; irow<m_c_data.rows(); ++irow) {
+    for (int icol=0; icol<m_c_data.cols(); ++icol) {
+      c_data_afterfilter(irow,icol) = m_c_data(irow,icol) * roi_hf_filter_wf.at(icol);
     }
   }
   
   //do the second round of inverse FFT on wire
-  r_data = Array::idft_cr(c_data_afterfilter,0);
+  m_r_data = Array::idft_cr(c_data_afterfilter,0);
   if (plane==2)
-    restore_baseline(r_data);
+    restore_baseline(m_r_data);
 }
 
 void OmnibusSigProc::decon_2D_charge(int plane){
@@ -781,26 +831,27 @@ void OmnibusSigProc::decon_2D_charge(int plane){
   Waveform::realseq_t roi_hf_filter_wf;
   if (plane ==0){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Gaus_wide");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }else if (plane==1){
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Gaus_wide");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }else{
     auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Gaus_wide");
-    roi_hf_filter_wf = ncr1->filter_waveform();
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }
 
-  Array::array_xxc c_data_afterfilter(r_data.rows(),r_data.cols());
-  for (int irow=0; irow<c_data.rows(); ++irow) {
-    for (int icol=0; icol<c_data.cols(); ++icol) {
-      c_data_afterfilter(irow,icol) = c_data(irow,icol) * roi_hf_filter_wf.at(icol);
+  Array::array_xxc c_data_afterfilter(m_r_data.rows(),m_r_data.cols());
+  for (int irow=0; irow<m_c_data.rows(); ++irow) {
+    for (int icol=0; icol<m_c_data.cols(); ++icol) {
+      c_data_afterfilter(irow,icol) = m_c_data(irow,icol) * roi_hf_filter_wf.at(icol);
     }
   }
   
   //do the second round of inverse FFT on wire
-  r_data = Array::idft_cr(c_data_afterfilter,0);
-  if (plane==2)
-    restore_baseline(r_data);
+  m_r_data = Array::idft_cr(c_data_afterfilter,0);
+  if (plane==2) {
+    restore_baseline(m_r_data);
+  }
 }
 
 
@@ -817,7 +868,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   ITrace::vector itraces;
 
   // initialize the overall response function ... 
-  init_overall_response();
+  init_overall_response(in);
 
   // create a class for ROIs ... 
   ROI_formation roi_form(cmm,nwire_u, nwire_v, nwire_w, m_nticks, m_th_factor_ind, m_th_factor_col, m_pad, m_asy, m_rebin, m_l_factor, m_l_max_th, m_l_factor1, m_l_short_length);
@@ -838,13 +889,13 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     // Form tight ROIs
     if (i!=2){ // induction wire planes
       decon_2D_tighterROI(i);
-      Array::array_xxf r_data_tight(r_data.rows(),r_data.cols());
-      r_data_tight = r_data;
+      Array::array_xxf r_data_tight(m_r_data.rows(),m_r_data.cols());
+      r_data_tight = m_r_data;
       decon_2D_tightROI(i);
-      roi_form.find_ROI_by_decon_itself(i,r_data,r_data_tight);
+      roi_form.find_ROI_by_decon_itself(i,m_r_data,r_data_tight);
     }else{ // collection wire planes
       decon_2D_tightROI(i);
-      roi_form.find_ROI_by_decon_itself(i,r_data);
+      roi_form.find_ROI_by_decon_itself(i,m_r_data);
     }
 
     
@@ -855,13 +906,13 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 
       //save_data(itraces,i);
       
-      roi_form.find_ROI_loose(i,r_data);
+      roi_form.find_ROI_loose(i,m_r_data);
       decon_2D_ROI_refine(i);
     }
 
     //std::cout << "Refine ROIs " << i << std::endl;
     // Refine ROIs
-    roi_refine.load_data(i,r_data,roi_form);
+    roi_refine.load_data(i,m_r_data,roi_form);
     roi_refine.refine_data(i,roi_form);
 
     // if (i==2)
@@ -871,12 +922,12 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     // merge results ...
     //std::cout << "save data for hits " << i <<std::endl;
     decon_2D_hits(i);
-    roi_refine.apply_roi(i,r_data);
+    roi_refine.apply_roi(i,m_r_data);
     save_data(itraces,i);
 
     // std::cout << "save data for charge" << i << std::endl;
     decon_2D_charge(i);
-    roi_refine.apply_roi(i,r_data);
+    roi_refine.apply_roi(i,m_r_data);
 #ifdef BREAK_DATA_MODEL
     save_data(itraces,i,m_charge_ch_offset);
 #endif    

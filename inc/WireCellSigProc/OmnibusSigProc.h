@@ -14,8 +14,6 @@ namespace WireCell {
       OmnibusSigProc(const std::string anode_tn = "AnodePlane",
                      double fine_time_offset = 0.0 * units::microsecond,
                      double coarse_time_offset = -8.0 * units::microsecond,
-                     double period = 0.5*units::microsecond,
-                     int nticks = 9594,
                      double gain = 14.0 * units::mV/units::fC,
                      double shaping_time = 2.0 * units::microsecond,
                      double inter_gain = 1.2,
@@ -67,7 +65,7 @@ namespace WireCell {
       void save_data(ITrace::vector& itraces, int plane, int total_offset=0);
 
       // initialize the overall response function ...
-      void init_overall_response();
+      void init_overall_response(IFrame::pointer frame);
 
       void restore_baseline(WireCell::Array::array_xxf& arr);
       
@@ -125,8 +123,8 @@ namespace WireCell {
       std::map<int,int> ch_plane_map;
 
       // data after decon steps before final ifft ...
-      Array::array_xxf r_data;
-      Array::array_xxc c_data;
+      Array::array_xxf m_r_data; // evil
+      Array::array_xxc m_c_data; // evil
       
       //average overall responses
       std::vector<Waveform::realseq_t> overall_resp[3];
@@ -137,3 +135,7 @@ namespace WireCell {
 
 
 #endif
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:

@@ -8,9 +8,8 @@ WIRECELL_FACTORY(LfFilter,WireCell::SigProc::LfFilter,
 
 using namespace WireCell;
 
-SigProc::LfFilter::LfFilter(int nbins, double max_freq, double tau)
-  : m_nbins(nbins)
-  , m_max_freq(max_freq)
+SigProc::LfFilter::LfFilter(double max_freq, double tau)
+  : m_max_freq(max_freq)
   , m_tau(tau)
 {
 }
@@ -22,7 +21,6 @@ SigProc::LfFilter::~LfFilter()
 WireCell::Configuration SigProc::LfFilter::default_configuration() const
 {
     Configuration cfg;
-    cfg["nbins"] = m_nbins;
     cfg["tau"] = m_tau;
     cfg["max_freq"] = m_max_freq;
     return cfg;
@@ -30,15 +28,14 @@ WireCell::Configuration SigProc::LfFilter::default_configuration() const
 
 void SigProc::LfFilter::configure(const WireCell::Configuration& cfg)
 {
-  m_nbins = get(cfg,"nbins",m_nbins);
   m_tau = get(cfg,"tau",m_tau);
   m_max_freq = get(cfg,"max_freq",m_max_freq);
 }
 
 
-const Waveform::realseq_t SigProc::LfFilter::filter_waveform() const
+const Waveform::realseq_t SigProc::LfFilter::filter_waveform(int nbins) const
 {
-  Waveform::realseq_t m_wfs(m_nbins);
+  Waveform::realseq_t m_wfs(nbins);
 
   Response::LfFilter lf_filter(m_tau);
 
