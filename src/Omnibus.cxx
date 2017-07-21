@@ -4,6 +4,9 @@
 #include "WireCellUtil/NamedFactory.h"
 #include "WireCellUtil/ExecMon.h"
 
+#include "FrameUtils.h"
+using wct::sigproc::dump_frame;
+
 #include <iostream>
 
 WIRECELL_FACTORY(Omnibus, WireCell::SigProc::Omnibus, WireCell::IApplication, WireCell::IConfigurable);
@@ -47,6 +50,7 @@ void SigProc::Omnibus::configure(const WireCell::Configuration& cfg)
     }
 }
 
+
 void SigProc::Omnibus::execute()
 {
     ExecMon em("omnibus starts");
@@ -61,6 +65,7 @@ void SigProc::Omnibus::execute()
     }
     else {
         std::cerr << "Omnibus: got input frame with " << frame->traces()->size() << " traces\n";
+        dump_frame(frame);
     }
 
     em("sourced frame");
@@ -84,6 +89,7 @@ void SigProc::Omnibus::execute()
         nextframe = nullptr;
         if (frame) {
             std::cerr << "Omnibus: filtered frame now with " << frame->traces()->size() << " traces\n";
+            dump_frame(frame);
         }
     }
 

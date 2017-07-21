@@ -8,6 +8,12 @@
 #include "WireCellIface/SimpleFrame.h"
 #include "WireCellIface/SimpleTrace.h"
 
+#include "WireCellUtil/NamedFactory.h"
+
+WIRECELL_FACTORY(OmnibusPMTNoiseFilter, WireCell::SigProc::OmnibusPMTNoiseFilter,
+                 WireCell::IFrameFilter, WireCell::IConfigurable);
+
+
 #include "PMTNoiseROI.h"
 
 using namespace WireCell;

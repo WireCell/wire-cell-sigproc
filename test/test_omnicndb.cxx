@@ -182,10 +182,13 @@ int main(int argc, char* argv[])
     }
 
 
+
     Configuration cfg;
     if (argc > 1) {
         cerr << "testing with " << argv[1] << endl;
-        cfg = Persist::load(argv[1]);
+        WireCell::Persist::externalvars_t extvar;
+        extvar["detector"] = "uboone";
+        cfg = Persist::load(argv[1], extvar);
     }
     else {
         cerr << "testing with build in config text\n";
@@ -213,10 +216,10 @@ int main(int argc, char* argv[])
 
     std::vector<std::string> scalar_names{
         "nominal baseline", "gain correction", "response offset", "pad window front", "pad window back",
-            "min rms cut", "max rms cut"};
+            "min rms cut", "max rms cut", "rcrc sum", "config sum", "noise sum", "response sum"};
             
 
-    std::vector<TGraph> scalars(7);
+    std::vector<TGraph> scalars(11);
     for (int ch=0; ch<nchannels; ++ch) {
         scalars[0].SetPoint(ch, ch, db.nominal_baseline(ch));
         scalars[1].SetPoint(ch, ch, db.gain_correction(ch));
@@ -225,6 +228,34 @@ int main(int argc, char* argv[])
         scalars[4].SetPoint(ch, ch, db.pad_window_back(ch));
         scalars[5].SetPoint(ch, ch, db.min_rms_cut(ch));
         scalars[6].SetPoint(ch, ch, db.max_rms_cut(ch));
+    }
+
+    // find all unique
+    std::vector<filter_bag_t> specs(4);
+    for (int ch=0; ch<nchannels; ++ch) {
+        auto const& f0 = db.rcrc(ch);
+        if (specs[0].find(&f0) == specs[0].end()) {
+            specs[0].insert(&f0);
+        }
+        scalars[7].SetPoint(ch, ch, std::abs(Waveform::sum(f0)));
+
+        auto const& f1 = db.config(ch);
+        if (specs[1].find(&f1) == specs[1].end()) {
+            specs[1].insert(&f1);
+        }
+        scalars[8].SetPoint(ch, ch, std::abs(Waveform::sum(f1)));
+
+        auto const& f2 = db.noise(ch);
+        if (specs[2].find(&f2) == specs[2].end()) {
+            specs[2].insert(&f2);
+        }
+        scalars[9].SetPoint(ch, ch, std::abs(Waveform::sum(f2)));
+
+        auto const& f3 = db.response(ch);
+        if (specs[3].find(&f3) == specs[3].end()) {
+            specs[3].insert(&f3);
+        }
+        scalars[10].SetPoint(ch, ch, std::abs(Waveform::sum(f3)));
     }
 
     for (size_t ind=0; ind<scalars.size(); ++ind) {
@@ -241,27 +272,6 @@ int main(int argc, char* argv[])
     }
 
 
-    // find all unique
-    std::vector<filter_bag_t> specs(4);
-
-    for (int ch=0; ch<nchannels; ++ch) {
-        auto const& f0 = db.rcrc(ch);
-        if (specs[0].find(&f0) == specs[0].end()) {
-            specs[0].insert(&f0);
-        }
-        auto const& f1 = db.config(ch);
-        if (specs[1].find(&f1) == specs[1].end()) {
-            specs[1].insert(&f1);
-        }
-        auto const& f2 = db.noise(ch);
-        if (specs[2].find(&f2) == specs[2].end()) {
-            specs[2].insert(&f2);
-        }
-        auto const& f3 = db.response(ch);
-        if (specs[3].find(&f3) == specs[3].end()) {
-            specs[3].insert(&f3);
-        }
-    }
 
     const std::string spec_names[4] = { "RCRC", "Misconfig", "Noise Mask", "Response" };
 
@@ -270,8 +280,6 @@ int main(int argc, char* argv[])
         plot_spec(specs[ind], spec_names[ind]);
         canvas.Print(Form("%s.pdf",argv[0]),"pdf");
     }
-
-
 
     canvas.Print(Form("%s.pdf]",argv[0]),"pdf");
 

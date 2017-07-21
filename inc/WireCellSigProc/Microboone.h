@@ -33,6 +33,28 @@ namespace WireCell {
 	    bool Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& chansig, const WireCell::Waveform::realseq_t& medians);
 
 
+            // hold common config stuff
+            class ConfigFilterBase : public WireCell::IConfigurable {
+            public:
+
+		ConfigFilterBase(const std::string& anode = "AnodePlane",
+                                 const std::string& noisedb = "OmniChannelNoiseDB");
+                virtual ~ConfigFilterBase();
+
+		/// IConfigurable configuration interface
+		virtual void configure(const WireCell::Configuration& config);
+		virtual WireCell::Configuration default_configuration() const;
+
+                // FIXME: this method needs to die.
+		void set_channel_noisedb(WireCell::IChannelNoiseDatabase::pointer ndb) {
+		    m_noisedb = ndb;
+		}
+            protected:
+		std::string m_anode_tn, m_noisedb_tn;
+		IAnodePlane::pointer m_anode;
+		IChannelNoiseDatabase::pointer m_noisedb;
+            };
+
 	    /** Microboone style coherent noise subtraction.
 	     *
 	     * Fixme: in principle, this class could be general purpose
@@ -42,10 +64,11 @@ namespace WireCell {
 	     * higher layer then this class can become generic and move
 	     * outside of this file.
 	     */
-	    class CoherentNoiseSub : public WireCell::IChannelFilter { // no iconfigurable
+	    class CoherentNoiseSub : public WireCell::IChannelFilter, public ConfigFilterBase {
 	    public:
 
-		CoherentNoiseSub(const std::string anode_tn = "AnodePlane");
+		CoherentNoiseSub(const std::string& anode = "AnodePlane",
+                                 const std::string& noisedb = "OmniChannelNoiseDB");
 		virtual ~CoherentNoiseSub();
 
 		//// IChannelFilter interface
@@ -56,21 +79,8 @@ namespace WireCell {
 		/** Filter in place a group of signals together. */
 		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
 
-		/// IConfigurable configuration interface
-		virtual void configure(const WireCell::Configuration& config);
-		virtual WireCell::Configuration default_configuration() const;
-
-		
-		/// Direct injection of needed service interfaces.
-		/** Set the sampling used when digitizing the waveform. */
-		void set_channel_noisedb(WireCell::IChannelNoiseDatabase::pointer ndb) {
-		    m_noisedb = ndb;
-		}
 
             private:
-		WireCell::IChannelNoiseDatabase::pointer m_noisedb;
-		std::string m_anode_tn;
-		IAnodePlane::pointer m_anode;
 	    };
 
 
@@ -84,10 +94,11 @@ namespace WireCell {
 	     * outside of this file.
 	     */
 
-	    class OneChannelNoise : public WireCell::IChannelFilter, public WireCell::IConfigurable {
+	    class OneChannelNoise : public WireCell::IChannelFilter, public ConfigFilterBase {
 	    public:
 
-		OneChannelNoise(const std::string anode_tn = "AnodePlane");
+		OneChannelNoise(const std::string& anode_tn = "AnodePlane",
+                                const std::string& noisedb = "OmniChannelNoiseDB");
 		virtual ~OneChannelNoise();
 
 		//// IChannelFilter interface
@@ -98,32 +109,19 @@ namespace WireCell {
 		/** Filter in place a group of signals together. */
 		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
 
-		/// IConfigurable configuration interface
-		virtual void configure(const WireCell::Configuration& config);
-		virtual WireCell::Configuration default_configuration() const;
-
-		/// Direct injection of needed service interfaces.
-		/** Set the sampling used when digitizing the waveform. */
-		void set_channel_noisedb(WireCell::IChannelNoiseDatabase::pointer ndb) {
-		    m_noisedb = ndb;
-		}
-
-		
 		
 	    private:
 
 		Diagnostics::Chirp m_check_chirp; // fixme, these should be done via service interfaces
 		Diagnostics::Partial m_check_partial; // at least need to expose them to configuration
-		std::string m_anode_tn;
-		IAnodePlane::pointer m_anode;
-		
-		WireCell::IChannelNoiseDatabase::pointer m_noisedb;
+                
 	    };
 
 
 	    class OneChannelStatus : public WireCell::IChannelFilter, public WireCell::IConfigurable {
 	    public:
-		OneChannelStatus(const std::string anode_tn = "AnodePlane", double threshold = 3.5, int window =5, int nbins = 250, double cut = 14);
+		OneChannelStatus(const std::string anode_tn = "AnodePlane",
+                                 double threshold = 3.5, int window =5, int nbins = 250, double cut = 14);
 		virtual ~OneChannelStatus();
 		
 		/** Filter in place the signal `sig` from given `channel`. */

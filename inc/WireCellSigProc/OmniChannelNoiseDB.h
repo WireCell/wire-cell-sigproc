@@ -110,6 +110,7 @@ namespace WireCell {
             shared_filter_t default_filter();
             shared_filter_t parse_freqmasks(Json::Value jfm);
             shared_filter_t parse_rcrc(Json::Value jrcrc);
+            double parse_gain(Json::Value jreconfig);
             shared_filter_t parse_reconfig(Json::Value jreconfig);
             shared_filter_t parse_response(Json::Value jreconfig);
             //ChannelInfo* make_ci(int chid, Json::Value jci);

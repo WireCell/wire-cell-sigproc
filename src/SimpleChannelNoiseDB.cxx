@@ -1,9 +1,10 @@
 #include "WireCellSigProc/SimpleChannelNoiseDB.h"
 #include "WireCellUtil/Response.h"
+#include "WireCellUtil/Binning.h"
 
 #include "WireCellUtil/NamedFactory.h"
 
-WIRECELL_FACTORY(SimpleChannelNoiseDB, WireCell::SigProc::SimpleChannelNoiseDB,
+WIRECELL_FACTORY(testChannelNoiseDB, WireCell::SigProc::SimpleChannelNoiseDB,
                  WireCell::IChannelNoiseDatabase)
 
 
@@ -169,6 +170,7 @@ void set_one(int ind, T val, std::vector<T>& vec, T def)
 
 void SimpleChannelNoiseDB::set_nominal_baseline(const std::vector<int>& channels, double baseline)
 {
+    std::cerr << "SimpleChannelNoiseDB: set baseline to " << channels.size() << " chans: " << baseline << std::endl;
     for (auto ch : channels) {
 	set_one(chind(ch), baseline, m_baseline, m_default_baseline);
     }
@@ -176,7 +178,8 @@ void SimpleChannelNoiseDB::set_nominal_baseline(const std::vector<int>& channels
 void SimpleChannelNoiseDB::set_rcrc_constant(const std::vector<int>& channels, double rcrc)
 {
     Response::SimpleRC rcres(rcrc,m_tick);
-    auto signal = rcres.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
+    //auto signal = rcres.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
+    auto signal = rcres.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
     
     
     Waveform::compseq_t spectrum = Waveform::dft(signal);
@@ -193,6 +196,10 @@ void SimpleChannelNoiseDB::set_rcrc_constant(const std::vector<int>& channels, d
     //   spectrum2.push_back(temp);
     // }
 
+    std::cerr << "SimpleChannelNoiseDB:: get rcrc as: " << rcrc 
+              << " sum=" << Waveform::sum(spectrum2)
+              << std::endl;
+
     auto filt = std::make_shared<filter_t>(spectrum2);
     
     for (auto ch : channels) {
@@ -202,6 +209,8 @@ void SimpleChannelNoiseDB::set_rcrc_constant(const std::vector<int>& channels, d
 
 void SimpleChannelNoiseDB::set_response(const std::vector<int>& channels, const filter_t& spectrum)
 {
+    //std::cerr << "SimpleChannelNoiseDB: set respnose on " << channels.size() << " chans with: " << spectrum.size() << " samples\n";
+
     auto filt = std::make_shared<filter_t>(spectrum);
     for (auto ch : channels) {
         set_one(chind(ch), filt, m_response, m_default_response);
@@ -214,18 +223,39 @@ void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,
 					      double from_shaping, double to_shaping)
 {
     const double gain_ratio = to_gain/from_gain;
+    std::cerr << "SimpleChannelNoiseDB: set gain/shaping on " << channels.size() << " chans to: "
+              << "g=" << from_gain << "->" << to_gain << ", "
+              << "s=" << from_shaping << "->" << to_shaping << ", "
+              << "rat=" << gain_ratio
+              << "m_tick=" << m_tick/units::us << " us"
+              << "\n";
+
+
     Response::ColdElec from_ce(from_gain, from_shaping);
     Response::ColdElec to_ce(to_gain, to_shaping);
-    auto to_sig   =   to_ce.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
-    auto from_sig = from_ce.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
+    auto to_sig   =   to_ce.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
+    auto from_sig = from_ce.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
     
     //std::cout << to_gain << " " << from_gain << " " << to_shaping << " " << from_shaping << " " << to_sig.at(1) << " " << from_sig.at(1) << std::endl;
     
     auto to_filt   = Waveform::dft(to_sig);
     auto from_filt = Waveform::dft(from_sig);
+
+    auto from_filt_sum = Waveform::sum(from_filt);
+    auto to_filt_sum   = Waveform::sum(to_filt);
+    
     Waveform::shrink(to_filt, from_filt); // divide
     auto filt = std::make_shared<filter_t>(to_filt);
     
+    std::cerr << "SimpleChannelNoiseDB: "
+              << " from_sig sum=" << Waveform::sum(from_sig)
+              << " to_sig sum=" << Waveform::sum(to_sig)
+              << " from_filt sum=" << from_filt_sum
+              << " to_filt sum=" << to_filt_sum
+              << " rat_filt sum=" << Waveform::sum(to_filt)
+              << std::endl;
+
+
     //std::cout << to_filt.at(1) << " " << to_filt.at(2) << std::endl;
     for (auto ch : channels) {
 	int ind = chind(ch);
@@ -237,6 +267,7 @@ void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,
 
 void SimpleChannelNoiseDB::set_response_offset(const std::vector<int>& channels, double offset)
 {
+    //std::cerr << "SimpleChannelNoiseDB: set response offset " << channels.size() << " chans to: " << offset << std::endl;
     for (auto ch : channels) {
 	int ind = chind(ch);
 	set_one(ind, offset, m_offset, m_default_offset);
@@ -247,6 +278,7 @@ void SimpleChannelNoiseDB::set_response_offset(const std::vector<int>& channels,
 
 void SimpleChannelNoiseDB::set_min_rms_cut(const std::vector<int>& channels, double min_rms)
 {
+    //std::cerr << "SimpleChannelNoiseDB: set min rms cut on "<<channels.size()<<":[" << channels.front() << "," << channels.back() << "] to: " << min_rms << std::endl;
     for (auto ch : channels) {
 	int ind = chind(ch);
 	set_one(ind, min_rms, m_min_rms, m_default_min_rms);
@@ -255,7 +287,7 @@ void SimpleChannelNoiseDB::set_min_rms_cut(const std::vector<int>& channels, dou
 
 void SimpleChannelNoiseDB::set_min_rms_cut_one(int ch, double min_rms)
 {
-
+    //std::cerr << "SimpleChannelNoiseDB: set min rms cut on " << ch << " to: " << min_rms << std::endl;
     int ind = chind(ch);
     set_one(ind, min_rms, m_min_rms, m_default_min_rms);
 }
@@ -264,6 +296,7 @@ void SimpleChannelNoiseDB::set_min_rms_cut_one(int ch, double min_rms)
 
 void SimpleChannelNoiseDB::set_max_rms_cut(const std::vector<int>& channels, double max_rms)
 {
+    //std::cerr << "SimpleChannelNoiseDB: set max rms cut on "<<channels.size()<<":[" << channels.front() << "," << channels.back() << "] to: " << max_rms << std::endl;
     for (auto ch : channels) {
 	int ind = chind(ch);
 	set_one(ind, max_rms, m_max_rms, m_default_max_rms);
@@ -272,6 +305,7 @@ void SimpleChannelNoiseDB::set_max_rms_cut(const std::vector<int>& channels, dou
 
 void SimpleChannelNoiseDB::set_max_rms_cut_one(int ch, double max_rms)
 {
+    //std::cerr << "SimpleChannelNoiseDB: set max rms cut on " << ch << " to: " << max_rms << std::endl;
     int ind = chind(ch);
     set_one(ind, max_rms, m_max_rms, m_default_max_rms);
 }
@@ -279,6 +313,7 @@ void SimpleChannelNoiseDB::set_max_rms_cut_one(int ch, double max_rms)
 
 void SimpleChannelNoiseDB::set_pad_window_front(const std::vector<int>& channels, int pad_f)
 {
+    //std::cerr << "SimpleChannelNoiseDB: set pad window front on " << channels.size() << " channels: " << pad_f << std::endl;
     for (auto ch : channels) {
 	int ind = chind(ch);
 	set_one(ind, pad_f, m_pad_f, m_default_pad_f);
@@ -287,6 +322,7 @@ void SimpleChannelNoiseDB::set_pad_window_front(const std::vector<int>& channels
 
 void SimpleChannelNoiseDB::set_pad_window_back(const std::vector<int>& channels, int pad_b)
 {
+    //std::cerr << "SimpleChannelNoiseDB: set pad window back on " << channels.size() << " channels: " << pad_b << std::endl;
     for (auto ch : channels) {
 	int ind = chind(ch);
 	set_one(ind, pad_b, m_pad_b, m_default_pad_b);
@@ -305,7 +341,7 @@ void SimpleChannelNoiseDB::set_filter(const std::vector<int>& channels, const mu
 	    //filt->assign(ind, get<0>(m));
 	    spectrum.at(ind) = get<0>(m);
 	}
-	//std::cout << "Xin: " << get<1>(m) << " " << get<2>(m) << " " << get<0>(m) << " " << spectrum.at(0) << " " << spectrum.at(169) << " " << spectrum.at(170)<< std::endl;
+	//std::cerr << "set freqmasks: " << get<1>(m) << " " << get<2>(m) << " " << get<0>(m) << " " << spectrum.at(0) << " " << spectrum.at(169) << " " << spectrum.at(170)<< std::endl;
     }
     auto filt = std::make_shared<filter_t>(spectrum);
   
@@ -317,6 +353,20 @@ void SimpleChannelNoiseDB::set_filter(const std::vector<int>& channels, const mu
 }
 
 
+
+
+void SimpleChannelNoiseDB::set_channel_groups(const std::vector< channel_group_t >& channel_groups)
+{
+    //std::cerr << "SimpleChannelNoiseDB: channel groups: " << channel_groups.size() << " X " << channel_groups[0].size() << std::endl;
+    m_channel_groups = channel_groups;
+}
+	    
+
+void SimpleChannelNoiseDB::set_bad_channels(const channel_group_t& bc)
+{
+    //std::cerr << "SimpleChannelNoiseDB:: bad channels: " << bc.size() << std::endl;
+    m_bad_channels = bc;
+}
 
 int SimpleChannelNoiseDB::chind(int ch) const
 {

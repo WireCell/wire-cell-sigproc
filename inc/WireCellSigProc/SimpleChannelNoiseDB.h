@@ -105,14 +105,10 @@ namespace WireCell {
 	    void set_filter(const std::vector<int>& channels, const multimask_t& mask);
 
 	    /// Set the channel groups
-	    void set_channel_groups(const std::vector< channel_group_t >& channel_groups) {
-		m_channel_groups = channel_groups;
-	    }
+	    void set_channel_groups(const std::vector< channel_group_t >& channel_groups);
 	    
 	    /// Set "bad" channels.
-	    void set_bad_channels(const channel_group_t& bc) {
-		m_bad_channels = bc;
-	    }
+	    void set_bad_channels(const channel_group_t& bc);
 
 
 	private:

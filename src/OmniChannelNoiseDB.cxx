@@ -2,6 +2,7 @@
 #include "WireCellUtil/Response.h"
 #include "WireCellUtil/NamedFactory.h"
 
+#include <cmath>
 
 WIRECELL_FACTORY(OmniChannelNoiseDB, WireCell::SigProc::OmniChannelNoiseDB,
                  WireCell::IChannelNoiseDatabase, WireCell::IConfigurable);
@@ -46,7 +47,6 @@ WireCell::Configuration OmniChannelNoiseDB::default_configuration() const
 
     /// These must be provided
     cfg["groups"] = Json::arrayValue;
-    cfg["default_info"] = Json::objectValue;
     cfg["channel_info"] = Json::arrayValue;
     
     return cfg;
@@ -141,9 +141,10 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_freqmasks(Json::Va
     auto spectrum = make_filter(std::complex<float>(1,0));
     for (auto jone : jfm) {
         double value = jone["value"].asDouble();
-        int lo = std::min(jone["lobin"].asInt(), 0);
-        int hi = std::max(jone["hibin"].asInt(), m_nsamples-1);
-        for (int ind=lo; ind <= hi; ++ind) {
+        int lo = std::max(jone["lobin"].asInt(), 0);
+        int hi = std::min(jone["hibin"].asInt(), m_nsamples-1);
+        // std::cerr << "freqmasks: set [" << lo << "," << hi << "] to " << value << std::endl;
+        for (int ind=lo; ind <= hi; ++ind) { // inclusive
             spectrum->at(ind) = value;
         }
     }
@@ -170,9 +171,25 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_rcrc(Json::Value j
     Waveform::compseq_t spectrum2 = spectrum;
     Waveform::scale(spectrum2,spectrum);
     
+
+    // std::cerr << "OmniChannelNoiseDB:: get rcrc as: " << rcrc 
+    //           << " sum=" << Waveform::sum(spectrum2)
+    //           << std::endl;
+
     auto ret = std::make_shared<filter_t>(spectrum2);
     m_rcrc_cache[key] = ret;
     return ret;
+}
+
+double OmniChannelNoiseDB::parse_gain(Json::Value jreconfig)
+{
+    if (jreconfig.empty()) {
+        return 1.0;
+    }
+
+    const double from_gain = jreconfig["from"]["gain"].asDouble();
+    const double to_gain = jreconfig["to"]["gain"].asDouble();
+    return to_gain/from_gain;
 }
 
 OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_reconfig(Json::Value jreconfig)
@@ -186,12 +203,21 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_reconfig(Json::Val
     const double to_gain = jreconfig["to"]["gain"].asDouble();
     const double to_shaping = jreconfig["to"]["shaping"].asDouble();
 
+
     // kind of evil.
     int key = int(round(10.0*from_gain/(units::mV/units::fC))) << 24
         | int(round(10.0*from_shaping/units::us)) << 16
         | int(round(10.0*to_gain/(units::mV/units::fC))) << 8
         | int(round(10.0*to_shaping/units::us)) << 16;
         
+    // std::cerr << "KEY:" << key
+    //           << " fg="<<from_gain/(units::mV/units::fC) << " mV/fC,"
+    //           << " fs=" << from_shaping/units::us << " us,"
+    //           << " tg="<<to_gain/(units::mV/units::fC) << " mV/fC,"
+    //           << " ts="<<to_shaping/units::us << " us,"
+    //           << " m_tick=" << m_tick/units::us << " us."
+    //           << std::endl;
+
 
     auto it = m_reconfig_cache.find(key);
     if (it != m_reconfig_cache.end()) {
@@ -200,13 +226,27 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_reconfig(Json::Val
 
     Response::ColdElec from_ce(from_gain, from_shaping);
     Response::ColdElec to_ce(to_gain, to_shaping);
-    auto to_sig   =   to_ce.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
-    auto from_sig = from_ce.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
+    auto to_sig   =   to_ce.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
+    auto from_sig = from_ce.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
+
     
     auto to_filt   = Waveform::dft(to_sig);
     auto from_filt = Waveform::dft(from_sig);
+
+    auto from_filt_sum = Waveform::sum(from_filt);
+    auto to_filt_sum   = Waveform::sum(to_filt);
+
     Waveform::shrink(to_filt, from_filt); // divide
     auto filt = std::make_shared<filter_t>(to_filt);
+
+    // std::cerr << "OmniChannelNoiseDB: "
+    //           << " from_sig sum=" << Waveform::sum(from_sig)
+    //           << " to_sig sum=" << Waveform::sum(to_sig)
+    //           << " from_filt sum=" << from_filt_sum
+    //           << " to_filt sum=" << to_filt_sum
+    //           << " rat_filt sum=" << Waveform::sum(to_filt)
+    //           << std::endl;
+
 
     m_reconfig_cache[key] = filt;
     return filt;
@@ -231,7 +271,8 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_response(Json::Val
         std::vector<float> waveform(m_nsamples, 0.0);
         for (auto const& path : pr.paths) {
             auto const& current = path.current;
-            for (size_t ind=0; ind<current.size(); ++ind) {
+            const size_t nsamp = std::min(m_nsamples, (int)current.size());
+            for (size_t ind=0; ind<nsamp; ++ind) {
                 waveform[ind] += current[ind];
             }
         }
@@ -249,9 +290,9 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_response(Json::Val
         }
         
         auto jwave = jreconfig["waveform"];
-        const int nsamp = jwave.size();
+        const int nsamp = std::min(m_nsamples, (int)jwave.size());
 
-        // full length waveform
+        // Explicitly given waveform
         std::vector<float> waveform(m_nsamples, 0.0);
         for (int ind=0; ind<nsamp; ++ind) {
             waveform[ind] = jwave[ind].asFloat();
@@ -263,9 +304,10 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_response(Json::Val
         return ret;
     }
 
-    return default_filter();
-        
-        
+    // this default return is special in that it's empty instead of
+    // being a flat, unity spectrum.
+    static shared_filter_t empty = std::make_shared<filter_t>();
+    return empty;
 }
 
 
@@ -274,48 +316,74 @@ OmniChannelNoiseDB::ChannelInfo& OmniChannelNoiseDB::get_ci(int chid)
     return m_db.at(chid);
 }
 
+template<typename Type>
+void dump_cfg(const std::string& name, std::vector<int> chans, Type val)
+{
+    std::sort(chans.begin(), chans.end());
+    // std::cerr << "OmniChannelNoiseDB: setting " << name << " to " << val << " on " << chans.size() << ":[" << chans.front() << "," << chans.back() << "]\n";
+}
+
 void OmniChannelNoiseDB::update_channels(Json::Value cfg)
 {
     auto chans = parse_channels(cfg["channels"]);
 
     if (cfg.isMember("nominal_baseline")) {
         double val = cfg["nominal_baseline"].asDouble();
+        dump_cfg("baseline", chans, val);
         for (int ch : chans) {
             m_db.at(ch).nominal_baseline = val;
         }
     }
     if (cfg.isMember("gain_correction")) {
         double val = cfg["gain_correction"].asDouble();
+        dump_cfg("gain", chans, val);
         for (int ch : chans) {
             m_db.at(ch).gain_correction = val;
         }
     }
+    // fixme: why have two ways to set the same thing?  
+    {                           
+        auto jfilt = cfg["reconfig"];
+        if (!jfilt.isNull()) {
+            auto val = parse_gain(jfilt);
+            dump_cfg("gain", chans, val);
+            for (int ch : chans) {
+                m_db.at(ch).gain_correction = val;
+            }
+        }
+    }
+
     if (cfg.isMember("response_offset")) {
         double val = cfg["response_offset"].asDouble();
+        dump_cfg("offset", chans, val);
         for (int ch : chans) {
             m_db.at(ch).response_offset = val;
         }
     }
     if (cfg.isMember("min_rms_cut")) {
         double val = cfg["min_rms_cut"].asDouble();
+        dump_cfg("minrms", chans, val);
         for (int ch : chans) {
             m_db.at(ch).min_rms_cut = val;
         }
     }
     if (cfg.isMember("max_rms_cut")) {
         double val = cfg["max_rms_cut"].asDouble();
+        dump_cfg("maxrms", chans, val);
         for (int ch : chans) {
             m_db.at(ch).max_rms_cut = val;
         }
     }
     if (cfg.isMember("pad_window_front")) {
         int val = cfg["pad_window_front"].asDouble();
+        dump_cfg("padfront", chans, val);
         for (int ch : chans) {
             m_db.at(ch).pad_window_front = val;
         }
     }
     if (cfg.isMember("pad_window_back")) {
         int val = cfg["pad_window_back"].asDouble();
+        dump_cfg("padback", chans, val);
         for (int ch : chans) {
             m_db.at(ch).pad_window_back = val;
         }
@@ -324,6 +392,7 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         auto jfilt = cfg["rcrc"];
         if (!jfilt.isNull()) {
             auto val = parse_rcrc(jfilt);
+            dump_cfg("rcrc", chans, Waveform::sum(*val));
             for (int ch : chans) {
                 m_db.at(ch).rcrc = val;
             }
@@ -333,6 +402,7 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         auto jfilt = cfg["reconfig"];
         if (!jfilt.isNull()) {
             auto val = parse_reconfig(jfilt);
+            dump_cfg("reconfig", chans, Waveform::sum(*val));
             for (int ch : chans) {
                 m_db.at(ch).config = val;
             }
@@ -342,6 +412,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         auto jfilt = cfg["freqmasks"];
         if (!jfilt.isNull()) {
             auto val = parse_freqmasks(jfilt);
+            dump_cfg("freqmasks", chans, Waveform::sum(*val));
+            // std::cerr << jfilt << std::endl;
             for (int ch : chans) {
                 m_db.at(ch).noise = val;
             }
@@ -351,6 +423,7 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         auto jfilt = cfg["response"];
         if (!jfilt.isNull()) {
             auto val = parse_response(jfilt);
+            dump_cfg("response", chans, Waveform::sum(*val));
             for (int ch : chans) {
                 m_db.at(ch).response = val;
             }
@@ -385,6 +458,11 @@ void OmniChannelNoiseDB::configure(const WireCell::Configuration& cfg)
     for (auto jch : cfg["bad"]) {
         m_bad_channels.push_back(jch.asInt());
     }
+    std::sort(m_bad_channels.begin(), m_bad_channels.end());
+    std::cerr << "OmniChannelNoiseDB: setting "<<m_bad_channels.size()
+              << ":[" << m_bad_channels.front() << "," << m_bad_channels.back() << "]"
+              <<" bad channels\n";
+
     
     for (auto jci : cfg["channel_info"]) {
         update_channels(jci);
@@ -448,7 +526,10 @@ const IChannelNoiseDatabase::filter_t& OmniChannelNoiseDB::rcrc(int channel) con
 
 const IChannelNoiseDatabase::filter_t& OmniChannelNoiseDB::config(int channel) const
 {
-    return *(dbget(channel).config);
+    auto filt = dbget(channel).config;
+    //std::cerr << "OmniChannelNoiseDB::config("<<channel<<") sum = " << Waveform::sum(*filt) << std::endl;
+    //return *(dbget(channel).config);
+    return *filt;
 }
 
 const IChannelNoiseDatabase::filter_t& OmniChannelNoiseDB::noise(int channel) const

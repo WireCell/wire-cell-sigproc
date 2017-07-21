@@ -34,8 +34,11 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
   TFile *file1 = new TFile(filename);
 
   TFile *file = new TFile("temp.root","RECREATE");
-  TTree *Trun = ((TTree*)file1->Get("Trun"))->CloneTree();
-  Trun->SetDirectory(file);
+  TTree *Trun = (TTree*)file1->Get("Trun");
+  if (Trun) {
+    Trun = Trun->CloneTree();
+    Trun->SetDirectory(file);
+  }
   
   TH2I *hu_orig = new TH2I("hu_orig","hu_orig",nwire_u,-0.5,nwire_u-0.5,nticks,0,nticks);
   TH2I *hv_orig = new TH2I("hv_orig","hv_orig",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,nticks,0,nticks);
@@ -49,21 +52,15 @@ void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::poin
   // TH2F *hv_decon = new TH2F("hv_decon","hv_decon",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,int(nticks/6.),0,nticks);
   // TH2F *hw_decon = new TH2F("hw_decon","hw_decon",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,int(nticks/6.),0,n ticks);
   
-  TH1F *hu_baseline = (TH1F*)file1->Get("hu_baseline");
-  TH1F *hv_baseline = (TH1F*)file1->Get("hv_baseline");
-  TH1F *hw_baseline = (TH1F*)file1->Get("hw_baseline");
-  
-  hu_baseline->SetDirectory(file);
-  hv_baseline->SetDirectory(file);
-  hw_baseline->SetDirectory(file);
-
-  TH1F *hu_threshold = (TH1F*)file1->Get("hu_threshold");
-  TH1F *hv_threshold = (TH1F*)file1->Get("hv_threshold");
-  TH1F *hw_threshold = (TH1F*)file1->Get("hw_threshold");
-  
-  hu_threshold->SetDirectory(file);
-  hv_threshold->SetDirectory(file);
-  hw_threshold->SetDirectory(file);
+  for (int iplane=0; iplane<3; ++iplane) {
+    std::vector<std::string> names{"baseline", "threshold"};
+    for (auto name: names) {
+      TH1F *hist = (TH1F*)file1->Get(Form("h%c_%s", 'u'+iplane, name.c_str()));
+      if (hist) {
+        hist->SetDirectory(file);
+      }
+    }
+  }
 
 
   auto traces = frame_orig->traces();
@@ -208,26 +205,26 @@ public:
 	//delete file;
     }
 
-    int plane(int ch) {
-	if (ch < 2400) return 0;
-	if (ch < 2400+2400) return 1;
-	return 2;
-    }
-    int index(int ch) {
-	if (ch < 2400) return ch;
-	if (ch < 2400+2400) return ch-2400;
-	return ch-2400-2400;
-    }
+    // int plane(int ch) {
+    //     if (ch < 2400) return 0;
+    //     if (ch < 2400+2400) return 1;
+    //     return 2;
+    // }
+    // int index(int ch) {
+    //     if (ch < 2400) return ch;
+    //     if (ch < 2400+2400) return ch-2400;
+    //     return ch-2400-2400;
+    // }
 
-    vector<float> at(int ch) {
-	TH2* h = hist[plane(ch)];
-	int ind = index(ch);
-	vector<float> ret(9600);
-	for (int itick=0; itick<9600; ++itick) {
-	    ret[itick] = h->GetBinContent(ind+1, itick+1);
-	}
-	return ret;
-    }
+    // vector<float> at(int ch) {
+    //     TH2* h = hist[plane(ch)];
+    //     int ind = index(ch);
+    //     vector<float> ret(9600);
+    //     for (int itick=0; itick<9600; ++itick) {
+    //         ret[itick] = h->GetBinContent(ind+1, itick+1);
+    //     }
+    //     return ret;
+    // }
 
     /// Return a frame, the one and only in the file.
     IFrame::pointer frame() {
@@ -256,6 +253,11 @@ public:
 		//cerr << "qtot in plane/ch/index "
 		//     << iplane << "/" << ich << "/" << chindex << " = " << qtot << endl;
 	    }
+            std::cerr << "plane " << iplane
+                  << ": " << nchannels << " X " << nticks
+                  << " qtot=" << qtot
+                  << std::endl;
+            
 	}
 	SimpleFrame* sf = new SimpleFrame(0, 0, traces);
 	return IFrame::pointer(sf);
@@ -274,14 +276,18 @@ int main(int argc, char* argv[])
 
     PluginManager& pm = PluginManager::instance();
     pm.add("WireCellGen");
+    pm.add("WireCellSigProc");
 
     string filenames[3] = {
       "microboone-noise-spectra-v2.json.bz2",
       "garfield-1d-3planes-21wires-6impacts-v6.json.bz2",
       "microboone-celltree-wires-v2.json.bz2",
     };
+
+    const std::string anode_tn = "AnodePlane";
     {
-      auto anodecfg = Factory::lookup<IConfigurable>("AnodePlane");
+
+      auto anodecfg = Factory::lookup_tn<IConfigurable>(anode_tn);
       auto cfg = anodecfg->default_configuration();
       cfg["fields"] = filenames[1];
       cfg["wires"] = filenames[2];
@@ -411,23 +417,23 @@ int main(int argc, char* argv[])
       channel_groups.push_back(channel_group);
     }
 
-    // Load up components.  Note, in a real app this is done as part
-    // of factory + configurable and driven by user configuration.
+    const std::string noisedb_tn = "testChannelNoiseDB";
+    auto inoisedb = Factory::lookup<IChannelNoiseDatabase>(noisedb_tn);
 
-    auto noise = new SigProc::SimpleChannelNoiseDB;
+    // DO NOT LOOK AT THIS CODE! 
+    // This access pattern is illegal.
+    // The SimpleChannelNoiseDB needs to die.
+    auto noise = std::dynamic_pointer_cast<SigProc::SimpleChannelNoiseDB>(inoisedb);
     // initialize
     noise->set_sampling(tick, nsamples);
     // set nominal baseline
     noise->set_nominal_baseline(uchans, unombl);
     noise->set_nominal_baseline(vchans, vnombl);
     noise->set_nominal_baseline(wchans, wnombl);
-
     noise->set_response(uchans,u_resp_freq);
     noise->set_response(vchans,v_resp_freq);
-
     noise->set_response_offset(uchans,uplane_time_shift);
     noise->set_response_offset(vchans,vplane_time_shift);
-
     noise->set_pad_window_front(uchans,20);
     noise->set_pad_window_back(uchans,10);
     noise->set_pad_window_front(vchans,10);
@@ -502,32 +508,55 @@ int main(int argc, char* argv[])
     noise->set_min_rms_cut(wchans,1.25);
     noise->set_max_rms_cut(wchans,8.0);
     
+    {
+      {
+        auto icfg = Factory::lookup<IConfigurable>("mbOneChannelNoise");
+        auto cfg = icfg->default_configuration();
+        cfg["anode"] = anode_tn;
+        cfg["noisedb"] = noisedb_tn;
+        icfg->configure(cfg);
+      }
+
+      {
+        auto icfg = Factory::lookup<IConfigurable>("mbADCBitShift");
+        auto cfg = icfg->default_configuration();
+        icfg->configure(cfg);
+      }
+
+      {
+        auto icfg = Factory::lookup<IConfigurable>("mbCoherentNoiseSub");
+        auto cfg = icfg->default_configuration();
+        cfg["anode"] = anode_tn;
+        cfg["noisedb"] = noisedb_tn;
+        icfg->configure(cfg);
+      }
     
-    shared_ptr<WireCell::IChannelNoiseDatabase> noise_sp(noise);
-
-    auto one = new SigProc::Microboone::OneChannelNoise;
-    one->set_channel_noisedb(noise_sp);
-    shared_ptr<WireCell::IChannelFilter> one_sp(one);
-
-    auto adc_bit_shift = new SigProc::Microboone::ADCBitShift;
-    shared_ptr<WireCell::IChannelFilter> adc_bit_shift_sp(adc_bit_shift);
+      {
+        auto icfg = Factory::lookup<IConfigurable>("mbOneChannelStatus");
+        auto cfg = icfg->default_configuration();
+        cfg["anode"] = anode_tn;
+        icfg->configure(cfg);
+      }
     
-    auto many = new SigProc::Microboone::CoherentNoiseSub;
-    many->set_channel_noisedb(noise_sp);
-    shared_ptr<WireCell::IChannelFilter> many_sp(many);
+      {
+        auto icfg = Factory::lookup<IConfigurable>("OmnibusNoiseFilter");
+        auto cfg = icfg->default_configuration();
+        cfg["noisedb"] = noisedb_tn;
+        cfg["channel_filters"][0] = "mbADCBitShift";
+        cfg["channel_filters"][1] = "mbOneChannelNoise";
+        cfg["channel_status_filters"][0] = "mbOneChannelStatus";
+        cfg["grouped_filters"][0] = "mbCoherentNoiseSub";
+        icfg->configure(cfg);
+      }
 
-    auto one_status = new SigProc::Microboone::OneChannelStatus;
-    shared_ptr<WireCell::IChannelFilter> one_status_sp(one_status);
-    
+      {
+        auto icfg = Factory::lookup<IConfigurable>("OmnibusPMTNoiseFilter");
+        auto cfg = icfg->default_configuration();
+        cfg["anode"] = anode_tn;
+        icfg->configure(cfg);
+      }
 
-    SigProc::OmnibusNoiseFilter bus;
-    bus.set_channel_filters({adc_bit_shift_sp,one_sp});
-    bus.set_grouped_filters({many_sp});
-    bus.set_channel_status_filters({one_status_sp});
-    bus.set_channel_noisedb(noise_sp);
-
-    SigProc::OmnibusPMTNoiseFilter pmt_bus;
-    
+    }
     //TCanvas canvas("c","canvas",500,500);
 
     //canvas.Print("test_omnibus.pdf[","pdf");
@@ -539,13 +568,18 @@ int main(int argc, char* argv[])
     // rms_plot(canvas, frame, "Raw frame");
 	
     IFrame::pointer quiet;
-    IFrame::pointer mid_quiet;
-    
-    cerr << em("Removing noise") << endl;
-    bus(frame, mid_quiet);
-    cerr << em("Removing PMT noise") << endl;
-    pmt_bus(mid_quiet,quiet);
-    cerr << em("...done") << endl;
+    {
+      auto bus = Factory::find<IFrameFilter>("OmnibusNoiseFilter");
+      auto pmt_bus = Factory::find<IFrameFilter>("OmnibusPMTNoiseFilter");
+      IFrame::pointer mid_quiet;
+
+      cerr << em("Removing noise") << endl;
+      (*bus)(frame, mid_quiet);
+      cerr << em("Removing PMT noise") << endl;
+      (*pmt_bus)(mid_quiet, quiet);
+      cerr << em("Noise removal done") << endl;
+    }
+    cerr << em("Dropped intermediate frame") << endl;
 
     // rms_plot(canvas, quiet, "Quiet frame");
     Assert(quiet);
@@ -553,7 +587,12 @@ int main(int argc, char* argv[])
     save_into_file(url.c_str(),frame,quiet,uchans.size(),vchans.size(),wchans.size(),nsamples);
     //    canvas.Print("test_omnibus.pdf]","pdf");
 
+    em("Saved output to file");
     cerr << em.summary() << endl;   
 
     return 0;
 }
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:
