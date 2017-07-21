@@ -1,3 +1,11 @@
+This file just contains some notes.  For Wire Cell Toolkit documentation see:
+
+https://wirecell.github.io/
+
+More information about using Wire Cell Toolkit's Python interface is at
+
+https://wirecell.github.io/manual.html#pkg-python
+
 * Generating Field Response Data File.
 
 ** Garfield 2D input
@@ -66,12 +74,11 @@ Contents of the file should be like:
 
 ** WCT JSON
 
-Wire Cell Toolkit works with JSON data.  Python code in =wire-cell-sigproc= package is provided to convert Garfield 2D files into properly structure JSON.
+Wire Cell Toolkit works with JSON data.  Python code in =wire-cell-python= package is provided to convert Garfield 2D files into properly structure JSON.
 
-Note: currently, this Python code is not properly installed.  It's meant to be run from in the source and rarely.
 
 #+BEGIN_EXAMPLE
-  $ cd wire-cell-sigproc/
+  $ cd wire-cell-python/
   $ virtualenv --system-site-packages venv
   $ source venv/bin/activate
   $ python setup.py develop
@@ -83,13 +90,14 @@ Note: currently, this Python code is not properly installed.  It's meant to be r
     field response file (.json with optional .gz or .bz2 compression).
 
   Options:
-    --help  Show this message and exit.
-  $ wirecell-sigproc convert-garfield ub_10.tar.gz garfield-1d-3planes-21wires-6impacts-v3.json.bz2 
-  $ ls -l garfield-1d-3planes-21wires-6impacts-v3.json.bz2
-  -rw-rw-r-- 1 bviren bviren 2665798 Mar 28 15:19 garfield-1d-3planes-21wires-6impacts-v3.json.bz2
-  $ wirecell-sigproc plot-track-response ub_10.tar.gz tr.pdf
-  $ deactivate
-  $ rm -rf venv
+    -o, --origin TEXT          Set drift origin (give units, eg '10*cm').
+    -s, --speed TEXT           Set nominal drift speed (give untis, eg
+                               '1.114*mm/us').
+    -n, --normalization FLOAT  Set normalization: 0:none, <0:electrons,
+                               >0:multiplicative scale.  def=0
+    --help                     Show this message and exit.
+  $ wirecell-sigproc convert-garfield ub_10.tar.gz ub-10.json.bz2 
+  $ wirecell-sigproc plot-garfield-track-response ub_10.tar.gz tr.pdf
 #+END_EXAMPLE
 
 Notes:
@@ -97,6 +105,7 @@ Notes:
 - Using =--system-site-packages= may be useful as Numpy is required and if it's installed as a system package it will save you some time.  O.w., it can be installed into the virtualenv.
 - Once you generate the =.json.bz2= file, you no longer require this code so deactivate and clean up
 - The plotting command is optional.  It remakes a plot for the MB noise paper and is reproduced below
+- *Warning* the plot below is not final nor official.
 
 [[./tr.png]]
 [[./tr.pdf]]
