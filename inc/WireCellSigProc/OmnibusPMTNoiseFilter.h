@@ -46,6 +46,7 @@ namespace WireCell {
       float m_ind_th2;
       int m_nwire_pmt_col_th;
       
+      
     };
   }
 }
