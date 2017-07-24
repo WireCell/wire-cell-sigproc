@@ -139,7 +139,7 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 
 
     std::vector<bool> signalsBool;
-    signalsBool.resize(nbin,0);
+    signalsBool.resize(nbin, false);
 
     
     
@@ -166,17 +166,17 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 	if (fabs(content-mean)>limit){
 	    //protection_factor*rms) {
 	    medians.at(j) = 0; 
-	    signalsBool.at(j) = 1;
+	    signalsBool.at(j) = true;
 	    // add the front and back padding
 	    for (int k=0;k!=pad_b;k++){
 		int bin = j+k+1;
 		if (bin > nbin-1) bin = nbin-1;
-		signalsBool.at(bin) = 1;
+		signalsBool.at(bin) = true;
 	    }
 	    for (int k=0;k!=pad_f;k++){
 		int bin = j-k-1;
 		if (bin <0) { bin = 0; }
-		signalsBool.at(bin) = 1;
+		signalsBool.at(bin) = true;
 	    }
 	}
     }
@@ -217,17 +217,17 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     		int time_bin = j + res_offset;
 		if (time_bin >= nbin) time_bin -= nbin;
     		medians.at(time_bin) = 0; 
-    		signalsBool.at(time_bin) = 1;
+    		signalsBool.at(time_bin) = true;
     		// add the front and back padding
     		for (int k=0;k!=pad_b;k++){
     		    int bin = time_bin+k+1;
     		    if (bin > nbin-1) bin = nbin-1;
-    		    signalsBool.at(bin) = 1;
+    		    signalsBool.at(bin) = true;
     		}
     		for (int k=0;k!=pad_f;k++){
     		    int bin = time_bin-k-1;
     		    if (bin <0) { bin = 0; }
-    		    signalsBool.at(bin) = 1;
+    		    signalsBool.at(bin) = true;
     		}
     	    }
     	}
@@ -623,7 +623,7 @@ void Microboone::ConfigFilterBase::configure(const WireCell::Configuration& cfg)
     m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
     m_noisedb_tn = get(cfg, "noisedb", m_noisedb_tn);
     m_noisedb = Factory::find_tn<IChannelNoiseDatabase>(m_noisedb_tn);
-    std::cerr << "ConfigFilterBase: \n" << cfg << "\n";
+    //std::cerr << "ConfigFilterBase: \n" << cfg << "\n";
 }
 WireCell::Configuration Microboone::ConfigFilterBase::default_configuration() const
 {
@@ -870,7 +870,7 @@ void Microboone::ADCBitShift::configure(const WireCell::Configuration& cfg)
     m_exam_nticks = get<int>(cfg, "Exam_number_of_ticks_test", m_exam_nticks);
     m_threshold_sigma = get<double>(cfg, "Threshold_sigma_test", m_threshold_sigma);
     m_threshold_fix = get<double>(cfg, "Threshold_fix", m_threshold_fix);
-    std::cerr << "ADCBitShift: \n" << cfg << "\n";
+    //std::cerr << "ADCBitShift: \n" << cfg << "\n";
 }
 WireCell::Configuration Microboone::ADCBitShift::default_configuration() const
 {
@@ -1030,7 +1030,7 @@ void Microboone::OneChannelStatus::configure(const WireCell::Configuration& cfg)
     if (!m_anode) {
         THROW(KeyError() << errmsg{"failed to get IAnodePlane: " + m_anode_tn});
     }
-    std::cerr << "OneChannelStatus: \n" << cfg << "\n";
+    //std::cerr << "OneChannelStatus: \n" << cfg << "\n";
 }
 WireCell::Configuration Microboone::OneChannelStatus::default_configuration() const
 {

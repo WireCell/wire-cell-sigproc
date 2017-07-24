@@ -120,8 +120,6 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 
     std::map<int, IChannelFilter::signal_t> bychan;
 
-    int nzero = 0;
-
     auto traces = in->traces();
     for (auto trace : *traces.get()) {
     	int ch = trace->channel();
@@ -143,16 +141,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
             Waveform::merge(cmm,masks,m_maskmap);
             ++filt_count;
         }
-        if (Waveform::sum(signal) == 0) {
-            ++nzero;
-        }
     }
-    std::cerr << "OmnibusNoiseFilter: single channel processing done, # zero'ed waveforms="<<nzero<<"\n";
-    std::cerr << "Channel mask maps:\n";
-    for (auto const& it : cmm) {
-        std::cerr << "\t" << it.first << ": " << it.second.size() << std::endl;
-    }
-    nzero = 0;
 
     int group_counter = 0;
     for (auto group : m_noisedb->coherent_channels()) {
@@ -173,7 +162,6 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
       
         if (flag == 0) continue;
       
-        // std::cout << "Xin1: " << chgrp.size() << std::endl;
         for (auto filter : m_grouped) {
             auto masks = filter->apply(chgrp);
 
@@ -181,20 +169,9 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
         }
 
         for (auto cs : chgrp) {
-            //std::cout << bychan[cs.first].at(0) << " ";
-            if (Waveform::sum(cs.second) == 0.0) {
-                ++nzero;
-            }
             bychan[cs.first] = cs.second; // copy
-            //std::cout << bychan[cs.first].at(0) << " " << cs.second.at(0) << std::endl;
         }
     }
-    std::cerr << "OmnibusNoiseFilter: grouped channel processing done, # zero'ed waveforms="<<nzero<<"\n";
-    std::cerr << "Channel mask maps:\n";
-    for (auto const& it : cmm) {
-        std::cerr << "\t" << it.first << ": " << it.second.size() << std::endl;
-    }
-    nzero = 0;
 
     // run status
     for (auto trace : *traces.get()) {
@@ -204,30 +181,15 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
     	    auto masks = filter->apply(ch, signal);
 
 	    Waveform::merge(cmm,masks,m_maskmap);
-
-            if (Waveform::sum(signal) == 0.0) {
-                ++nzero;
-            }
 	}
     }
-    std::cerr << "OmnibusNoiseFilter: channel status processing done, # zero'ed waveforms="<<nzero<<"\n";
-    std::cerr << "Channel mask maps:\n";
-    for (auto const& it : cmm) {
-        std::cerr << "\t" << it.first << ": " << it.second.size() << std::endl;
-    }
-    nzero = 0;
-    
     
     // pack up output
-    //std::cout << "Xin: " << bad_regions.size() << std::endl;
-    
     ITrace::vector itraces;
-    for (auto cs : bychan) {
-	// fixme: that tbin though
+    for (auto cs : bychan) {    // fixme: that tbin though
         itraces.push_back(std::make_shared<SimpleTrace>(cs.first, 0, cs.second));
     }
     out = std::make_shared<SimpleFrame>(in->ident(), in->time(), itraces, in->tick(), cmm);
-    
 
     return true;
 }

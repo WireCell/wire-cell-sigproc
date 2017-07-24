@@ -170,7 +170,7 @@ void set_one(int ind, T val, std::vector<T>& vec, T def)
 
 void SimpleChannelNoiseDB::set_nominal_baseline(const std::vector<int>& channels, double baseline)
 {
-    std::cerr << "SimpleChannelNoiseDB: set baseline to " << channels.size() << " chans: " << baseline << std::endl;
+    //std::cerr << "SimpleChannelNoiseDB: set baseline to " << channels.size() << " chans: " << baseline << std::endl;
     for (auto ch : channels) {
 	set_one(chind(ch), baseline, m_baseline, m_default_baseline);
     }
@@ -196,9 +196,9 @@ void SimpleChannelNoiseDB::set_rcrc_constant(const std::vector<int>& channels, d
     //   spectrum2.push_back(temp);
     // }
 
-    std::cerr << "SimpleChannelNoiseDB:: get rcrc as: " << rcrc 
-              << " sum=" << Waveform::sum(spectrum2)
-              << std::endl;
+    // std::cerr << "SimpleChannelNoiseDB:: get rcrc as: " << rcrc 
+    //           << " sum=" << Waveform::sum(spectrum2)
+    //           << std::endl;
 
     auto filt = std::make_shared<filter_t>(spectrum2);
     
@@ -223,12 +223,12 @@ void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,
 					      double from_shaping, double to_shaping)
 {
     const double gain_ratio = to_gain/from_gain;
-    std::cerr << "SimpleChannelNoiseDB: set gain/shaping on " << channels.size() << " chans to: "
-              << "g=" << from_gain << "->" << to_gain << ", "
-              << "s=" << from_shaping << "->" << to_shaping << ", "
-              << "rat=" << gain_ratio
-              << "m_tick=" << m_tick/units::us << " us"
-              << "\n";
+    // std::cerr << "SimpleChannelNoiseDB: set gain/shaping on " << channels.size() << " chans to: "
+    //           << "g=" << from_gain << "->" << to_gain << ", "
+    //           << "s=" << from_shaping << "->" << to_shaping << ", "
+    //           << "rat=" << gain_ratio
+    //           << "m_tick=" << m_tick/units::us << " us"
+    //           << "\n";
 
 
     Response::ColdElec from_ce(from_gain, from_shaping);
@@ -236,30 +236,26 @@ void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,
     auto to_sig   =   to_ce.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
     auto from_sig = from_ce.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
     
-    //std::cout << to_gain << " " << from_gain << " " << to_shaping << " " << from_shaping << " " << to_sig.at(1) << " " << from_sig.at(1) << std::endl;
-    
     auto to_filt   = Waveform::dft(to_sig);
     auto from_filt = Waveform::dft(from_sig);
 
-    auto from_filt_sum = Waveform::sum(from_filt);
-    auto to_filt_sum   = Waveform::sum(to_filt);
+    // auto from_filt_sum = Waveform::sum(from_filt);
+    // auto to_filt_sum   = Waveform::sum(to_filt);
     
     Waveform::shrink(to_filt, from_filt); // divide
     auto filt = std::make_shared<filter_t>(to_filt);
     
-    std::cerr << "SimpleChannelNoiseDB: "
-              << " from_sig sum=" << Waveform::sum(from_sig)
-              << " to_sig sum=" << Waveform::sum(to_sig)
-              << " from_filt sum=" << from_filt_sum
-              << " to_filt sum=" << to_filt_sum
-              << " rat_filt sum=" << Waveform::sum(to_filt)
-              << std::endl;
+    // std::cerr << "SimpleChannelNoiseDB: "
+    //           << " from_sig sum=" << Waveform::sum(from_sig)
+    //           << " to_sig sum=" << Waveform::sum(to_sig)
+    //           << " from_filt sum=" << from_filt_sum
+    //           << " to_filt sum=" << to_filt_sum
+    //           << " rat_filt sum=" << Waveform::sum(to_filt)
+    //           << std::endl;
 
 
-    //std::cout << to_filt.at(1) << " " << to_filt.at(2) << std::endl;
     for (auto ch : channels) {
 	int ind = chind(ch);
-	//	std::cout << ch << " " << ind << std::endl;
 	set_one(ind, filt, m_config, m_default_filter);
 	set_one(ind, gain_ratio, m_gain, m_default_gain);
     }
