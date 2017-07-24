@@ -549,7 +549,7 @@ int main(int argc, char* argv[])
         cfg["channel_filters"][0] = "mbADCBitShift";
         cfg["channel_filters"][1] = "mbOneChannelNoise";
         cfg["channel_status_filters"][0] = "mbOneChannelStatus";
-        cfg["grouped_filters"][0] = "mbCoherentNoiseSub";
+	cfg["grouped_filters"][0] = "mbCoherentNoiseSub";
         icfg->configure(cfg);
       }
 

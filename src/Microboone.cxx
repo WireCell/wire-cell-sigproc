@@ -642,10 +642,11 @@ Microboone::CoherentNoiseSub::~CoherentNoiseSub() {}
 WireCell::Waveform::ChannelMaskMap
 Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
 {
-    //std::cout << "Xin2: " << std::endl;
+    //std::cout << "Xin2: " << " " << chansig.size() << std::endl;
     // find the median among all 
     WireCell::Waveform::realseq_t medians = Derivations::CalcMedian(chansig);
-    //std::cout << medians.size() << " " << medians.at(0) << " " << medians.at(1) << std::endl;
+
+    // std::cout << medians.size() << " " << medians.at(100) << " " << medians.at(101) << std::endl;
   
 
     // For Xin: here is how you can get the response spectrum for this group.
@@ -668,7 +669,7 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     // do the signal protection and adaptive baseline
     Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b);
     
-    //std::cerr <<"\tSigprotection done: " << chansig.size() << " " << medians.size() << std::endl;
+    //std::cerr <<"\tSigprotection done: " << chansig.size() << " " << medians.size() << " " << medians.at(100) << " " << medians.at(101) << std::endl;
 
     // calculate the scaling coefficient and subtract
     Microboone::Subtract_WScaling(chansig, medians);
