@@ -27,143 +27,143 @@
 using namespace WireCell;
 using namespace std;
 
-const string url_test = "/data0/bviren/data/uboone/test_3455_0.root"; // big!
-//const string url_test = ""; // big!
+void save_into_file(const char* input_filename, const char* output_filename,
+                    IFrame::pointer frame_orig,IFrame::pointer frame_raw, int nwire_u, int nwire_v, int nwire_w, int nticks)
+{
+    TFile *tfile_in = new TFile(input_filename);
 
-void save_into_file(const char* filename,IFrame::pointer frame_orig,IFrame::pointer frame_raw, int nwire_u, int nwire_v, int nwire_w, int nticks){
-  TFile *file1 = new TFile(filename);
-
-  TFile *file = new TFile("temp.root","RECREATE");
-  TTree *Trun = (TTree*)file1->Get("Trun");
-  if (Trun) {
-    Trun = Trun->CloneTree();
-    Trun->SetDirectory(file);
-  }
-  
-  TH2I *hu_orig = new TH2I("hu_orig","hu_orig",nwire_u,-0.5,nwire_u-0.5,nticks,0,nticks);
-  TH2I *hv_orig = new TH2I("hv_orig","hv_orig",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,nticks,0,nticks);
-  TH2I *hw_orig = new TH2I("hw_orig","hw_orig",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,nticks,0,nticks);
-
-  TH2F *hu_raw = new TH2F("hu_raw","hu_raw",nwire_u,-0.5,nwire_u-0.5,nticks,0,nticks);
-  TH2F *hv_raw = new TH2F("hv_raw","hv_raw",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,nticks,0,nticks);
-  TH2F *hw_raw = new TH2F("hw_raw","hw_raw",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,nticks,0,nticks);
-
-  // TH2F *hu_decon = new TH2F("hu_decon","hu_decon",nwire_u,-0.5,nwire_u-0.5,int(nticks/6.),0,nticks);
-  // TH2F *hv_decon = new TH2F("hv_decon","hv_decon",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,int(nticks/6.),0,nticks);
-  // TH2F *hw_decon = new TH2F("hw_decon","hw_decon",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,int(nticks/6.),0,n ticks);
-  
-  for (int iplane=0; iplane<3; ++iplane) {
-    std::vector<std::string> names{"baseline", "threshold"};
-    for (auto name: names) {
-      TH1F *hist = (TH1F*)file1->Get(Form("h%c_%s", 'u'+iplane, name.c_str()));
-      if (hist) {
-        hist->SetDirectory(file);
-      }
+    TFile *tfile_out = new TFile(output_filename,"RECREATE");
+    TTree *Trun = (TTree*)tfile_in->Get("Trun");
+    if (Trun) {
+        Trun = Trun->CloneTree();
+        Trun->SetDirectory(tfile_out);
     }
-  }
+  
+    TH2I *hu_orig = new TH2I("hu_orig","hu_orig",nwire_u,-0.5,nwire_u-0.5,nticks,0,nticks);
+    TH2I *hv_orig = new TH2I("hv_orig","hv_orig",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,nticks,0,nticks);
+    TH2I *hw_orig = new TH2I("hw_orig","hw_orig",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,nticks,0,nticks);
 
+    TH2F *hu_raw = new TH2F("hu_raw","hu_raw",nwire_u,-0.5,nwire_u-0.5,nticks,0,nticks);
+    TH2F *hv_raw = new TH2F("hv_raw","hv_raw",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,nticks,0,nticks);
+    TH2F *hw_raw = new TH2F("hw_raw","hw_raw",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,nticks,0,nticks);
 
-  auto traces = frame_orig->traces();
-  for (auto trace : *traces.get()) {
-    int tbin = trace->tbin();
-    int ch = trace->channel();
-    auto charges = trace->charge();
-    if (ch < nwire_u){
-      int counter = 0;
-      for (auto q : charges) {
-	counter ++;
-	hu_orig->SetBinContent(ch+1,tbin+counter,q); 
-      }
-    }else if (ch < nwire_v + nwire_u){
-      int counter = 0;
-      for (auto q : charges) {
-	counter ++;
-	hv_orig->SetBinContent(ch+1-nwire_u,tbin+counter,q); 
-      }
-    }else{
-      int counter = 0;
-      for (auto q : charges) {
-	counter ++;
-	hw_orig->SetBinContent(ch+1-nwire_u-nwire_v,tbin+counter,q); 
-      }
+    // TH2F *hu_decon = new TH2F("hu_decon","hu_decon",nwire_u,-0.5,nwire_u-0.5,int(nticks/6.),0,nticks);
+    // TH2F *hv_decon = new TH2F("hv_decon","hv_decon",nwire_v,-0.5+nwire_u,nwire_v-0.5+nwire_u,int(nticks/6.),0,nticks);
+    // TH2F *hw_decon = new TH2F("hw_decon","hw_decon",nwire_w,-0.5+nwire_u+nwire_v,nwire_w-0.5+nwire_u+nwire_v,int(nticks/6.),0,n ticks);
+  
+    for (int iplane=0; iplane<3; ++iplane) {
+        std::vector<std::string> names{"baseline", "threshold"};
+        for (auto name: names) {
+            TH1F *hist = (TH1F*)tfile_in->Get(Form("h%c_%s", 'u'+iplane, name.c_str()));
+            if (hist) {
+                hist->SetDirectory(tfile_out);
+            }
+        }
     }
-  }
 
-  traces = frame_raw->traces();
-  for (auto trace : *traces.get()) {
-    int tbin = trace->tbin();
-    int ch = trace->channel();
-    auto charges = trace->charge();
-    if (ch < nwire_u){
-      int counter = 0;
-      for (auto q : charges) {
-	counter ++;
-	hu_raw->SetBinContent(ch+1,tbin+counter,q); 
-      }
-    }else if (ch < nwire_v + nwire_u){
-      int counter = 0;
-      for (auto q : charges) {
-	counter ++;
-	hv_raw->SetBinContent(ch+1-nwire_u,tbin+counter,q); 
-      }
-    }else{
-      int counter = 0;
-      for (auto q : charges) {
-	counter ++;
-	hw_raw->SetBinContent(ch+1-nwire_u-nwire_v,tbin+counter,q); 
-      }
+
+    auto traces = frame_orig->traces();
+    for (auto trace : *traces.get()) {
+        int tbin = trace->tbin();
+        int ch = trace->channel();
+        auto charges = trace->charge();
+        if (ch < nwire_u){
+            int counter = 0;
+            for (auto q : charges) {
+                counter ++;
+                hu_orig->SetBinContent(ch+1,tbin+counter,q); 
+            }
+        }else if (ch < nwire_v + nwire_u){
+            int counter = 0;
+            for (auto q : charges) {
+                counter ++;
+                hv_orig->SetBinContent(ch+1-nwire_u,tbin+counter,q); 
+            }
+        }else{
+            int counter = 0;
+            for (auto q : charges) {
+                counter ++;
+                hw_orig->SetBinContent(ch+1-nwire_u-nwire_v,tbin+counter,q); 
+            }
+        }
     }
-  }
 
-  // save bad channels 
-  TTree *T_bad = new TTree("T_bad","T_bad");
-  int chid, plane, start_time,end_time;
-  T_bad->Branch("chid",&chid,"chid/I");
-  T_bad->Branch("plane",&plane,"plane/I");
-  T_bad->Branch("start_time",&start_time,"start_time/I");
-  T_bad->Branch("end_time",&end_time,"end_time/I");
-  T_bad->SetDirectory(file);
+    traces = frame_raw->traces();
+    for (auto trace : *traces.get()) {
+        int tbin = trace->tbin();
+        int ch = trace->channel();
+        auto charges = trace->charge();
+        if (ch < nwire_u){
+            int counter = 0;
+            for (auto q : charges) {
+                counter ++;
+                hu_raw->SetBinContent(ch+1,tbin+counter,q); 
+            }
+        }else if (ch < nwire_v + nwire_u){
+            int counter = 0;
+            for (auto q : charges) {
+                counter ++;
+                hv_raw->SetBinContent(ch+1-nwire_u,tbin+counter,q); 
+            }
+        }else{
+            int counter = 0;
+            for (auto q : charges) {
+                counter ++;
+                hw_raw->SetBinContent(ch+1-nwire_u-nwire_v,tbin+counter,q); 
+            }
+        }
+    }
 
-  TTree *T_lf = new TTree("T_lf","T_lf");
-  int channel;
-  T_lf->Branch("channel",&channel,"channel/I");
+    // save bad channels 
+    TTree *T_bad = new TTree("T_bad","T_bad");
+    int chid, plane, start_time,end_time;
+    T_bad->Branch("chid",&chid,"chid/I");
+    T_bad->Branch("plane",&plane,"plane/I");
+    T_bad->Branch("start_time",&start_time,"start_time/I");
+    T_bad->Branch("end_time",&end_time,"end_time/I");
+    T_bad->SetDirectory(tfile_out);
+
+    TTree *T_lf = new TTree("T_lf","T_lf");
+    int channel;
+    T_lf->Branch("channel",&channel,"channel/I");
   
 
-  Waveform::ChannelMaskMap input_cmm = frame_raw->masks();
-  for (auto const& it: input_cmm) {
+    Waveform::ChannelMaskMap input_cmm = frame_raw->masks();
+    for (auto const& it: input_cmm) {
 
-    if (it.first == "bad"){ // save bad ... 
-      //std::cout << "Xin1: " << it.first << " " << it.second.size() << std::endl;
-      for (auto const &it1 : it.second){
-	chid = it1.first;
-	if (chid < nwire_u){
-	  plane = 0;
-	}else if (chid < nwire_v){
-	  plane = 1;
-	}else{
-	  plane = 2;
-	}
-	//std::cout << "Xin1: " << chid << " " << plane << " " << it1.second.size() << std::endl;
-	for (size_t ind = 0; ind < it1.second.size(); ++ind){
-	  start_time = it1.second[ind].first;
-	  end_time = it1.second[ind].second;
-	  T_bad->Fill();
-	}
-      }
-    }else if (it.first =="lf_noisy"){
-      for (auto const &it1 : it.second){
-	channel = it1.first;
-	T_lf->Fill();
-      }
+        if (it.first == "bad"){ // save bad ... 
+            //std::cout << "Xin1: " << it.first << " " << it.second.size() << std::endl;
+            for (auto const &it1 : it.second){
+                chid = it1.first;
+                if (chid < nwire_u){
+                    plane = 0;
+                }else if (chid < nwire_v){
+                    plane = 1;
+                }else{
+                    plane = 2;
+                }
+                //std::cout << "Xin1: " << chid << " " << plane << " " << it1.second.size() << std::endl;
+                for (size_t ind = 0; ind < it1.second.size(); ++ind){
+                    start_time = it1.second[ind].first;
+                    end_time = it1.second[ind].second;
+                    T_bad->Fill();
+                }
+            }
+        }
+        else if (it.first =="lf_noisy"){
+            for (auto const &it1 : it.second){
+                channel = it1.first;
+                T_lf->Fill();
+            }
       
-    }
+        }
 
     
-  }
+    }
 
 
-  file->Write();
-  file->Close();
+    tfile_out->Write();
+    tfile_out->Close();
 }
 
 void rms_plot(TCanvas& canvas, IFrame::pointer frame, const string& title)
@@ -269,10 +269,15 @@ public:
 int main(int argc, char* argv[])
 {
     if (argc < 2) {
-	cerr << "This test needs an input data file.  Legend has it that one is found at " << url_test << endl;
-	return 1;
+        cerr << "This test needs an input data file in \"Magnify\" ROOT format with \"orig\" histograms." << endl;
+        return 1;
     }
-
+    std::string url_in = argv[1];
+    std::string url_out = Form("%s.root", argv[0]);
+    if (argc > 2) {
+        url_out = argv[2];
+    }
+    cerr << "Output too: " << url_out << std::endl;
 
     PluginManager& pm = PluginManager::instance();
     pm.add("WireCellGen");
@@ -297,9 +302,8 @@ int main(int argc, char* argv[])
     // std::cout << "asd " << std::endl;
     
     
-    std::string url = argv[1];
 
-    XinFileIterator fs(url.c_str());
+    XinFileIterator fs(url_in.c_str());
 
     // S&C microboone sampling parameter database
     const double tick = 0.5*units::microsecond;
@@ -584,7 +588,8 @@ int main(int argc, char* argv[])
     // rms_plot(canvas, quiet, "Quiet frame");
     Assert(quiet);
 
-    save_into_file(url.c_str(),frame,quiet,uchans.size(),vchans.size(),wchans.size(),nsamples);
+    save_into_file(url_in.c_str(), url_out.c_str(),
+                   frame,quiet,uchans.size(),vchans.size(),wchans.size(),nsamples);
     //    canvas.Print("test_omnibus.pdf]","pdf");
 
     em("Saved output to file");
@@ -594,5 +599,5 @@ int main(int argc, char* argv[])
 }
 // Local Variables:
 // mode: c++
-// c-basic-offset: 2
+// c-basic-offset: 4
 // End:
