@@ -674,6 +674,12 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     // calculate the scaling coefficient and subtract
     Microboone::Subtract_WScaling(chansig, medians);
 
+    
+    // WireCell::IChannelFilter::signal_t& signal = chansig.begin()->second;
+    // for (size_t i=0;i!=signal.size();i++){
+    // 	signal.at(i) = medians.at(i);
+    // }
+    
     //std::cerr <<"\tSubtrace_WScaling done" << std::endl;
 
     // for (auto it: chansig){

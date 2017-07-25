@@ -162,6 +162,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 
         IChannelFilter::channel_signals_t chgrp;
         for (auto ch : group) {	    // fix me: check if we don't actually have this channel
+	    // std::cout << group_counter << " " << ch << " " << std::endl;
             if (bychan.find(ch)==bychan.end()) {
                 std::cerr << "OmnibusNoiseFilter: warning: unknown channel " << ch << "\n";
                 flag = 0;
