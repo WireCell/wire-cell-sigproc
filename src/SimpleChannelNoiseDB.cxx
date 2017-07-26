@@ -179,8 +179,8 @@ void SimpleChannelNoiseDB::set_rcrc_constant(const std::vector<int>& channels, d
 {
     Response::SimpleRC rcres(rcrc,m_tick);
     //auto signal = rcres.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
-    auto signal = rcres.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
-    
+    //    auto signal = rcres.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
+    auto signal = rcres.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
     
     Waveform::compseq_t spectrum = Waveform::dft(signal);
     
@@ -233,8 +233,10 @@ void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,
 
     Response::ColdElec from_ce(from_gain, from_shaping);
     Response::ColdElec to_ce(to_gain, to_shaping);
-    auto to_sig   =   to_ce.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
-    auto from_sig = from_ce.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
+    // auto to_sig   =   to_ce.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
+    // auto from_sig = from_ce.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
+    auto to_sig   =   to_ce.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
+    auto from_sig = from_ce.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
     
     auto to_filt   = Waveform::dft(to_sig);
     auto from_filt = Waveform::dft(from_sig);
@@ -244,7 +246,8 @@ void SimpleChannelNoiseDB::set_gains_shapings(const std::vector<int>& channels,
     
     Waveform::shrink(to_filt, from_filt); // divide
     auto filt = std::make_shared<filter_t>(to_filt);
-    
+
+    //std::cout << filt->at(0) << " " << filt->at(1) << std::endl;
     // std::cerr << "SimpleChannelNoiseDB: "
     //           << " from_sig sum=" << Waveform::sum(from_sig)
     //           << " to_sig sum=" << Waveform::sum(to_sig)

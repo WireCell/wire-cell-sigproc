@@ -30,7 +30,7 @@ namespace WireCell {
       /// Explicitly inject required services
       void IDPMTSignalCollection(Waveform::realseq_t& signal,double rms, int ch);
       void IDPMTSignalInduction(Waveform::realseq_t& signal, double rms, int ch, int plane);
-      void RemovePMTSignal(Waveform::realseq_t& signal, int start_bin, int end_bin);
+      void RemovePMTSignal(Waveform::realseq_t& signal, int start_bin, int end_bin, int flag=0);
       
     private:
       std::string m_anode_tn;

@@ -550,7 +550,8 @@ int main(int argc, char* argv[])
         cfg["channel_filters"][1] = "mbOneChannelNoise";
         cfg["channel_status_filters"][0] = "mbOneChannelStatus";
 	cfg["grouped_filters"][0] = "mbCoherentNoiseSub";
-        icfg->configure(cfg);
+	//cfg["grouped_filters"] = Json::arrayValue;
+	icfg->configure(cfg);
       }
 
       {
@@ -579,6 +580,7 @@ int main(int argc, char* argv[])
 
       cerr << em("Removing noise") << endl;
       (*bus)(frame, mid_quiet);
+      //(*bus)(frame, quiet);
       cerr << em("Removing PMT noise") << endl;
       (*pmt_bus)(mid_quiet, quiet);
       cerr << em("Noise removal done") << endl;
