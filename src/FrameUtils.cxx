@@ -43,8 +43,8 @@ void wct::sigproc::dump_frame(WireCell::IFrame::pointer frame)
     std::cerr << "Frame: " << ntraces << " traces,"
               << " <mean>=" << meanmean
               << " TotRMS=" << totrms
-              << " <len>=" << meanlen
               << " <tbin>=" << meantbin
+              << " <len>=" << meanlen
               << std::endl;
     for (auto it : frame->masks()) {
         std::cerr << "\t" << it.first << " : " << it.second.size() << std::endl;
@@ -99,4 +99,14 @@ int wct::sigproc::maxcount_baseline(const ITrace::vector& traces, const WireCell
     }
     auto mme = std::minmax_element(hist.begin(), hist.end());
     return mme.second - hist.begin();
+}
+
+ITrace::vector wct::sigproc::tagged_traces(IFrame::pointer frame, IFrame::tag_t tag)
+{
+    ITrace::vector ret;
+    auto const& all_traces = frame->traces();
+    for (size_t index : frame->tagged_traces(tag)) {
+        ret.push_back(all_traces->at(index));
+    }
+    return ret;
 }

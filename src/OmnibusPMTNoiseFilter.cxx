@@ -10,6 +10,8 @@
 
 #include "WireCellUtil/NamedFactory.h"
 
+#include "FrameUtils.h"
+
 WIRECELL_FACTORY(OmnibusPMTNoiseFilter, WireCell::SigProc::OmnibusPMTNoiseFilter,
                  WireCell::IFrameFilter, WireCell::IConfigurable);
 
@@ -24,7 +26,7 @@ using namespace WireCell::SigProc;
 std::vector<PMTNoiseROI*> PMT_ROIs;
 
 OmnibusPMTNoiseFilter::OmnibusPMTNoiseFilter(const std::string anode_tn, int pad_window, int min_window_length, int threshold, float rms_threshold, int sort_wires, float ind_th1, float ind_th2, int nwire_pmt_col_th )
-  : m_anode_tn(anode_tn)
+  : m_intag("quiet"), m_outtag("raw"), m_anode_tn(anode_tn)
   , m_pad_window(pad_window)
   , m_min_window_length(min_window_length)
   , m_threshold(threshold)
@@ -55,6 +57,8 @@ void OmnibusPMTNoiseFilter::configure(const WireCell::Configuration& config)
   m_ind_th1 = get(config,"ind_th1",m_ind_th1);
   m_ind_th2 = get(config,"ind_th2",m_ind_th2);
   m_nwire_pmt_col_th = get(config,"nwire_pmt_col_th",m_nwire_pmt_col_th);
+  m_intag = get(config, "intraces", m_intag);
+  m_outtag = get(config, "outtraces", m_outtag);
 }
 WireCell::Configuration OmnibusPMTNoiseFilter::default_configuration() const
 {
@@ -68,18 +72,25 @@ WireCell::Configuration OmnibusPMTNoiseFilter::default_configuration() const
     cfg["ind_th1"]=m_ind_th1;
     cfg["ind_th2"]=m_ind_th2;
     cfg["nwire_pmt_col_th"] = m_nwire_pmt_col_th;
+    cfg["intraces"] = m_intag;
+    cfg["outtraces"] = m_outtag;
     return cfg;
 }
 
 bool OmnibusPMTNoiseFilter::operator()(const input_pointer& in, output_pointer& out)
 {
+  if (!in) {                    // eos processing
+    out = nullptr;
+    return true;
+  }
+
   std::map<int, Waveform::realseq_t> bychan_coll;
   std::map<int, Waveform::realseq_t> bychan_indu;
   std::map<int, Waveform::realseq_t> bychan_indv;
   std::map<int,double> by_chan_rms;
   // go through all channels and calculate RMS as well as categorize them
-  auto traces = in->traces();
-  for (auto trace : *traces.get()) {
+  auto traces = wct::sigproc::tagged_traces(in, m_intag);
+  for (auto trace : traces) {
     int ch = trace->channel();
 
     auto wpid = m_anode->resolve(ch);      
@@ -189,7 +200,13 @@ bool OmnibusPMTNoiseFilter::operator()(const input_pointer& in, output_pointer& 
     itraces.push_back(ITrace::pointer(trace));
   }
   
+  IFrame::trace_list_t indices(itraces.size());
+  for (size_t ind=0; ind<itraces.size(); ++ind) {
+    indices[ind] = ind;
+  }
+
   SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick(), in->masks());
+  sframe->tag_traces(m_outtag, indices);
   out = IFrame::pointer(sframe);
   
   return true;
@@ -349,3 +366,7 @@ void OmnibusPMTNoiseFilter::RemovePMTSignal(Waveform::realseq_t& signal, int sta
     }
   }
 }
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:

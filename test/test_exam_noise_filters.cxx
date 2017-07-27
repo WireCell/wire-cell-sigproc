@@ -227,6 +227,7 @@ public:
     // }
 
     /// Return a frame, the one and only in the file.
+    IFrame::trace_list_t indices;
     IFrame::pointer frame() {
 	ITrace::vector traces;
 
@@ -249,6 +250,7 @@ public:
 		}
 		SimpleTrace* st = new SimpleTrace(chindex, 0.0, charges);
 		traces.push_back(ITrace::pointer(st));
+                indices.push_back(chindex);
 		++chindex;
 		//cerr << "qtot in plane/ch/index "
 		//     << iplane << "/" << ich << "/" << chindex << " = " << qtot << endl;
@@ -260,6 +262,7 @@ public:
             
 	}
 	SimpleFrame* sf = new SimpleFrame(0, 0, traces);
+        sf->tag_traces("orig", indices);
 	return IFrame::pointer(sf);
     }
     
@@ -551,6 +554,8 @@ int main(int argc, char* argv[])
         cfg["channel_status_filters"][0] = "mbOneChannelStatus";
 	cfg["grouped_filters"][0] = "mbCoherentNoiseSub";
 	//cfg["grouped_filters"] = Json::arrayValue;
+        cfg["intraces"] = "orig";
+        cfg["outtraces"] = "quiet";
 	icfg->configure(cfg);
       }
 
@@ -558,6 +563,8 @@ int main(int argc, char* argv[])
         auto icfg = Factory::lookup<IConfigurable>("OmnibusPMTNoiseFilter");
         auto cfg = icfg->default_configuration();
         cfg["anode"] = anode_tn;
+        cfg["intraces"] = "quiet";
+        cfg["outtraces"] = "raw";
         icfg->configure(cfg);
       }
 
@@ -572,6 +579,7 @@ int main(int argc, char* argv[])
     IFrame::pointer frame = fs.frame();
     // rms_plot(canvas, frame, "Raw frame");
 	
+    const bool do_pmt_noise_removal = true;
     IFrame::pointer quiet;
     {
       auto bus = Factory::find<IFrameFilter>("OmnibusNoiseFilter");
@@ -580,9 +588,13 @@ int main(int argc, char* argv[])
 
       cerr << em("Removing noise") << endl;
       (*bus)(frame, mid_quiet);
-      //(*bus)(frame, quiet);
-      cerr << em("Removing PMT noise") << endl;
-      (*pmt_bus)(mid_quiet, quiet);
+      if (do_pmt_noise_removal) {
+          cerr << em("Removing PMT noise") << endl;
+          (*pmt_bus)(mid_quiet, quiet);
+      }
+      else {
+          quiet = mid_quiet;
+      }
       cerr << em("Noise removal done") << endl;
     }
     cerr << em("Dropped intermediate frame") << endl;

@@ -31,6 +31,10 @@ namespace wct {                 // eventually make this namespace
         int maxcount_baseline(const WireCell::ITrace::vector& traces, 
                               const WireCell::Binning& binning = WireCell::Binning(4096,0,4096));
 
+
+        // Get the tagged trace indices and resolve them to traces.
+        WireCell::ITrace::vector tagged_traces(WireCell::IFrame::pointer frame, WireCell::IFrame::tag_t tag);
+
     }
 }
 

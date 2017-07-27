@@ -61,8 +61,8 @@ namespace WireCell {
       void decon_2D_hits(int plane);
       void decon_2D_charge(int plane);
       
-      // save data into the out frame
-      void save_data(ITrace::vector& itraces, int plane, int total_offset=0);
+      // save data into the out frame and collect the indices
+      void save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane);
 
       // initialize the overall response function ...
       void init_overall_response(IFrame::pointer frame);

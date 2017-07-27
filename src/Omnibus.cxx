@@ -63,7 +63,12 @@ void SigProc::Omnibus::execute()
     if (!frame) {
         std::cerr << "Omnibus: got null frame, forwarding, assuming we have reached EOS\n";
     }
-    else {
+    if (!frame->traces()->size()) {
+        std::cerr << "Omnibus: got empty input frame, something is busted\n";
+        THROW(RuntimeError() << errmsg{"Omnibus: got empty input frame, something is busted"});
+    }    
+
+    {
         std::cerr << "Omnibus: got input frame with " << frame->traces()->size() << " traces\n";
         dump_frame(frame);
     }

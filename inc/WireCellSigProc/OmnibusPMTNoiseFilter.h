@@ -33,6 +33,7 @@ namespace WireCell {
       void RemovePMTSignal(Waveform::realseq_t& signal, int start_bin, int end_bin, int flag=0);
       
     private:
+      std::string m_intag, m_outtag;
       std::string m_anode_tn;
       IAnodePlane::pointer m_anode;
 
@@ -52,3 +53,7 @@ namespace WireCell {
 }
 
 #endif
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:
