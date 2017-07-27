@@ -748,8 +748,10 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
       const int iplane = wpid.index();
 
       if (iplane!=2){ // not collection
-	  if (chirped_bins.first>0 || chirped_bins.second<int(signal.size()))
+	  if (chirped_bins.first>0 || chirped_bins.second<int(signal.size())){
 	      ret["lf_noisy"][ch].push_back(chirped_bins);
+	      //std::cout << "Chirp " << ch << std::endl;
+	  }
       }
     }
 
@@ -814,7 +816,8 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
 	const int iplane = wpid.index();
 	if (iplane!=2) {        // not collection
 	    ret["lf_noisy"][ch].push_back(temp_chirped_bins);
-        }
+	    //std::cout << "Partial " << ch << std::endl;
+	}
 	Microboone::SignalFilter(signal);
 	Microboone::RawAdapativeBaselineAlg(signal);
     }
@@ -1073,6 +1076,7 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelStatus::apply(int ch, s
 	    temp_chirped_bins.first = 0;
 	    temp_chirped_bins.second = signal.size();
 	    ret["lf_noisy"][ch].push_back(temp_chirped_bins);
+	    // std::cout << "lf noisy " << ch << std::endl;
 	}
     }
     return ret;
@@ -1116,7 +1120,7 @@ bool Microboone::OneChannelStatus::ID_lf_noisy(signal_t& sig) const{
     for (int i=0;i!=m_nbins;i++){
         content += abs(sig_freq.at(i+1));
     }
-	
+    
     if (content/valid>m_cut) {
         std::cerr << "OneChannelStatus::ID_lf_noisy: content=" << content << " valid=" << valid << " m_cut="<<m_cut<< std::endl;
         return true;
