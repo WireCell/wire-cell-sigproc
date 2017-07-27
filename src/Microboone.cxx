@@ -91,7 +91,8 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 	if (ave_coef != 0 ){
 	    scaling = coef_all[ch]/ave_coef;
 	    // add some protections ... 
-	    if (scaling < 0.5 ) scaling = 0.5;
+	    if (scaling < 0) scaling = 0;
+	    //	    if (scaling < 0.5 && scaling > 0.3) scaling = 0.5;
 	    if (scaling > 1.5) scaling = 1.5;
 	}else{
 	    scaling = 0;
@@ -242,14 +243,17 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
             if (inside) {
                 if (signalsBool[ind]) { // still inside
                     rois.back().push_back(ind);
-                }
+                }else{
+		    inside = false;
+		}
             }
             else {                  // outside the Rio
                 if (signalsBool[ind]) { // just entered ROI
                     std::vector<int> roi;
                     roi.push_back(ind);
                     rois.push_back(roi);
-                }
+		    inside = true;
+		}
             }
         }
         // Replace medians for above regions with interpolation on values
@@ -674,6 +678,12 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     // calculate the scaling coefficient and subtract
     Microboone::Subtract_WScaling(chansig, medians);
 
+    
+    // WireCell::IChannelFilter::signal_t& signal = chansig.begin()->second;
+    // for (size_t i=0;i!=signal.size();i++){
+    // 	signal.at(i) = medians.at(i);
+    // }
+    
     //std::cerr <<"\tSubtrace_WScaling done" << std::endl;
 
     // for (auto it: chansig){

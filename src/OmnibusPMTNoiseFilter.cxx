@@ -158,7 +158,7 @@ bool OmnibusPMTNoiseFilter::operator()(const input_pointer& in, output_pointer& 
 
       if (int(PMT_ROIs.at(i)->get_sorted_wwires().size()) >= m_nwire_pmt_col_th){
 	for (int j=0;j!=int(PMT_ROIs.at(i)->get_sorted_wwires().size());j++){
-	  RemovePMTSignal(bychan_coll[PMT_ROIs.at(i)->get_sorted_wwires().at(j)],PMT_ROIs.at(i)->get_start_bin(),PMT_ROIs.at(i)->get_end_bin());
+	  RemovePMTSignal(bychan_coll[PMT_ROIs.at(i)->get_sorted_wwires().at(j)],PMT_ROIs.at(i)->get_start_bin(),PMT_ROIs.at(i)->get_end_bin(),1);
 	}
       }
       
@@ -317,7 +317,7 @@ void OmnibusPMTNoiseFilter::IDPMTSignalInduction(Waveform::realseq_t& signal, do
   }
 }
 
-void OmnibusPMTNoiseFilter::RemovePMTSignal(Waveform::realseq_t& signal, int start_bin, int end_bin){
+void OmnibusPMTNoiseFilter::RemovePMTSignal(Waveform::realseq_t& signal, int start_bin, int end_bin, int flag){
     
   //int flag_start = 0;
 	    
@@ -341,6 +341,11 @@ void OmnibusPMTNoiseFilter::RemovePMTSignal(Waveform::realseq_t& signal, int sta
   
   for (int j=start_bin;j<=end_bin;j++){
     float content = start_content + (end_content - start_content) * (j - start_bin) / (end_bin - start_bin*1.0);
-    signal.at(j)=content;
+    if (flag==1){
+      if (signal.at(j)<0)
+	signal.at(j) = content;
+    }else{
+      signal.at(j)=content;
+    }
   }
 }
