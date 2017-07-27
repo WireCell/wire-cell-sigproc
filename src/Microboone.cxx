@@ -1108,7 +1108,7 @@ bool Microboone::OneChannelStatus::ID_lf_noisy(signal_t& sig) const{
     }
 	
     if (content/valid>m_cut) {
-        std::cerr << "OneChannelStatus::ID_lf_noisy: content=" << content << " valid=" << valid << " m_cut="<<m_cut<< std::endl;
+        // std::cerr << "OneChannelStatus::ID_lf_noisy: content=" << content << " valid=" << valid << " m_cut="<<m_cut<< std::endl;
         return true;
     }
     

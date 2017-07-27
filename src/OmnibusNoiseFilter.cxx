@@ -9,6 +9,8 @@
 
 #include "WireCellUtil/NamedFactory.h"
 
+#include "FrameUtils.h"          // fixme: needs to move to somewhere more useful.
+
 WIRECELL_FACTORY(OmnibusNoiseFilter, WireCell::SigProc::OmnibusNoiseFilter,
                  WireCell::IFrameFilter, WireCell::IConfigurable);
 
@@ -17,6 +19,8 @@ using namespace WireCell;
 using namespace WireCell::SigProc;
 
 OmnibusNoiseFilter::OmnibusNoiseFilter()
+    : m_intag("orig")
+    , m_outtag("raw")
 {
 }
 OmnibusNoiseFilter::~OmnibusNoiseFilter()
@@ -56,6 +60,9 @@ void OmnibusNoiseFilter::configure(const WireCell::Configuration& cfg)
     m_noisedb = Factory::find_tn<IChannelNoiseDatabase>(jcndb.asString());
     std::cerr << "OmnibusNoiseFilter: using channel noise DB object: " 
                   << " \"" << jcndb.asString() << "\"\n";
+
+    m_intag = get(cfg, "intraces", m_intag);
+    m_outtag = get(cfg, "outtraces", m_outtag);
 }
 
 WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
@@ -72,19 +79,22 @@ WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
     // Avoid SimpleChannelNoiseDB.
     cfg["noisedb"] = ""; 
 
+    // The tags for input and output traces
+    cfg["intraces"] = m_intag;
+    cfg["outtraces"] = m_outtag;
     return cfg;
 }
 
 
-bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out)
+bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer& outframe)
 {
-    if (!in) {                  // eos
-        out = nullptr;
+    if (!inframe) {             // eos
+        outframe = nullptr;
         return true;
     }
 
     // For now, just collect any and all masks and interpret them as "bad"
-    Waveform::ChannelMaskMap input_cmm = in->masks();
+    Waveform::ChannelMaskMap input_cmm = inframe->masks();
     Waveform::ChannelMaskMap cmm;
     //Waveform::ChannelMasks bad_regions;
     //cmm["bad"] = bad_regions;
@@ -120,8 +130,12 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
 
     std::map<int, IChannelFilter::signal_t> bychan;
 
-    auto traces = in->traces();
-    for (auto trace : *traces.get()) {
+    auto traces = wct::sigproc::tagged_traces(inframe, m_intag);
+    if (traces.empty()) {
+        std::cerr << "No traces for tag \"" << m_intag << "\"\n";
+        THROW(ValueError() << errmsg{"OmnibusNoiseFilter: no traces found"});
+    }
+    for (auto trace : traces) {
     	int ch = trace->channel();
 
 	if (find(bad_channels.begin(),bad_channels.end(),ch)!=bad_channels.end()){
@@ -174,7 +188,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
     }
 
     // run status
-    for (auto trace : *traces.get()) {
+    for (auto trace : traces) {
     	int ch = trace->channel();
     	IChannelFilter::signal_t& signal = bychan[ch]; // ref
 	for (auto filter : m_perchan_status) {
@@ -189,8 +203,14 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& in, output_pointer& out
     for (auto cs : bychan) {    // fixme: that tbin though
         itraces.push_back(std::make_shared<SimpleTrace>(cs.first, 0, cs.second));
     }
-    out = std::make_shared<SimpleFrame>(in->ident(), in->time(), itraces, in->tick(), cmm);
-
+    auto sframe = new SimpleFrame(inframe->ident(), inframe->time(), itraces, inframe->tick(), cmm);
+    IFrame::trace_list_t indices(itraces.size());
+    for (size_t ind=0; ind<itraces.size(); ++ind) {
+        indices[ind] = ind;
+    }
+    sframe->tag_traces(m_outtag, indices);
+    sframe->tag_frame("noisefilter");
+    outframe = IFrame::pointer(sframe);
     return true;
 }
 

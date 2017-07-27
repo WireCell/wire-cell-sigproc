@@ -276,36 +276,33 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
 }
 
 
-void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane, int total_offset){
+void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane)
+{
 
-  int offset=0;
   int offset1=0;
   int nwire = 0;
   if (plane==0){
-    offset = total_offset;
     offset1 = 0;
     nwire = nwire_u;
   }else if (plane==1){
-    offset = nwire_u + total_offset;
     offset1 = nwire_u;
     nwire = nwire_v;
   }else if (plane==2){
-    offset = nwire_u + nwire_v + total_offset;
     offset1 = nwire_u + nwire_v;
     nwire = nwire_w;
   }
   
   
   double qtot = 0.0;
-  for (int i=0;i!=nwire;i++){
+  for (int ich=0;ich!=nwire;ich++){
     ITrace::ChargeSequence charge(m_nticks);
     for (int j=0;j!=m_nticks;j++){
-      charge.at(j) = m_r_data(i,j);
+      charge.at(j) = m_r_data(ich,j);
     }
     // correct the dead channels ... 
-    if (cmm["bad"].find(i+offset1)!=cmm["bad"].end()){
-      for (size_t k=0;k!=cmm["bad"][i+offset1].size();k++){
-	for (int j=cmm["bad"][i+offset1].at(k).first; j!=cmm["bad"][i+offset1].at(k).second;j++){
+    if (cmm["bad"].find(ich+offset1)!=cmm["bad"].end()){
+      for (size_t k=0;k!=cmm["bad"][ich+offset1].size();k++){
+	for (int j=cmm["bad"][ich+offset1].at(k).first; j!=cmm["bad"][ich+offset1].at(k).second;j++){
 	  charge.at(j)=0;
 	}
       }
@@ -316,7 +313,9 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, int plane, int total_off
       qtot += charge.at(j);
     }
 
-    SimpleTrace *trace = new SimpleTrace(i+offset, 0, charge);
+    SimpleTrace *trace = new SimpleTrace(ich, 0, charge);
+    const size_t trace_index = itraces.size();
+    indices.push_back(trace_index);
     itraces.push_back(ITrace::pointer(trace));
   }
   std::cerr << "OmnibusSigProc: plane index " << plane << " Qtot=" << qtot << "\n";
@@ -866,6 +865,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   }
   cmm = in->masks();
   ITrace::vector itraces;
+  IFrame::trace_list_t wiener_traces, gauss_traces;
 
   // initialize the overall response function ... 
   init_overall_response(in);
@@ -875,84 +875,79 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   ROI_refinement roi_refine(cmm,nwire_u,nwire_v,nwire_w,m_r_th_factor,m_r_fake_signal_low_th,m_r_fake_signal_high_th,m_r_pad,m_r_break_roi_loop,m_r_th_peak,m_r_sep_peak,m_r_low_peak_sep_threshold_pre,m_r_max_npeaks,m_r_sigma,m_r_th_percent);//
 
   
-  for (int i=0;i!=3;i++){
+  for (int iplane = 0; iplane != 3; ++iplane){
     // load data into EIGEN matrices ...
-    //  std::cout << "Load data" << std::endl;
-    load_data(in,i);
+    load_data(in, iplane);
 
-    // std::cout << "Initial decon " << i << std::endl;
     // initial decon ... 
-    decon_2D_init(i);
+    decon_2D_init(iplane);
 
 
     //std::cout << "Form tight ROIs " << i  << std::endl;
     // Form tight ROIs
-    if (i!=2){ // induction wire planes
-      decon_2D_tighterROI(i);
-      Array::array_xxf r_data_tight(m_r_data.rows(),m_r_data.cols());
+    if (iplane != 2){ // induction wire planes
+      decon_2D_tighterROI(iplane);
+      Array::array_xxf r_data_tight(m_r_data.rows(), m_r_data.cols());
       r_data_tight = m_r_data;
-      decon_2D_tightROI(i);
-      roi_form.find_ROI_by_decon_itself(i,m_r_data,r_data_tight);
+      decon_2D_tightROI(iplane);
+      roi_form.find_ROI_by_decon_itself(iplane, m_r_data, r_data_tight);
     }else{ // collection wire planes
-      decon_2D_tightROI(i);
-      roi_form.find_ROI_by_decon_itself(i,m_r_data);
+      decon_2D_tightROI(iplane);
+      roi_form.find_ROI_by_decon_itself(iplane, m_r_data);
     }
 
     
     // Form loose ROIs
-    if (i!=2){
-      // std::cout << "Form loose ROIs " << i << std::endl;
-      decon_2D_looseROI(i);
+    if (iplane != 2){
+      decon_2D_looseROI(iplane);
 
-      //save_data(itraces,i);
-      
-      roi_form.find_ROI_loose(i,m_r_data);
-      decon_2D_ROI_refine(i);
+      roi_form.find_ROI_loose(iplane,m_r_data);
+      decon_2D_ROI_refine(iplane);
     }
 
-    //std::cout << "Refine ROIs " << i << std::endl;
     // Refine ROIs
-    roi_refine.load_data(i,m_r_data,roi_form);
-    roi_refine.refine_data(i,roi_form);
+    roi_refine.load_data(iplane, m_r_data, roi_form);
+    roi_refine.refine_data(iplane, roi_form);
 
-    // if (i==2)
-    //   save_data(itraces,i);
-    
-    
     // merge results ...
-    //std::cout << "save data for hits " << i <<std::endl;
-    decon_2D_hits(i);
-    roi_refine.apply_roi(i,m_r_data);
-    save_data(itraces,i);
+    decon_2D_hits(iplane);
+    roi_refine.apply_roi(iplane, m_r_data);
+    save_data(itraces, wiener_traces, iplane);
 
-    // std::cout << "save data for charge" << i << std::endl;
-    decon_2D_charge(i);
-    roi_refine.apply_roi(i,m_r_data);
-#ifdef BREAK_DATA_MODEL
-    save_data(itraces,i,m_charge_ch_offset);
-#endif    
-    
+    decon_2D_charge(iplane);
+    roi_refine.apply_roi(iplane, m_r_data);
+    save_data(itraces, gauss_traces, iplane);
+
   }
 
-  // put threshold into cmm ...
-  std::vector<float>& u_rms = roi_form.get_uplane_rms();
-  std::vector<float>& v_rms = roi_form.get_vplane_rms();
-  std::vector<float>& w_rms = roi_form.get_wplane_rms();
-  Waveform::ChannelMasks temp;
-  cmm["threshold"] = temp;
-  for ( size_t i=0;i!=u_rms.size();i++){
-    cmm["threshold"][i].push_back(std::make_pair(int(u_rms.at(i)*10), 10));
-  }
-  for ( size_t i=0;i!=v_rms.size();i++){
-    cmm["threshold"][i+nwire_u].push_back(std::make_pair(int(v_rms.at(i)*10), 10));
-  }
-  for ( size_t i=0;i!=w_rms.size();i++){
-    cmm["threshold"][i+nwire_u+nwire_v].push_back(std::make_pair(int(w_rms.at(i)*10), 10));
-  }
-  
-  
+
+  IFrame::trace_summary_t threshold(wiener_traces.size());
+  {
+    // stash thresholds ...
+    std::vector<float>& u_rms = roi_form.get_uplane_rms();
+    std::vector<float>& v_rms = roi_form.get_vplane_rms();
+    std::vector<float>& w_rms = roi_form.get_wplane_rms();
+
+    size_t ind=0;
+    for (auto rms : u_rms) {
+      threshold[ind] = rms;
+      ++ind;
+    }
+    for (auto rms : v_rms) {
+      threshold[ind] = rms;
+      ++ind;
+    }
+    for (auto rms : w_rms) {
+      threshold[ind] = rms;
+      ++ind;
+    }
+  }  
   
   SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick(), cmm);
+  sframe->tag_traces("wiener", wiener_traces, threshold);
+  sframe->tag_traces("gauss", gauss_traces, threshold);
+  sframe->tag_frame("sigproc");
+
   out = IFrame::pointer(sframe);
   
   return true;
