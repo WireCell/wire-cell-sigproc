@@ -1026,12 +1026,13 @@ void ROI_refinement::CheckROIs(int plane,ROI_formation& roi_form){
 void ROI_refinement::CleanUpCollectionROIs(){
   // deal with tight ROIs, 
   // scan with all the tight ROIs to look for peaks above certain threshold, put in a temporary set
-  float threshold = fake_signal_low_th; //electrons, about 1/2 of MIP per tick ...
+  float mean_threshold = fake_signal_low_th;
+  float threshold = fake_signal_high_th; //electrons, about 1/2 of MIP per tick ...
   std::set<SignalROI*> Good_ROIs;
   for (int i=0;i!=nwire_w;i++){
     for (auto it = rois_w_tight.at(i).begin();it!=rois_w_tight.at(i).end();it++){
       SignalROI* roi = *it;
-      if (roi->get_above_threshold(threshold).size()!=0)
+      if (roi->get_above_threshold(threshold).size()!=0 || roi->get_average_heights() > mean_threshold)
 	Good_ROIs.insert(roi);
     }
   }
@@ -1107,14 +1108,16 @@ void ROI_refinement::CleanUpCollectionROIs(){
 void ROI_refinement::CleanUpInductionROIs(int plane){
    // deal with loose ROIs
   // focus on the isolated ones first
+  float mean_threshold = fake_signal_low_th;
   float threshold = fake_signal_high_th;
+  
   std::list<SignalROI*> Bad_ROIs;
   if (plane==0){
     for (int i=0;i!=nwire_u;i++){
       for (auto it = rois_u_loose.at(i).begin();it!=rois_u_loose.at(i).end();it++){
 	SignalROI* roi = *it;
 	if (front_rois.find(roi)==front_rois.end() && back_rois.find(roi)==back_rois.end()){
-	  if (roi->get_above_threshold(threshold).size()==0)
+	  if (roi->get_above_threshold(threshold).size()==0 && roi->get_average_heights() < mean_threshold)
 	    Bad_ROIs.push_back(roi);
 	}
       }
@@ -1133,7 +1136,7 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
       for (auto it = rois_v_loose.at(i).begin();it!=rois_v_loose.at(i).end();it++){
 	SignalROI* roi = *it;
 	if (front_rois.find(roi)==front_rois.end() && back_rois.find(roi)==back_rois.end()){
-	  if (roi->get_above_threshold(threshold).size()==0)
+	  if (roi->get_above_threshold(threshold).size()==0 && roi->get_average_heights() < mean_threshold)
 	    Bad_ROIs.push_back(roi);
 	}
       }
@@ -1149,13 +1152,13 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
   }
 
 
-  threshold = fake_signal_low_th;
+  // threshold = fake_signal_low_th;
   std::set<SignalROI*> Good_ROIs;
   if (plane==0){
     for (int i=0;i!=nwire_u;i++){
       for (auto it = rois_u_loose.at(i).begin();it!=rois_u_loose.at(i).end();it++){
 	SignalROI* roi = *it;
-	if (roi->get_above_threshold(threshold).size()!=0)
+	if (roi->get_above_threshold(threshold).size()!=0 || roi->get_average_heights() > mean_threshold)
 	  Good_ROIs.insert(roi);
       }
     }

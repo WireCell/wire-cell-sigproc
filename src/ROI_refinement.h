@@ -16,7 +16,7 @@ namespace WireCell{
     
     class ROI_refinement{
     public:
-      ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor = 3.0, float fake_signal_low_th = 1200, float fake_signal_high_th = 1500, int pad = 5, int break_roi_loop = 2, float th_peak = 3.0, float sep_peak = 6.0, float low_peak_sep_threshold_pre = 1200, int max_npeaks = 200, float sigma = 2, float th_percent = 0.1);
+      ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor = 3.0, float fake_signal_low_th = 500, float fake_signal_high_th = 1000, int pad = 5, int break_roi_loop = 2, float th_peak = 3.0, float sep_peak = 6.0, float low_peak_sep_threshold_pre = 1200, int max_npeaks = 200, float sigma = 2, float th_percent = 0.1); 
       ~ROI_refinement();
 
       void Clear();
