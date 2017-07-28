@@ -587,6 +587,8 @@ int main(int argc, char* argv[])
       IFrame::pointer mid_quiet;
 
       cerr << em("Removing noise") << endl;
+      // (*bus)(frame, quiet);
+      
       (*bus)(frame, mid_quiet);
       if (do_pmt_noise_removal) {
           cerr << em("Removing PMT noise") << endl;
@@ -595,6 +597,7 @@ int main(int argc, char* argv[])
       else {
           quiet = mid_quiet;
       }
+      
       cerr << em("Noise removal done") << endl;
     }
     cerr << em("Dropped intermediate frame") << endl;

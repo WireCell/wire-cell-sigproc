@@ -22,7 +22,7 @@ std::pair<double,double> Derivations::CalcRMS(const WireCell::Waveform::realseq_
 WireCell::Waveform::realseq_t Derivations::CalcMedian(const WireCell::IChannelFilter::channel_signals_t& chansig)
 {
     float max_rms = 0;
-
+    float count_max_rms = 0;
     //std::cout << "Xin3: " << chansig.size() << std::endl;
     const int nchannel = chansig.size();
     const int nbins = (chansig.begin()->second).size();
@@ -32,9 +32,16 @@ WireCell::Waveform::realseq_t Derivations::CalcMedian(const WireCell::IChannelFi
      	//int ch = it.first;
      	WireCell::IChannelFilter::signal_t& signal = it.second;
     	std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
-    	if (temp.second > max_rms) {
-    	    max_rms = temp.second;
-    	}
+
+	//if (temp.second > max_rms) {
+    	//    max_rms = temp.second;
+    	//}
+
+	if (temp.second >0){
+	    max_rms += temp.second;
+	    count_max_rms ++;
+	}
+	
 	for (int i=0;i!=nbins;i++){
 	    content[start_ch][i] = signal.at(i);
 	}
@@ -45,8 +52,9 @@ WireCell::Waveform::realseq_t Derivations::CalcMedian(const WireCell::IChannelFi
     }
     //std::cout << max_rms << std::endl;
 	
-    
-    
+    if (count_max_rms >0)
+	max_rms /= count_max_rms;
+      
   
 
     // std::cout << nbins << " " << chansig.size() << std::endl;
