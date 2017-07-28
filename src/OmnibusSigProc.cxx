@@ -313,12 +313,13 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& in
       qtot += charge.at(j);
     }
 
-    SimpleTrace *trace = new SimpleTrace(ich, 0, charge);
+    SimpleTrace *trace = new SimpleTrace(ich + offset1, 0, charge);
     const size_t trace_index = itraces.size();
     indices.push_back(trace_index);
     itraces.push_back(ITrace::pointer(trace));
   }
-  std::cerr << "OmnibusSigProc: plane index " << plane << " Qtot=" << qtot << "\n";
+  std::cerr << "OmnibusSigProc: plane index: " << plane << " Qtot=" << qtot
+            << " traces=" << indices.size() << ":[" << indices.front() << "," << indices.back() << "]\n";
   
 }
 
@@ -865,7 +866,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   }
   cmm = in->masks();
   ITrace::vector itraces;
-  IFrame::trace_list_t wiener_traces, gauss_traces;
+  IFrame::trace_list_t wiener_traces, gauss_traces, perframe_traces[3];
 
   // initialize the overall response function ... 
   init_overall_response(in);
@@ -912,7 +913,8 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     // merge results ...
     decon_2D_hits(iplane);
     roi_refine.apply_roi(iplane, m_r_data);
-    save_data(itraces, wiener_traces, iplane);
+    save_data(itraces, perframe_traces[iplane], iplane);
+    wiener_traces.insert(wiener_traces.end(), perframe_traces[iplane].begin(), perframe_traces[iplane].end());
 
     decon_2D_charge(iplane);
     roi_refine.apply_roi(iplane, m_r_data);
@@ -921,32 +923,25 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   }
 
 
-  IFrame::trace_summary_t threshold(wiener_traces.size());
-  {
-    // stash thresholds ...
-    std::vector<float>& u_rms = roi_form.get_uplane_rms();
-    std::vector<float>& v_rms = roi_form.get_vplane_rms();
-    std::vector<float>& w_rms = roi_form.get_wplane_rms();
-
-    size_t ind=0;
-    for (auto rms : u_rms) {
-      threshold[ind] = rms;
-      ++ind;
-    }
-    for (auto rms : v_rms) {
-      threshold[ind] = rms;
-      ++ind;
-    }
-    for (auto rms : w_rms) {
-      threshold[ind] = rms;
-      ++ind;
-    }
-  }  
-  
   SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick(), cmm);
-  sframe->tag_traces("wiener", wiener_traces, threshold);
-  sframe->tag_traces("gauss", gauss_traces, threshold);
   sframe->tag_frame("sigproc");
+
+  std::vector<float> perplane_thresholds[3] = {
+    roi_form.get_uplane_rms(),
+    roi_form.get_vplane_rms(),
+    roi_form.get_wplane_rms()
+  };
+
+  IFrame::trace_summary_t threshold;
+  for (int iplane=0; iplane<3; ++iplane) {
+    for (float val : perplane_thresholds[iplane]) {
+      threshold.push_back((double)val);
+    }
+  }
+
+  sframe->tag_traces("wiener", wiener_traces);
+  sframe->tag_traces("threshold", wiener_traces, threshold);
+  sframe->tag_traces("gauss", gauss_traces);
 
   out = IFrame::pointer(sframe);
   
