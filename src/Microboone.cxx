@@ -786,11 +786,18 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     // remove the DC component 
     spectrum.front() = 0;
     signal = WireCell::Waveform::idft(spectrum);
-
+    
     //std::cerr << "OneChannelNoise: "<<ch<<" after dft: sigsum="<<Waveform::sum(signal)<<"\n";
 
     //Now calculate the baseline ...
-    baseline = WireCell::Waveform::median_binned(signal);
+    std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
+    auto temp_signal = signal;
+    for (size_t i=0;i!=temp_signal.size();i++){
+	if (fabs(temp_signal.at(i)-temp.first)>6*temp.second){
+	    temp_signal.at(i) = temp.first;
+	}
+    }
+    baseline = WireCell::Waveform::median_binned(temp_signal);
     //correct baseline
     WireCell::Waveform::increase(signal, baseline *(-1));
 
