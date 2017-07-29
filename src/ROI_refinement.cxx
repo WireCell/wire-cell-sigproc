@@ -160,7 +160,7 @@ void ROI_refinement::apply_roi(int plane, Array::array_xxf& r_data){
 	float start_content = r_data(irow,start_bin);
 	float end_content = r_data(irow,end_bin);
 	for (int i=start_bin; i<end_bin+1; i++){
-	  int content = r_data(irow,i) - ((end_content - start_content)*(i-start_bin)/(end_bin-start_bin) + start_content);
+	  int content = r_data(irow,i);// - ((end_content - start_content)*(i-start_bin)/(end_bin-start_bin) + start_content);
 	  signal.at(i) = content;
 	}
       }
