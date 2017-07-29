@@ -94,7 +94,9 @@ void save_into_file(const char* input_filename, const char* output_filename,
     }
   
     auto traces = frame_decon->traces();
-    for (auto trace : *traces.get()) {
+    //for (auto trace : *traces.get()) {
+    for (size_t index : frame_decon->tagged_traces("wiener")){
+	auto trace = traces->at(index);
         int tbin = trace->tbin();
         int ch = trace->channel();
         auto charges = trace->charge();
