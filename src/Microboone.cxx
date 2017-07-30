@@ -117,7 +117,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
     return true;
 }
 
-bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b)
+bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b, float upper_decon_limit, float upper_adc_limit)
 {
    
   
@@ -134,8 +134,9 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     const int nbin = medians.size();
 
     const int protection_factor = 5.0;
-    const float upper_decon_limit = 0.05;
-    const float upper_adc_limit = 15;
+    // move to input ... 
+    // const float upper_decon_limit = 0.05;
+    // const float upper_adc_limit = 15;
     const float min_adc_limit = 50;
 
 
@@ -162,6 +163,8 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 	limit = min_adc_limit;
     }
 
+    // std::cout << "Xin " << mean << " " << rms *protection_factor << " " << upper_adc_limit << std::endl;
+    
     for (int j=0;j!=nbin;j++) {
 	float content = medians.at(j);
 	if (fabs(content-mean)>limit){
@@ -211,6 +214,8 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     	}else{
     	    limit = upper_decon_limit;
     	}
+
+	//	std::cout << "Xin " << mean << " " << rms *protection_factor << " " << upper_decon_limit << std::endl;
 	
     	for (int j=0;j!=nbin;j++) {
     	    float content = medians_decon.at(j);
@@ -663,6 +668,10 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     const int pad_f = m_noisedb->pad_window_front(achannel);
     const int pad_b = m_noisedb->pad_window_back(achannel);
 
+    // need to move these to data base, consult with Brett ...
+    // also need to be time dependent ... 
+    const float decon_limit = 0.05;
+    const float adc_limit = 15;
 
     // if (respec.size()) {
     // now, apply the response spectrum to deconvolve the median
@@ -671,7 +680,7 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     //}
 
     // do the signal protection and adaptive baseline
-    Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b);
+    Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, adc_limit);
     
     //std::cerr <<"\tSigprotection done: " << chansig.size() << " " << medians.size() << " " << medians.at(100) << " " << medians.at(101) << std::endl;
 
