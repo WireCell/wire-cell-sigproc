@@ -59,6 +59,30 @@ namespace WireCell {
 	    }
 
 
+	protected:
+	    // Allow subclasses some access so that they may leverage
+	    // all the configuration code this class provides while
+	    // supplying some subset from an external source.  These
+	    // setters should be called before each use of
+	    // IChannelNoiseDatabase interface and may be called
+	    // multiple times
+
+	    // Override the bad channels.
+	    virtual void set_bad_channels(const channel_group_t& bad) {
+		m_bad_channels = bad;
+	    }
+
+	    // Override the reconfigured spectrum for a set of
+	    // channels.  If `reset` is true then all channels
+	    // reconfig spectrum is set to the default before applying
+	    // the reconfig spectrum associated with the given from/to
+	    // gain/shaping.  If false, then other channels are not
+	    // touched.
+	    virtual void set_misconfigured(const std::vector<int>& channels,
+					   double from_gain, double from_shaping,
+					   double to_gain, double to_shaping,
+					   bool reset = false);
+
 	private:
             double m_tick;
             int m_nsamples;
@@ -69,8 +93,6 @@ namespace WireCell {
 
 	    shared_filter_t m_default_filter;
 	    shared_filter_t m_default_response;
-
-
 
             // Embody the "database" entry for one channel. 
             struct ChannelInfo {
@@ -112,6 +134,8 @@ namespace WireCell {
             shared_filter_t parse_rcrc(Json::Value jrcrc);
             double parse_gain(Json::Value jreconfig);
             shared_filter_t parse_reconfig(Json::Value jreconfig);
+	    shared_filter_t get_reconfig(double from_gain, double from_shaping,
+					 double to_gain, double to_shaping);
             shared_filter_t parse_response(Json::Value jreconfig);
             //ChannelInfo* make_ci(int chid, Json::Value jci);
             void update_channels(Json::Value cfg);

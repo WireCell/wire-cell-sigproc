@@ -205,6 +205,11 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_reconfig(Json::Val
     const double to_shaping = jreconfig["to"]["shaping"].asDouble();
 
 
+    return get_reconfig(from_gain, from_shaping, to_gain, to_shaping);
+}
+OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::get_reconfig(double from_gain, double from_shaping,
+								     double to_gain, double to_shaping)
+{
     // kind of evil.
     int key = int(round(10.0*from_gain/(units::mV/units::fC))) << 24
         | int(round(10.0*from_shaping/units::us)) << 16
@@ -235,8 +240,8 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_reconfig(Json::Val
     auto to_filt   = Waveform::dft(to_sig);
     auto from_filt = Waveform::dft(from_sig);
 
-    auto from_filt_sum = Waveform::sum(from_filt);
-    auto to_filt_sum   = Waveform::sum(to_filt);
+    //auto from_filt_sum = Waveform::sum(from_filt);
+    //auto to_filt_sum   = Waveform::sum(to_filt);
 
     Waveform::shrink(to_filt, from_filt); // divide
     auto filt = std::make_shared<filter_t>(to_filt);
@@ -255,10 +260,28 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_reconfig(Json::Val
     m_reconfig_cache[key] = filt;
     return filt;
 }
-OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_response(Json::Value jreconfig)
+void OmniChannelNoiseDB::set_misconfigured(const std::vector<int>& channels,
+					   double from_gain, double from_shaping,
+					   double to_gain, double to_shaping,
+					   bool reset)
 {
-    if (jreconfig.isMember("wpid")) {
-        WirePlaneId wpid(jreconfig["wpid"].asInt());
+    if (reset) {
+        auto def = default_filter();
+        for (auto& it : m_db) {
+            it.config = def;
+        }
+    }
+    auto val = get_reconfig(from_gain, from_shaping, to_gain, to_shaping);
+    for (int ch : channels) {
+        m_db.at(ch).config = val;
+    }
+}
+
+
+OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_response(Json::Value jfilt)
+{
+    if (jfilt.isMember("wpid")) {
+        WirePlaneId wpid(jfilt["wpid"].asInt());
         auto it = m_response_cache.find(wpid.ident());
         if (it != m_response_cache.end()) {
             return it->second;
@@ -286,14 +309,14 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_response(Json::Val
         return ret;
     }
 
-    if (jreconfig.isMember("waveform") && jreconfig.isMember("waveformid")) {
-        int id = jreconfig["waveformid"].asInt();
+    if (jfilt.isMember("waveform") && jfilt.isMember("waveformid")) {
+        int id = jfilt["waveformid"].asInt();
         auto it = m_waveform_cache.find(id);
         if (it != m_waveform_cache.end()) {
             return it->second;
         }
         
-        auto jwave = jreconfig["waveform"];
+        auto jwave = jfilt["waveform"];
         const int nsamp = std::min(m_nsamples, (int)jwave.size());
 
         // Explicitly given waveform
