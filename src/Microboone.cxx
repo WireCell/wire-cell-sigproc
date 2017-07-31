@@ -670,9 +670,11 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
 
     // need to move these to data base, consult with Brett ...
     // also need to be time dependent ... 
-    const float decon_limit = 0.05;
-    const float adc_limit = 15;
+    const float decon_limit = m_noisedb->coherent_nf_decon_limit(achannel);// 0.05;
+    const float adc_limit = m_noisedb->coherent_nf_adc_limit(achannel);//15;
 
+    //std::cout << decon_limit << " " << adc_limit << std::endl;
+    
     // if (respec.size()) {
     // now, apply the response spectrum to deconvolve the median
     // and apply the special protection or pass respec into
