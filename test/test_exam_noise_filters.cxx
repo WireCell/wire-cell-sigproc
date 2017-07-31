@@ -452,9 +452,9 @@ int main(int argc, char* argv[])
     noise->set_coherent_nf_decon_limit(vchans,0.05);
     noise->set_coherent_nf_decon_limit(wchans,0.05);
 
-    noise->set_coherent_nf_adc_limit(uchans,23);
-    noise->set_coherent_nf_adc_limit(vchans,23);
-    noise->set_coherent_nf_adc_limit(wchans,0);
+    noise->set_coherent_nf_adc_limit(uchans,15);
+    noise->set_coherent_nf_adc_limit(vchans,15);
+    noise->set_coherent_nf_adc_limit(wchans,15);
     
     // set misconfigured channels
     noise->set_gains_shapings(miscfgchan, from_gain_mVfC, to_gain_mVfC, from_shaping, to_shaping);
