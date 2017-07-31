@@ -447,7 +447,15 @@ int main(int argc, char* argv[])
     noise->set_pad_window_back(vchans,10);
     noise->set_pad_window_front(wchans,10);
     noise->set_pad_window_back(wchans,10);
-	
+
+    noise->set_coherent_nf_decon_limit(uchans,0.05);
+    noise->set_coherent_nf_decon_limit(vchans,0.05);
+    noise->set_coherent_nf_decon_limit(wchans,0.05);
+
+    noise->set_coherent_nf_adc_limit(uchans,15);
+    noise->set_coherent_nf_adc_limit(vchans,15);
+    noise->set_coherent_nf_adc_limit(wchans,15);
+    
     // set misconfigured channels
     noise->set_gains_shapings(miscfgchan, from_gain_mVfC, to_gain_mVfC, from_shaping, to_shaping);
     // do the RCRC

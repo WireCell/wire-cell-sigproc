@@ -44,6 +44,9 @@ namespace WireCell {
 	    virtual int pad_window_front(int channel) const;
 	    virtual int pad_window_back(int channel) const;
 
+	    virtual float coherent_nf_decon_limit(int channel) const;
+	    virtual float coherent_nf_adc_limit(int channel) const;
+
 	    virtual const filter_t& rcrc(int channel) const;
 	    virtual const filter_t& config(int channel) const;
 	    virtual const filter_t& noise(int channel) const;
@@ -101,7 +104,10 @@ namespace WireCell {
                 // direct scalar values
                 double nominal_baseline, gain_correction, response_offset, min_rms_cut, max_rms_cut;
                 int pad_window_front, pad_window_back;
-    
+		
+		float decon_limit;
+		float adc_limit;
+		
                 // parameters
     
                 // frequency space filters

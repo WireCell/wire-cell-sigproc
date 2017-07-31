@@ -31,6 +31,20 @@ SignalROI::SignalROI(SignalROI *roi){
   }
 }
 
+double SignalROI::get_average_heights(){
+  double sum1 = 0;
+  double sum2 = 0;
+  for (size_t i=0;i!=contents.size();i++){
+    sum1 += contents.at(i);
+    sum2 ++;
+  }
+  if (sum2!=0){
+    return sum1/sum2;
+  }else{
+    return 0;
+  }
+}
+
 bool SignalROI::overlap(SignalROI* roi1, float th, float th1){
   int min_start_bin = start_bin;
   if (start_bin < roi1->get_start_bin())

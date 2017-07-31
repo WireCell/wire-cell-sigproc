@@ -117,7 +117,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
     return true;
 }
 
-bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b)
+bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b, float upper_decon_limit, float upper_adc_limit)
 {
    
   
@@ -134,8 +134,9 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     const int nbin = medians.size();
 
     const int protection_factor = 5.0;
-    const float upper_decon_limit = 0.05;
-    const float upper_adc_limit = 15;
+    // move to input ... 
+    // const float upper_decon_limit = 0.05;
+    // const float upper_adc_limit = 15;
     const float min_adc_limit = 50;
 
 
@@ -162,6 +163,8 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 	limit = min_adc_limit;
     }
 
+    // std::cout << "Xin " << mean << " " << rms *protection_factor << " " << upper_adc_limit << std::endl;
+    
     for (int j=0;j!=nbin;j++) {
 	float content = medians.at(j);
 	if (fabs(content-mean)>limit){
@@ -211,6 +214,8 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     	}else{
     	    limit = upper_decon_limit;
     	}
+
+	//	std::cout << "Xin " << mean << " " << rms *protection_factor << " " << upper_decon_limit << std::endl;
 	
     	for (int j=0;j!=nbin;j++) {
     	    float content = medians_decon.at(j);
@@ -663,7 +668,13 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     const int pad_f = m_noisedb->pad_window_front(achannel);
     const int pad_b = m_noisedb->pad_window_back(achannel);
 
+    // need to move these to data base, consult with Brett ...
+    // also need to be time dependent ... 
+    const float decon_limit = m_noisedb->coherent_nf_decon_limit(achannel);// 0.05;
+    const float adc_limit = m_noisedb->coherent_nf_adc_limit(achannel);//15;
 
+    //std::cout << decon_limit << " " << adc_limit << std::endl;
+    
     // if (respec.size()) {
     // now, apply the response spectrum to deconvolve the median
     // and apply the special protection or pass respec into
@@ -671,7 +682,7 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     //}
 
     // do the signal protection and adaptive baseline
-    Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b);
+    Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, adc_limit);
     
     //std::cerr <<"\tSigprotection done: " << chansig.size() << " " << medians.size() << " " << medians.at(100) << " " << medians.at(101) << std::endl;
 
@@ -786,11 +797,18 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     // remove the DC component 
     spectrum.front() = 0;
     signal = WireCell::Waveform::idft(spectrum);
-
+    
     //std::cerr << "OneChannelNoise: "<<ch<<" after dft: sigsum="<<Waveform::sum(signal)<<"\n";
 
     //Now calculate the baseline ...
-    baseline = WireCell::Waveform::median_binned(signal);
+    std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
+    auto temp_signal = signal;
+    for (size_t i=0;i!=temp_signal.size();i++){
+	if (fabs(temp_signal.at(i)-temp.first)>6*temp.second){
+	    temp_signal.at(i) = temp.first;
+	}
+    }
+    baseline = WireCell::Waveform::median_binned(temp_signal);
     //correct baseline
     WireCell::Waveform::increase(signal, baseline *(-1));
 

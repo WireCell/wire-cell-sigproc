@@ -22,6 +22,8 @@ SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
     , m_default_max_rms(10)
     , m_default_pad_f(0)
     , m_default_pad_b(0)
+    , m_default_decon_limit(0.05)
+    , m_default_adc_limit(15.0)
 {
     set_sampling(tick, nsamples);
 }
@@ -77,6 +79,8 @@ double SimpleChannelNoiseDB::max_rms_cut(int channel) const
     return m_default_max_rms;
 }
 
+
+
 int SimpleChannelNoiseDB::pad_window_front(int channel) const
 {
     const int ind = chind(channel);
@@ -96,6 +100,26 @@ int SimpleChannelNoiseDB::pad_window_back(int channel) const
     return m_default_pad_b;
 
 }
+
+float SimpleChannelNoiseDB::coherent_nf_decon_limit(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < (int)m_decon_limit.size()) {
+	return m_decon_limit[ind];
+    }
+    return m_default_decon_limit;
+}
+
+float SimpleChannelNoiseDB::coherent_nf_adc_limit(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < (int)m_adc_limit.size()) {
+	return m_adc_limit[ind];
+    }
+    return m_default_adc_limit;
+}
+
+
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::get_filter(int channel, const filter_vector_t& fv) const
 {
@@ -325,6 +349,24 @@ void SimpleChannelNoiseDB::set_pad_window_back(const std::vector<int>& channels,
     for (auto ch : channels) {
 	int ind = chind(ch);
 	set_one(ind, pad_b, m_pad_b, m_default_pad_b);
+    }
+}
+
+void SimpleChannelNoiseDB::set_coherent_nf_decon_limit(const std::vector<int>& channels, float decon_limit)
+{
+    //std::cerr << "SimpleChannelNoiseDB: set pad window back on " << channels.size() << " channels: " << pad_b << std::endl;
+    for (auto ch : channels) {
+	int ind = chind(ch);
+	set_one(ind, decon_limit, m_decon_limit, m_default_decon_limit);
+    }
+}
+
+void SimpleChannelNoiseDB::set_coherent_nf_adc_limit(const std::vector<int>& channels, float adc_limit)
+{
+    //std::cerr << "SimpleChannelNoiseDB: set pad window back on " << channels.size() << " channels: " << pad_b << std::endl;
+    for (auto ch : channels) {
+	int ind = chind(ch);
+	set_one(ind, adc_limit, m_adc_limit, m_default_adc_limit);
     }
 }
 
