@@ -783,7 +783,7 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
        ROIs_1.at(j).first = begin;
        ROIs_1.at(j).second = end;
        
-       if (abs(irow-1199)<=1&& plane==0) std::cout << "Loose: "  << irow << " " << ROIs_1.at(j).first << " " << ROIs_1.at(j).second << std::endl;
+       //if (abs(irow-1199)<=1&& plane==0) std::cout << "Loose: "  << irow << " " << ROIs_1.at(j).first << " " << ROIs_1.at(j).second << std::endl;
      }
      
 
