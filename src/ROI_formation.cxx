@@ -512,9 +512,8 @@ int ROI_formation::find_ROI_end(Waveform::realseq_t& signal, int bin, double th 
     }
   }
 
-  while(local_ave(signal,end+1,1) < local_ave(signal,end,1) ||
-	(local_ave(signal,end+1,1) + local_ave(signal,end+2,1))*0.5 < local_ave(signal,end,1)
-	){
+  while(local_ave(signal,end+1,1) < local_ave(signal,end,1)+25){// ||
+    //	(local_ave(signal,end+1,1) + local_ave(signal,end+2,1))*0.5 < local_ave(signal,end,1) ){
     end++;
     if (end >= int(signal.size())-1) {
       end = int(signal.size())-1;
@@ -543,8 +542,8 @@ int ROI_formation::find_ROI_begin(Waveform::realseq_t& signal, int bin, double t
   
   // calculate the local average
   // keep going and find the minimum
-  while( local_ave(signal,begin-1,1) < local_ave(signal,begin,1) ||
-	 (local_ave(signal,begin-2,1) + local_ave(signal,begin-1,1))*0.5 < local_ave(signal,begin,1) ){
+  while( local_ave(signal,begin-1,1) < local_ave(signal,begin,1)+25){// ||
+    // (local_ave(signal,begin-2,1) + local_ave(signal,begin-1,1))*0.5 < local_ave(signal,begin,1) ){
     begin --;
     if (begin <= 0) {
       begin = 0;
