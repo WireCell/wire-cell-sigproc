@@ -31,7 +31,6 @@ namespace WireCell {
 	    virtual WireCell::Configuration default_configuration() const;
 
 	    // IChannelNoiseDatabase
-	    virtual int number_samples() const;
 	    virtual double sample_time() const;
 
 	    virtual double nominal_baseline(int channel) const;

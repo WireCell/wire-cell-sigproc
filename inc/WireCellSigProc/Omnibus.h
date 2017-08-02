@@ -12,6 +12,7 @@
 #include "WireCellIface/IFrameSink.h"
 
 #include <vector>
+#include <string>
 
 namespace WireCell {
     namespace SigProc {
@@ -29,6 +30,8 @@ namespace WireCell {
 
         private:
 
+	    std::string m_input_tn, m_output_tn;
+	    std::vector<std::string> m_filters_tn;
             IFrameSource::pointer m_input;
             std::vector<IFrameFilter::pointer> m_filters;            
             IFrameSink::pointer m_output;

@@ -93,57 +93,61 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
         return true;
     }
 
-    // For now, just collect any and all masks and interpret them as "bad"
-    Waveform::ChannelMaskMap input_cmm = inframe->masks();
-    Waveform::ChannelMaskMap cmm;
-    //Waveform::ChannelMasks bad_regions;
-    //cmm["bad"] = bad_regions;
-
-
-    Waveform::merge(cmm,input_cmm,m_maskmap);
-    
-    //    for (auto const& it: input_cmm) {
-    //	bad_regions = Waveform::merge(bad_regions, it.second);
-    // }
-    
-    
-    // Get the ones from database and then merge
-    int nsamples = m_noisedb->number_samples();
-    std::vector<int> bad_channels = m_noisedb->bad_channels();
-    Waveform::BinRange bad_bins;
-    bad_bins.first = 0;
-    bad_bins.second = nsamples;
-    Waveform::ChannelMasks temp;
-    for (size_t i = 0; i< bad_channels.size();i++){
-      temp[bad_channels.at(i)].push_back(bad_bins);
-      //std::cout << temp.size() << " " << temp[bad_channels.at(i)].size() << std::endl;
-    }
-    Waveform::ChannelMaskMap temp_map;
-    temp_map["bad"] = temp;
-    
-    //    bad_regions = Waveform::merge(bad_regions, temp);
-    // for (int i = 0; i< bad_channels.size();i++){
-    //   std::cout << bad_regions[bad_channels.at(i)].size() << std::endl;
-    // }
-
-    Waveform::merge(cmm,temp_map,m_maskmap);
-
-    std::map<int, IChannelFilter::signal_t> bychan;
-
     auto traces = wct::sigproc::tagged_traces(inframe, m_intag);
     if (traces.empty()) {
-        std::cerr << "No traces for tag \"" << m_intag << "\"\n";
-        THROW(ValueError() << errmsg{"OmnibusNoiseFilter: no traces found"});
+        std::cerr << "OmnibusNoiseFilter: warning: no traces for tag \"" << m_intag << "\"\n";
+	return true;
     }
+
+    // Warning: this implicitly assumes a dense frame (ie, all tbin=0 and all waveforms same size).
+    const int nsamples = traces.at(0)->charge().size();
+
+    // For now, just collect any and all masks and interpret them as "bad".
+    Waveform::ChannelMaskMap input_cmm = inframe->masks();
+    Waveform::ChannelMaskMap cmm;
+    Waveform::merge(cmm,input_cmm,m_maskmap);
+    
+    // Get the ones from database and then merge
+    std::vector<int> bad_channels = m_noisedb->bad_channels();
+    {
+	Waveform::BinRange bad_bins;
+	bad_bins.first = 0;
+	bad_bins.second = nsamples;
+	Waveform::ChannelMasks temp;
+	for (size_t i = 0; i< bad_channels.size();i++){
+	    temp[bad_channels.at(i)].push_back(bad_bins);
+	    //std::cout << temp.size() << " " << temp[bad_channels.at(i)].size() << std::endl;
+	}
+	Waveform::ChannelMaskMap temp_map;
+	temp_map["bad"] = temp;
+	Waveform::merge(cmm,temp_map,m_maskmap);
+    }
+
+    // Collect our working area indexed by channel.
+    std::map<int, IChannelFilter::signal_t> bychan;
     for (auto trace : traces) {
     	int ch = trace->channel();
 
-	if (find(bad_channels.begin(),bad_channels.end(),ch)!=bad_channels.end()){
-            bychan[ch].resize(nsamples,0);
-            //std::cout << "Xin3 " << bychan[ch].at(10) << std::endl;
-	}
-        else{
-            bychan[ch] = trace->charge(); // copy
+	// make local copy which will be filled only by good channel.
+	bychan[ch].resize(nsamples,0);
+
+	// good
+	if (find(bad_channels.begin(), bad_channels.end(),ch) == bad_channels.end()) {
+
+	    auto const& charge = trace->charge();
+	    const int ncharges = charge.size();	    
+
+	    { // sanity check.  This "should" never print.
+		if (ncharges != nsamples) { // this block "should" never be called
+		    std::cerr << "OmnibusNoiseFilter: found different length waveforms: "
+			      << nsamples << " != " << ncharges << " in channel " << ch
+			      << ". Will normalize to the first one."
+			      << std::endl;
+		}
+	    }
+
+	    // Do assignment with care not to overflow input nor output
+	    bychan[ch].assign(charge.begin(), charge.begin() + std::min(nsamples, ncharges));
 	}
 
     	IChannelFilter::signal_t& signal = bychan[ch]; // ref
@@ -151,6 +155,8 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
         int filt_count=0;
         for (auto filter : m_perchan) {
             auto masks = filter->apply(ch, signal);
+
+	    // fixme: probably should assure these masks do not lead to out-of-bounds...
 
             Waveform::merge(cmm,masks,m_maskmap);
             ++filt_count;

@@ -15,8 +15,7 @@ int main()
     const double tick = 1.0*units::ms;
 
     SimpleChannelNoiseDB cndb(tick, nsamples);
-    cerr << cndb.number_samples() << endl;
-    Assert(cndb.number_samples() == nsamples);
+
     Assert(cndb.sample_time() == tick);
     Assert(cndb.nominal_baseline(0) == 0.0);
     Assert(cndb.gain_correction(0) == 1.0);

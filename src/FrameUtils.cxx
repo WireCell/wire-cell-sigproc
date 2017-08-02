@@ -108,5 +108,18 @@ ITrace::vector wct::sigproc::tagged_traces(IFrame::pointer frame, IFrame::tag_t 
     for (size_t index : frame->tagged_traces(tag)) {
         ret.push_back(all_traces->at(index));
     }
-    return ret;
+    if (!ret.empty()) {
+        return ret;
+    }
+    auto ftags = frame->frame_tags();
+    if (std::find(ftags.begin(), ftags.end(), tag) == ftags.end()) {
+        return ret;
+    }
+    return *all_traces;		// must make copy
 }
+
+
+// Local Variables:
+// mode: c++
+// c-basic-offset: 4
+// End:

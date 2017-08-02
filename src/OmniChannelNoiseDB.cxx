@@ -43,7 +43,11 @@ OmniChannelNoiseDB::ChannelInfo::ChannelInfo()
 WireCell::Configuration OmniChannelNoiseDB::default_configuration() const
 {
     Configuration cfg;
+    // The assumed time-domain sample period used to make response spetra.
     cfg["tick"] = m_tick;
+    // The number of *frequency domain* sample.  This is NOT anything
+    // related to the length of a waveform to which this class may be
+    // applied, except by accident or contrivance.
     cfg["nsamples"] = m_nsamples;
     cfg["anode"] = "AnodePlane";
 
@@ -518,10 +522,6 @@ void OmniChannelNoiseDB::configure(const WireCell::Configuration& cfg)
 
 
 
-int OmniChannelNoiseDB::number_samples() const
-{
-    return m_nsamples;
-}
 double OmniChannelNoiseDB::sample_time() const
 {
     return m_tick;

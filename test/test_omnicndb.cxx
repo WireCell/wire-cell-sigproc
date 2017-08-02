@@ -210,9 +210,8 @@ int main(int argc, char* argv[])
     canvas.Print(Form("%s.pdf[",argv[0]),"pdf");
     canvas.SetGridx(1);
     canvas.SetGridy(1);
-    int nticks = db.number_samples();
     double tick = db.sample_time();
-    cerr << nticks << " at " << tick/units::us << " us.\n";
+    cerr << "tick = " << tick/units::us << " us.\n";
 
     std::vector<std::string> scalar_names{
         "nominal baseline", "gain correction", "response offset", "pad window front", "pad window back",

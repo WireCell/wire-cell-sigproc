@@ -29,7 +29,7 @@ WireCell::Waveform::realseq_t Derivations::CalcMedian(const WireCell::IChannelFi
     float content[nchannel][nbins];
     int start_ch = 0;
     for (auto it: chansig){
-     	//int ch = it.first;
+     	//const int ch = it.first;
      	WireCell::IChannelFilter::signal_t& signal = it.second;
     	std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
 

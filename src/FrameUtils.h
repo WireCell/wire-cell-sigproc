@@ -33,6 +33,8 @@ namespace wct {                 // eventually make this namespace
 
 
         // Get the tagged trace indices and resolve them to traces.
+        // If no trace tags match but the given tag matches the frame
+        // tag then all traces are returned.
         WireCell::ITrace::vector tagged_traces(WireCell::IFrame::pointer frame, WireCell::IFrame::tag_t tag);
 
     }

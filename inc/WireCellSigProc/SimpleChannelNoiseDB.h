@@ -24,8 +24,8 @@ namespace WireCell {
 	    virtual ~SimpleChannelNoiseDB();
 
 	    // IChannelNoiseDatabase
-	    virtual int number_samples() const { return m_nsamples; }
 	    virtual double sample_time() const { return m_tick; }
+
 	    virtual double nominal_baseline(int channel) const;
 	    virtual double gain_correction(int channel) const;
             virtual double response_offset(int channel) const;

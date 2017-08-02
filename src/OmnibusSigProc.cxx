@@ -943,6 +943,10 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   sframe->tag_traces("threshold", wiener_traces, threshold);
   sframe->tag_traces("gauss", gauss_traces);
 
+  std::cerr << "OmnibusSigProc: produce " << itraces.size() << " traces\n"
+	    << "\t" << wiener_traces.size() << " wiender\n"
+	    << "\t" << gauss_traces.size() << " gauss\n";
+
   out = IFrame::pointer(sframe);
   
   return true;
