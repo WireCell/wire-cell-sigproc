@@ -139,9 +139,9 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 
 	    { // sanity check.  This "should" never print.
 		if (ncharges != nsamples) { // this block "should" never be called
-		    std::cerr << "OmnibusNoiseFilter: found different length waveforms: "
+		    std::cerr << "OmnibusNoiseFilter: WARNING: found different length waveforms: "
 			      << nsamples << " != " << ncharges << " in channel " << ch
-			      << ". Will normalize to the first one."
+			      << ". Will pad/truncate to the first one."
 			      << std::endl;
 		}
 	    }

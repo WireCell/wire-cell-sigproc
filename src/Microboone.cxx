@@ -728,6 +728,10 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
 {
     WireCell::Waveform::ChannelMaskMap ret;
 
+    // sanity check data/config match.
+    const size_t nsiglen = signal.size();
+    int nmismatchlen = 0;
+
     // fixme: some channels are just bad can should be skipped.
 
     // get signal with nominal baseline correction
@@ -771,28 +775,43 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
 
     bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
     
+    int nspec=0;		// just catch any non-zero
     if (!is_partial) {
-        auto const& rcrcspec = m_noisedb->rcrc(ch);
-	WireCell::Waveform::shrink(spectrum, rcrcspec);
+        auto const& spec = m_noisedb->rcrc(ch);
+	WireCell::Waveform::shrink(spectrum, spec);
 
-        // std::cerr << "OneChannelNoise: "<<ch<<" rcrc sum="<<Waveform::sum(spectrum)
-        //           << " with rcrcspec sum=" << Waveform::sum(rcrcspec)
-        //           << " #samples=" << rcrcspec.size()
-        //           <<"\n";
+	if (nsiglen != spec.size()) {
+	    ++nmismatchlen;
+	    nspec=spec.size();
+	}
     }
-
 
     {
-        auto const& configspec = m_noisedb->config(ch);
-        WireCell::Waveform::scale(spectrum, configspec);
-        // std::cerr << "OneChannelNoise: "<<ch<<" reconfiged spectral sum="<<Waveform::sum(spectrum)
-        //           << " with configspec sum=" << Waveform::sum(configspec)
-        //           <<"\n";
+        auto const& spec = m_noisedb->config(ch);
+        WireCell::Waveform::scale(spectrum, spec);
+
+	if (nsiglen != spec.size()) {
+	    ++nmismatchlen;
+	    nspec=spec.size();
+	}
     }
 
-    WireCell::Waveform::scale(spectrum, m_noisedb->noise(ch));
+    {
+	auto const& spec = m_noisedb->noise(ch);
+	WireCell::Waveform::scale(spectrum, spec);
 
-    //std::cerr << "OneChannelNoise: "<<ch<<" noise removed spectral sum="<<Waveform::sum(spectrum)<<"\n";
+	if (nsiglen != spec.size()) {
+	    ++nmismatchlen;
+	    nspec=spec.size();
+	}
+    }
+
+    if (nmismatchlen) {
+	std::cerr << "OneChannelNoise: WARNING: "<<nmismatchlen << " config/data mismatches. "
+		  << "#spec="<<nspec <<", #wave=" << nsiglen << ".\n"
+		  << "\tResults may be suspect."
+		  << std::endl;
+    }
 
     // remove the DC component 
     spectrum.front() = 0;

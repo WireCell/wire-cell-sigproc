@@ -119,6 +119,7 @@ ITrace::vector wct::sigproc::tagged_traces(IFrame::pointer frame, IFrame::tag_t 
 }
 
 
+
 // Local Variables:
 // mode: c++
 // c-basic-offset: 4
