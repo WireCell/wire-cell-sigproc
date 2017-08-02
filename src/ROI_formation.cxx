@@ -371,7 +371,7 @@ void ROI_formation::find_ROI_by_decon_itself(int plane, const Array::array_xxf& 
     	int temp_roi_end = roi_end ; // filter_pad;
     	if (temp_roi_end >int(signal1.size())-1) temp_roi_end = int(signal1.size())-1;
 
-    	//if (chid == 1151) std::cout << temp_roi_begin << " " << temp_roi_end << std::endl;
+	//	if (abs(irow-1199)<=1&&plane==0) std::cout << "Tight: " << irow << " " << temp_roi_begin << " " << temp_roi_end << std::endl;
 
 	
     	if (temp_rois.size() == 0){
@@ -512,7 +512,8 @@ int ROI_formation::find_ROI_end(Waveform::realseq_t& signal, int bin, double th 
     }
   }
 
-  while(local_ave(signal,end+1,1) < local_ave(signal,end,1)){
+  while(local_ave(signal,end+1,1) < local_ave(signal,end,1)+25){// ||
+    //	(local_ave(signal,end+1,1) + local_ave(signal,end+2,1))*0.5 < local_ave(signal,end,1) ){
     end++;
     if (end >= int(signal.size())-1) {
       end = int(signal.size())-1;
@@ -541,7 +542,8 @@ int ROI_formation::find_ROI_begin(Waveform::realseq_t& signal, int bin, double t
   
   // calculate the local average
   // keep going and find the minimum
-  while( local_ave(signal,begin-1,1) < local_ave(signal,begin,1)){
+  while( local_ave(signal,begin-1,1) < local_ave(signal,begin,1)+25){// ||
+    // (local_ave(signal,begin-2,1) + local_ave(signal,begin-1,1))*0.5 < local_ave(signal,begin,1) ){
     begin --;
     if (begin <= 0) {
       begin = 0;
@@ -623,6 +625,12 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
     std::vector<int> max_bins_1;
     int ntime = signal2.size();
 
+    // if (irow == 1200 && plane==0){
+    //   for (int j=0;j!=ntime;j++){
+    // 	std::cout << j << " " << signal2.at(j) << " " << th << " " << l_factor1 << " " << std::endl;
+    //   }
+    // }
+    
     for (int j=1; j<ntime-1;j++){
       double content = signal2.at(j);
       double prev_content = signal2.at(j-1);
@@ -656,6 +664,8 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
 	  if (signal2.at(max_bin) - signal2.at(begin) + signal2.at(max_bin) - signal2.at(end) > th * 2){
 	    flag_ROI = 1;
 	  }
+
+	  
 	  int temp_begin = max_bin-l_short_length;
 	  if (temp_begin < begin) temp_begin = begin;
 	  int temp_end = max_bin + l_short_length;
@@ -664,6 +674,10 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
 	       signal2.at(max_bin) - signal2.at(temp_end) > th * l_factor1)){
 	    flag_ROI = 1;
 	  }
+
+	  // if (irow==1200 && plane==0)
+	  //   std::cout << j << " " << begin << " " << end << " " << max_bin << " " << signal2.at(max_bin) * 2 - signal2.at(begin) - signal2.at(end) << " " << th*2 << " " << temp_begin << " " << temp_end << " " << signal2.at(max_bin) - signal2.at(temp_begin) << " " << signal2.at(max_bin) - signal2.at(temp_end) << " " << th*l_factor1 << " " << flag_ROI << std::endl;
+	  
 	}
       }
 
@@ -768,7 +782,7 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
        ROIs_1.at(j).first = begin;
        ROIs_1.at(j).second = end;
        
-       // if (irow ==1240) std::cout << ROIs_1.at(j).first << " " << ROIs_1.at(j).second << std::endl;
+       //if (abs(irow-1199)<=1&& plane==0) std::cout << "Loose: "  << irow << " " << ROIs_1.at(j).first << " " << ROIs_1.at(j).second << std::endl;
      }
      
 
