@@ -920,6 +920,8 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     roi_refine.apply_roi(iplane, m_r_data);
     save_data(itraces, gauss_traces, iplane);
 
+    m_c_data.resize(0,0); // clear memory
+    m_r_data.resize(0,0); // clear memory
   }
 
 

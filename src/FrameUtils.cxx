@@ -103,8 +103,8 @@ int wct::sigproc::maxcount_baseline(const ITrace::vector& traces, const WireCell
 
 ITrace::vector wct::sigproc::tagged_traces(IFrame::pointer frame, IFrame::tag_t tag)
 {
-    ITrace::vector ret;
     auto const& all_traces = frame->traces();
+    ITrace::vector ret;
     for (size_t index : frame->tagged_traces(tag)) {
         ret.push_back(all_traces->at(index));
     }

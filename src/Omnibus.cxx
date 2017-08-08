@@ -100,6 +100,8 @@ void SigProc::Omnibus::execute()
 
         frame = nextframe;
         nextframe = nullptr;
+        em("dropped input to " + tn);
+
         if (frame) {
             std::cerr << "Omnibus: got frame from "<<tn<<" with " << frame->traces()->size() << " traces\n";
             dump_frame(frame);
@@ -113,6 +115,9 @@ void SigProc::Omnibus::execute()
         }
     }
     em("sunk frame");
+
+    frame = nullptr;
+    em("dropped output frame");
 
     std::cerr << em.summary() << std::endl;
 }
