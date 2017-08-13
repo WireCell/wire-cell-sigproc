@@ -980,7 +980,7 @@ void ROI_refinement::CheckROIs(int plane,ROI_formation& roi_form){
 	    }
 	  }
 	  for (auto it2 = temp_rois.begin(); it2!= temp_rois.end();it2++){
-	    unlink(roi,*it2);
+	    unlink(*it2,roi);
 	  }
 	}
 	
@@ -1027,7 +1027,7 @@ void ROI_refinement::CheckROIs(int plane,ROI_formation& roi_form){
 	    }
 	  }
 	  for (auto it2 = temp_rois.begin(); it2!= temp_rois.end();it2++){
-	    unlink(roi,*it2);
+	    unlink(*it2,roi);
 	  }
 	}
       }
@@ -1101,10 +1101,10 @@ void ROI_refinement::CleanUpCollectionROIs(){
     }
     
     if (back_rois.find(roi)!=back_rois.end()){
-      SignalROISelection next_rois = back_rois[roi];
-      for (size_t i=0;i!=next_rois.size();i++){
+      SignalROISelection prev_rois = back_rois[roi];
+      for (size_t i=0;i!=prev_rois.size();i++){
    	//unlink the current roi
-   	unlink(roi,next_rois.at(i));
+   	unlink(prev_rois.at(i),roi);
       }
       back_rois.erase(roi);
     }
@@ -1140,6 +1140,25 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
       auto it1 = find(rois_u_loose.at(chid).begin(), rois_u_loose.at(chid).end(),roi);
       if (it1 != rois_u_loose.at(chid).end())
 	rois_u_loose.at(chid).erase(it1);
+
+      if (front_rois.find(roi)!=front_rois.end()){
+	SignalROISelection next_rois = front_rois[roi];
+	for (size_t i=0;i!=next_rois.size();i++){
+	  //unlink the current roi
+	  unlink(roi,next_rois.at(i));
+	}
+	front_rois.erase(roi);
+      }
+      
+      if (back_rois.find(roi)!=back_rois.end()){
+	SignalROISelection prev_rois = back_rois[roi];
+	for (size_t i=0;i!=prev_rois.size();i++){
+	  //unlink the current roi
+	  unlink(prev_rois.at(i),roi);
+	}
+	back_rois.erase(roi);
+      }
+      
       delete roi;
     }
     Bad_ROIs.clear();
@@ -1159,6 +1178,26 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
       auto it1 = find(rois_v_loose.at(chid).begin(), rois_v_loose.at(chid).end(),roi);
       if (it1 != rois_v_loose.at(chid).end())
 	rois_v_loose.at(chid).erase(it1);
+
+      if (front_rois.find(roi)!=front_rois.end()){
+	SignalROISelection next_rois = front_rois[roi];
+	for (size_t i=0;i!=next_rois.size();i++){
+	  //unlink the current roi
+	  unlink(roi,next_rois.at(i));
+	}
+	front_rois.erase(roi);
+      }
+      
+      if (back_rois.find(roi)!=back_rois.end()){
+	SignalROISelection prev_rois = back_rois[roi];
+	for (size_t i=0;i!=prev_rois.size();i++){
+	  //unlink the current roi
+	  unlink(prev_rois.at(i),roi);
+	}
+	back_rois.erase(roi);
+      }
+      
+      
       delete roi;
     }
   }
@@ -1223,10 +1262,10 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
       }
       
       if (back_rois.find(roi)!=back_rois.end()){
-	SignalROISelection next_rois = back_rois[roi];
-	for (size_t i=0;i!=next_rois.size();i++){
+	SignalROISelection prev_rois = back_rois[roi];
+	for (size_t i=0;i!=prev_rois.size();i++){
 	  //unlink the current roi
-	  unlink(roi,next_rois.at(i));
+	  unlink(prev_rois.at(i),roi);
 	}
 	back_rois.erase(roi);
       }
@@ -1295,10 +1334,10 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
       }
       
       if (back_rois.find(roi)!=back_rois.end()){
-	SignalROISelection next_rois = back_rois[roi];
-	for (size_t i=0;i!=next_rois.size();i++){
+	SignalROISelection prev_rois = back_rois[roi];
+	for (size_t i=0;i!=prev_rois.size();i++){
 	  //unlink the current roi
-	  unlink(roi,next_rois.at(i));
+	  unlink(prev_rois.at(i),roi);
 	}
 	back_rois.erase(roi);
       }
@@ -2112,8 +2151,71 @@ void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
   }
 
   ExtendROIs();
+  //TestROIs();
   
 }
+
+void ROI_refinement::TestROIs(){
+  
+  for (int chid = 0; chid != nwire_u; chid ++){
+    for (auto it = rois_u_loose.at(chid).begin(); it!= rois_u_loose.at(chid).end();it++){
+      SignalROI *roi =  *it;
+      //loop through front
+      for (auto it1 = front_rois[roi].begin(); it1!=front_rois[roi].end(); it1++){
+	SignalROI *roi1 = *it1;
+	if (find(rois_u_loose.at(chid+1).begin(), rois_u_loose.at(chid+1).end(), roi1) == rois_u_loose.at(chid+1).end())
+	  std::cout << chid << " u " << +1 << " " << roi << " " << roi1 << std::endl;
+      }
+	
+      // loop through back 
+      for (auto it1 = back_rois[roi].begin(); it1!=back_rois[roi].end(); it1++){
+	SignalROI *roi1 = *it1;
+	if (find(rois_u_loose.at(chid-1).begin(), rois_u_loose.at(chid-1).end(), roi1) == rois_u_loose.at(chid-1).end())
+	  std::cout << chid << " u " << -1 << " " << roi << " " << roi1 << std::endl;
+      }
+    }
+  }
+
+
+   for (int chid = 0; chid != nwire_v; chid ++){
+    for (auto it = rois_v_loose.at(chid).begin(); it!= rois_v_loose.at(chid).end();it++){
+      SignalROI *roi =  *it;
+      //loop through front
+      for (auto it1 = front_rois[roi].begin(); it1!=front_rois[roi].end(); it1++){
+	SignalROI *roi1 = *it1;
+	if (find(rois_v_loose.at(chid+1).begin(), rois_v_loose.at(chid+1).end(), roi1) == rois_v_loose.at(chid+1).end())
+	  std::cout << chid << " v " << +1 << " " << roi << " " << roi1 << std::endl;
+      }
+	
+      // loop through back 
+      for (auto it1 = back_rois[roi].begin(); it1!=back_rois[roi].end(); it1++){
+	SignalROI *roi1 = *it1;
+	if (find(rois_v_loose.at(chid-1).begin(), rois_v_loose.at(chid-1).end(), roi1) == rois_v_loose.at(chid-1).end())
+	  std::cout << chid << " v " << -1 << " " << roi << " " << roi1 << std::endl;
+      }
+    }
+  }
+   
+   for (int chid = 0; chid != nwire_w; chid ++){
+     for (auto it = rois_w_tight.at(chid).begin(); it!= rois_w_tight.at(chid).end();it++){
+       SignalROI *roi =  *it;
+       //loop through front
+       for (auto it1 = front_rois[roi].begin(); it1!=front_rois[roi].end(); it1++){
+	 SignalROI *roi1 = *it1;
+	if (find(rois_w_tight.at(chid+1).begin(), rois_w_tight.at(chid+1).end(), roi1) == rois_w_tight.at(chid+1).end())
+	  std::cout << chid << " w " << +1 << " " << roi << " " << roi1 << std::endl;
+      }
+	
+      // loop through back 
+      for (auto it1 = back_rois[roi].begin(); it1!=back_rois[roi].end(); it1++){
+	SignalROI *roi1 = *it1;
+	if (find(rois_w_tight.at(chid-1).begin(), rois_w_tight.at(chid-1).end(), roi1) == rois_w_tight.at(chid-1).end())
+	  std::cout << chid << " w " << -1 << " " << roi << " " << roi1 << std::endl;
+      }
+    }
+  }
+}
+
 
 void ROI_refinement::ExtendROIs(){
 

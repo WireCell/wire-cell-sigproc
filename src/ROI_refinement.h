@@ -66,6 +66,8 @@ namespace WireCell{
       void BreakROI1(SignalROI *roi);
       
       void ExtendROIs();
+
+      void TestROIs();
       
       std::map<int,std::vector<std::pair<int,int>>> bad_ch_map;
       

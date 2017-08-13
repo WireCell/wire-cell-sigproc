@@ -310,7 +310,7 @@ int main(int argc, char* argv[])
 
     // S&C microboone sampling parameter database
     const double tick = 0.5*units::microsecond;
-    const int nsamples = 9594;
+    const int nsamples = 9592;
 
     // Q&D microboone channel map
     vector<int> uchans(2400), vchans(2400), wchans(3456);
