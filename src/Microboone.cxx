@@ -1071,7 +1071,7 @@ Microboone::OneChannelStatus::~OneChannelStatus()
 
 void Microboone::OneChannelStatus::configure(const WireCell::Configuration& cfg)
 {
-    m_threshold = get<int>(cfg, "Threshold", m_threshold);
+    m_threshold = get<double>(cfg, "Threshold", m_threshold);
     m_window = get<int>(cfg, "Window", m_window);
     m_nbins = get<double>(cfg, "Nbins", m_nbins);
     m_cut = get<double>(cfg, "Cut", m_cut);
@@ -1108,6 +1108,7 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelStatus::apply(int ch, s
     auto wpid = m_anode->resolve(ch);
     const int iplane = wpid.index();
     if (iplane!=2){ // not collection
+	//std::cout << ch << std::endl;
 	if (ID_lf_noisy(signal)){
 	    WireCell::Waveform::BinRange temp_chirped_bins;
 	    temp_chirped_bins.first = 0;
@@ -1122,12 +1123,17 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelStatus::apply(int ch, s
 
 bool Microboone::OneChannelStatus::ID_lf_noisy(signal_t& sig) const{
     // do something ...
-    std::pair<double,double> results = Derivations::CalcRMS(sig);
+    //std::pair<double,double> results = Derivations::CalcRMS(sig);
 
     //Waveform::mean_rms(sig);
-    double mean = results.first;
-    double rms = results.second;
+    //double mean = results.first;
+    //double rms = results.second;
 
+    double mean = Waveform::percentile_binned(sig,0.5);
+    double val1 = Waveform::percentile_binned(sig,0.5-0.34);
+    double val2 = Waveform::percentile_binned(sig,0.5+0.34);
+    double rms = sqrt((pow(val1-mean,2)+pow(val2-mean,2))/2.);
+    
     double valid = 0 ;
     for (int i=0;i<int(sig.size());i++){
 	if (sig.at(i)!=0){
@@ -1137,6 +1143,8 @@ bool Microboone::OneChannelStatus::ID_lf_noisy(signal_t& sig) const{
     if (!valid) {
         return false;
     }
+
+    
     
     signal_t temp_sig = sig;
     for (int i=0;i<int(sig.size());i++){
@@ -1157,6 +1165,9 @@ bool Microboone::OneChannelStatus::ID_lf_noisy(signal_t& sig) const{
     for (int i=0;i!=m_nbins;i++){
         content += abs(sig_freq.at(i+1));
     }
+
+    //std::cout << mean << " " << rms << " " << content << " " << valid << std::endl;
+    // std::cout << m_threshold << " " << m_window << " " << m_nbins << " " << m_cut << std::endl;
     
     if (content/valid>m_cut) {
         // std::cerr << "OneChannelStatus::ID_lf_noisy: content=" << content << " valid=" << valid << " m_cut="<<m_cut<< std::endl;
