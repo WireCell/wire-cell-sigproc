@@ -93,9 +93,6 @@ namespace WireCell {
 	    typedef std::shared_ptr<filter_t> shared_filter_t;
 	    typedef std::vector<shared_filter_t> filter_vector_t;
 
-	    shared_filter_t m_default_filter;
-	    shared_filter_t m_default_response;
-
             // Embody the "database" entry for one channel. 
             struct ChannelInfo {
                 int chid;
@@ -118,7 +115,7 @@ namespace WireCell {
             std::vector<ChannelInfo> m_db;
             //std::unordered_map<int, ChannelInfo*> m_db;
 
-            const ChannelInfo& dbget(int ch, int defch=-1) const {
+            const ChannelInfo& dbget(int ch) const {
                 // auto it = m_db.find(ch);
                 // if (it == m_db.end()) {
                 //     it = m_db.find(defch);

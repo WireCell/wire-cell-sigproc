@@ -480,7 +480,7 @@ int main(int argc, char* argv[])
     // per channel response 
     {
         const std::string cr_tn = "PerChannelResponse";
-        const std::string pcr_filename = "calib_resp_v1.json.bz2";
+        const std::string pcr_filename = "microboone-channel-responses-v1.json.bz2";
         auto icrcfg = Factory::lookup<IConfigurable>(cr_tn);
         auto cfg = icrcfg->default_configuration();
         cfg["filename"] = pcr_filename;
