@@ -498,16 +498,20 @@ void OmnibusSigProc::decon_2D_init(int plane){
   //  bool flag_ch_corr = false;
   if (m_flag_ch_corr){
     auto cr = Factory::find<IChannelResponse>("PerChannelResponse");
-    auto bins = cr->channel_response_binning();
-    assert(bins.binsize()==m_period);
+    auto cr_bins = cr->channel_response_binning();
+    assert(cr_bins.binsize()==m_period);
     //starndard electronics response ... 
     // WireCell::Binning tbins(m_nticks, 0-m_period/2., m_nticks*m_period-m_period/2.);
     // Response::ColdElec ce(m_gain, m_shaping_time);
 
     // temporary hack ...
-    float scaling = 1./(1e-9*0.5/1.13312);
-    WireCell::Binning tbins(m_nticks, (-5-0.5)*m_period, (m_nticks-5-0.5)*m_period-m_period);
-    Response::ColdElec ce(m_gain*scaling, m_shaping_time);
+    //float scaling = 1./(1e-9*0.5/1.13312);
+    //WireCell::Binning tbins(m_nticks, (-5-0.5)*m_period, (m_nticks-5-0.5)*m_period-m_period);
+    //Response::ColdElec ce(m_gain*scaling, m_shaping_time);
+    //// this is moved into wirecell.sigproc.main production of
+    //// microboone-channel-responses-v1.json.bz2
+    WireCell::Binning tbins(m_nticks, cr_bins.min(), cr_bins.min() + m_nticks*m_period);
+    Response::ColdElec ce(m_gain, m_shaping_time);
     // ...
     
     auto ewave = ce.generate(tbins);

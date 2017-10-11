@@ -14,6 +14,7 @@
 #include "TStyle.h"
 #include "TH2F.h"
 #include "TAxis.h"
+#include "TFile.h"
 
 #include <vector>
 #include <string>
@@ -33,7 +34,7 @@ int main(int argc, char* argv[])
     /// configuration.
     const std::string cr_tn = "PerChannelResponse";
     const std::string ap_tn = "AnodePlane";
-    const std::string pcr_filename = "calib_resp_v1.json.bz2";
+    const std::string pcr_filename = "microboone-channel-responses-v1.json.bz2";
     const std::string fr_filename = "ub-10-wnormed.json.bz2";
     const std::string wires_filename = "microboone-celltree-wires-v2.1.json.bz2";
 
@@ -76,6 +77,8 @@ int main(int argc, char* argv[])
         planechans[wpid.index()].push_back(ch);
     }
 
+    auto outfile = TFile::Open(Form("%s.root", argv[0]), "RECREATE");
+
     gStyle->SetOptStat(0);
     TCanvas c("c","c",500,500);
     c.Divide(3,1);
@@ -89,6 +92,8 @@ int main(int argc, char* argv[])
 
         /// assume all responses in a plane are the same size.
         const int nsamps = bins.nbins();
+	const double mintus = bins.min()/units::us;
+	const double maxtus = bins.max()/units::us;
         const int nchans = channels.size();
 
         Assert(nsamps>0);
@@ -97,24 +102,29 @@ int main(int argc, char* argv[])
 
         TH2F* hist = new TH2F(Form("hist%d", iplane),
                               Form("Per Channel Response Plane %d [mV/fC]", iplane),
-                              nsamps, 0, nsamps,
-                              nchans, 0, nchans);
-        hist->GetXaxis()->SetTitle("ticks");
+                              nsamps, mintus, maxtus,
+                              nchans, 0, nchans
+	    );
+        hist->GetXaxis()->SetTitle("sample time (us)");
         hist->GetYaxis()->SetTitle("channel indices");
 
         for (int ich=0; ich<nchans; ++ich) {
             const auto& resp = cr->channel_response(channels[ich]);
             for (int isamp=0; isamp<nsamps; ++isamp) {
-                hist->Fill(isamp+0.5, ich+0.5, resp[isamp]/GU);
+		const double Tus = bins.center(isamp)/units::us;
+                hist->Fill(Tus, ich+0.5, resp[isamp]/GU);
             }
         }
 
         c.cd(iplane+1);
         hist->Draw("colz");
+	hist->Write();
     }
 
     cerr << "Now ROOT makes the PDF" << endl;
     c.Print(Form("%s.pdf", argv[0]), "pdf");
 
+    outfile->Close();
+    
     return 0;
 }

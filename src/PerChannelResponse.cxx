@@ -37,6 +37,7 @@ void SigProc::PerChannelResponse::configure(const WireCell::Configuration& cfg)
 
     auto top = Persist::load(m_filename);
     const double tick = top["tick"].asFloat();
+    const double t0 = top["t0"].asFloat();
     auto jchannels = top["channels"];
     if (jchannels.isNull()) {
         THROW(ValueError() << errmsg{"no channels given in file " + m_filename});
@@ -54,11 +55,10 @@ void SigProc::PerChannelResponse::configure(const WireCell::Configuration& cfg)
             resp[ind] = jresp[ind].asFloat();
         }
         m_cr[ch] = resp;
-        if (!m_bins.nbins()) {
-            m_bins = Binning(nsamp, 0, nsamp*tick);
+        if (!m_bins.nbins()) {	// first time
+            m_bins = Binning(nsamp, t0, t0+nsamp*tick);
         }
     }
-
 
 }
 
