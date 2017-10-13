@@ -20,6 +20,7 @@ OmniChannelNoiseDB::~OmniChannelNoiseDB()
 {
 }
 
+
 OmniChannelNoiseDB::ChannelInfo::ChannelInfo()
     : chid(-1)
     , nominal_baseline(0.0)
@@ -162,14 +163,14 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_rcrc(Json::Value j
     if (jrcrc.isNull()) {
         return default_filter();
     }
-    const double rcrc = jrcrc.asDouble();
-    const int key = int(round(1000*rcrc/units::ms));
+    const double rcrc_val = jrcrc.asDouble();
+    const int key = int(round(1000*rcrc_val/units::ms));
     auto it = m_rcrc_cache.find(key);
     if (it != m_rcrc_cache.end()) {
         return it->second;
     }
 
-    Response::SimpleRC rcres(rcrc, m_tick);
+    Response::SimpleRC rcres(rcrc_val, m_tick);
     // auto signal = rcres.generate(WireCell::Binning(m_nsamples, 0, m_nsamples*m_tick));
     auto signal = rcres.generate(WireCell::Waveform::Domain(0, m_nsamples*m_tick), m_nsamples);
     
@@ -179,7 +180,7 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_rcrc(Json::Value j
     Waveform::scale(spectrum2,spectrum);
     
 
-    // std::cerr << "OmniChannelNoiseDB:: get rcrc as: " << rcrc 
+    // std::cerr << "OmniChannelNoiseDB:: get rcrc as: " << rcrc_val 
     //           << " sum=" << Waveform::sum(spectrum2)
     //           << std::endl;
 
@@ -489,9 +490,9 @@ void OmniChannelNoiseDB::configure(const WireCell::Configuration& cfg)
     std::string anode_tn = get<std::string>(cfg, "anode", "AnodePlane");
     m_anode = Factory::find_tn<IAnodePlane>(anode_tn);
 
-    // WARNING: this assumes channel numbers count from 0 with not gaps!
+    // WARNING: this assumes channel numbers count from 0 with no gaps!
     int nchans = m_anode->channels().size();
-    std::cerr << "noise database with " << nchans << " channels\n";
+    //std::cerr << "noise database with " << nchans << " channels\n";
     m_db.resize(nchans);
 
     m_channel_groups.clear();
@@ -508,9 +509,11 @@ void OmniChannelNoiseDB::configure(const WireCell::Configuration& cfg)
         m_bad_channels.push_back(jch.asInt());
     }
     std::sort(m_bad_channels.begin(), m_bad_channels.end());
-    std::cerr << "OmniChannelNoiseDB: setting "<<m_bad_channels.size()
-              << ":[" << m_bad_channels.front() << "," << m_bad_channels.back() << "]"
-              <<" bad channels\n";
+    if (m_bad_channels.size()) {
+	std::cerr << "OmniChannelNoiseDB: setting "<<m_bad_channels.size()
+		  << ":[" << m_bad_channels.front() << "," << m_bad_channels.back() << "]"
+		  <<" bad channels\n";
+    }
 
     
     for (auto jci : cfg["channel_info"]) {
@@ -577,25 +580,42 @@ float OmniChannelNoiseDB::coherent_nf_adc_limit(int channel) const
 
 const IChannelNoiseDatabase::filter_t& OmniChannelNoiseDB::rcrc(int channel) const
 {
-    return *(dbget(channel).rcrc);
+    auto filt = dbget(channel).rcrc;
+    if (filt) {
+	return *filt;
+    }
+    static filter_t dummy;
+    return dummy;
 }
 
 const IChannelNoiseDatabase::filter_t& OmniChannelNoiseDB::config(int channel) const
 {
     auto filt = dbget(channel).config;
-    //std::cerr << "OmniChannelNoiseDB::config("<<channel<<") sum = " << Waveform::sum(*filt) << std::endl;
-    //return *(dbget(channel).config);
-    return *filt;
+    if (filt) {
+	return *filt;
+    }    
+    static filter_t dummy;
+    return dummy;
 }
 
 const IChannelNoiseDatabase::filter_t& OmniChannelNoiseDB::noise(int channel) const
 {
-    return *(dbget(channel).noise);
+    auto filt = dbget(channel).noise;
+    if (filt) {
+	return *filt;
+    }
+    static filter_t dummy;
+    return dummy;
 }
 	
 const IChannelNoiseDatabase::filter_t& OmniChannelNoiseDB::response(int channel) const
 {
-    return *(dbget(channel).response);
+    auto filt = dbget(channel).response;
+    if (filt) {
+	return *filt;
+    }
+    static filter_t dummy;
+    return dummy;
 }
 
 
