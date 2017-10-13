@@ -8,7 +8,6 @@
 #include "WireCellIface/SimpleTrace.h"
 
 #include "WireCellUtil/NamedFactory.h"
-#include "WireCellUtil/ExecMon.h" // debugging
 
 #include "FrameUtils.h"          // fixme: needs to move to somewhere more useful.
 
@@ -96,14 +95,11 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
         return true;
     }
 
-    ExecMon em("starting NoiseFilter");
-
     auto traces = wct::sigproc::tagged_traces(inframe, m_intag);
     if (traces.empty()) {
         std::cerr << "OmnibusNoiseFilter: warning: no traces for tag \"" << m_intag << "\"\n";
 	return true;
     }
-    em("got tagged traces");
 
     // Warning: this implicitly assumes a dense frame (ie, all tbin=0 and all waveforms same size).
     const size_t nsamples = traces.at(0)->charge().size();
@@ -129,8 +125,6 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 	temp_map["bad"] = temp;
 	Waveform::merge(cmm,temp_map,m_maskmap);
     }
-
-    em("Starting loop on traces");
 
     // Collect our working area indexed by channel.
     std::unordered_map<int, SimpleTrace*> bychan;
@@ -172,8 +166,6 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
     }
     traces.clear();		// done with our copy of vector of shared pointers
 
-    em("starting coherent loop");
-
     int group_counter = 0;
     for (auto group : m_noisedb->coherent_channels()) {
         ++group_counter;
@@ -206,8 +198,6 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
         }
     }
 
-    em("starting run status");
-
     // run status
     for (auto& it : bychan) {
 	const int ch = it.first;
@@ -219,16 +209,12 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 	}
     }
     
-    em("starting packing output");
-
     ITrace::vector itraces;
     for (auto& cs : bychan) {    // fixme: that tbin though
         itraces.push_back(ITrace::pointer(cs.second));
     }
 
-    em("made ouput");
     bychan.clear();
-    em("cleared map");
 
     auto sframe = new SimpleFrame(inframe->ident(), inframe->time(), itraces, inframe->tick(), cmm);
     IFrame::trace_list_t indices(itraces.size());
@@ -239,8 +225,6 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
     sframe->tag_frame("noisefilter");
     outframe = IFrame::pointer(sframe);
 
-    em("finished NoiseFilter");
-    std::cerr << em.summary() << std::endl;
     return true;
 }
 

@@ -318,8 +318,8 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& in
     indices.push_back(trace_index);
     itraces.push_back(ITrace::pointer(trace));
   }
-  std::cerr << "OmnibusSigProc: plane index: " << plane << " Qtot=" << qtot
-            << " traces=" << indices.size() << ":[" << indices.front() << "," << indices.back() << "]\n";
+  //std::cerr << "OmnibusSigProc: plane index: " << plane << " Qtot=" << qtot
+  //          << " traces=" << indices.size() << ":[" << indices.front() << "," << indices.back() << "]\n";
   
 }
 
@@ -945,9 +945,9 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   sframe->tag_traces("threshold", wiener_traces, threshold);
   sframe->tag_traces("gauss", gauss_traces);
 
-  std::cerr << "OmnibusSigProc: produce " << itraces.size() << " traces\n"
-	    << "\t" << wiener_traces.size() << " wiener\n"
-	    << "\t" << gauss_traces.size() << " gauss\n";
+  // std::cerr << "OmnibusSigProc: produce " << itraces.size() << " traces\n"
+  // 	    << "\t" << wiener_traces.size() << " wiener\n"
+  // 	    << "\t" << gauss_traces.size() << " gauss\n";
 
   out = IFrame::pointer(sframe);
   
