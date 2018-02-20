@@ -2,7 +2,7 @@
 
 This is a Wire Cell Toolkit package which provides signal processing functionality.
 
-The algorithm and performance of this package (0.6) have been summarized in arXiv:1802.XXXXX (MicroBooNE collaboration).
+The algorithm and performance of this package (0.6.2) have been summarized in arXiv:1802.XXXXX (MicroBooNE collaboration).
 
 It also contains Python code to help prepare a Wire Cell Toolkit [[./docs/field-response-data-file.org][field response data file]].
 
