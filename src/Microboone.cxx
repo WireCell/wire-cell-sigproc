@@ -1,7 +1,7 @@
 /** FIXME: this file is full of magic numbers and likely totally not
  * usable for detectors other than MicroBooNE. 
  */
-
+ 
 #include "WireCellSigProc/Microboone.h"
 #include "WireCellSigProc/Derivations.h"
 
