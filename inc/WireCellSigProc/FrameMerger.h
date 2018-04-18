@@ -1,6 +1,6 @@
-// This "merges" two frames together by taking all traces from frame 1
-// on adding them to frame 2 on a per-tag basis.  If any traces in
-// frame 2 of the same channel exist then the rule is applied.
+// This component produces an output frame which consists of traces
+// from the two input frames that have been merged together based on
+// tags and a rule.
 
 #ifndef WIRECELL_SIGPROC_FRAMEMERGER
 #define WIRECELL_SIGPROC_FRAMEMERGER

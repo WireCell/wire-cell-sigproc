@@ -16,18 +16,26 @@ Configuration SigProc::FrameMerger::default_configuration() const
 {
     Configuration cfg;
 
-    // If tags are given then the merge is applied on a per-tag basis
-    // and only given tags will be found in the output frame.  If no
-    // tags are given then the merge is applied to all traces
-    // regardless of any tags and not tags will be found in the output
-    // frame.
-    cfg["tags"] = Json::arrayValue;
+    // The merge map specifies a list of triples of tags.  The first
+    // tag in the pair corresponds to a trace tag on the first frame,
+    // and likewise the second.  The third is a tag that will be
+    // placed on the merged set of traces in the output frame.  The
+    // merge is performed considering only traces in the two input
+    // frames that respectively match their tags.  As tags may have
+    // overlapping sets of traces, it is important to recognize that
+    // the merge is progressive and in order of the merge map.  If the
+    // merge map is empty then all traces in frame 1 are merged with
+    // all traces in frame 2 irrespective of any tags.
+    cfg["mergemap"] = Json::arrayValue;
 
-    // Rule says what to do when a trace in frame 2 (tag set) is found
-    // of the same channel of a trace in frame 1 (tag set) is found.
-    // - replace :: drop frame 2's trace, replace it with frame 1's
-    // - include :: simply include 2's trace, keeping also frame 1's as-is
-    // - tbd :: more may be added (eg, sum the two)
+    // The rule determins the algorithm employed in the merge.
+    // 
+    // - replace :: the last trace encountered for a given channel is output.
+    //   The traces from frame 1 will take precedence over any from frame 2.
+    //
+    // - include :: all traces encountered with a given channel are output.
+    //
+    // - tbd :: more may be added (eg, sum all traces on a given channel)
     cfg["rule"] = "replace";
 
     return cfg;
@@ -35,7 +43,6 @@ Configuration SigProc::FrameMerger::default_configuration() const
 
 void SigProc::FrameMerger::configure(const Configuration& cfg)
 {
-    // fixme: this is maybe uncessessarily slow to stash the cfg.
     m_cfg = cfg;
 }
 
@@ -50,25 +57,37 @@ bool SigProc::FrameMerger::operator()(const input_tuple_type& intup,
         std::cerr << "FrameMerger: EOS\n";
         return true;
     }
-    std::cerr << "FrameMerger: see frame: "<<one->ident()<<"\n";
 
+
+    auto jmergemap = m_cfg["mergemap"];
+    const int nsets = jmergemap.size();
+
+    // collect traces into a vector of vector whether we are dealling
+    // with all traces or honoring tags.
     std::vector<ITrace::vector> tracesv1, tracesv2;
-    const int ntags = m_cfg["tags"].size();
-    if (!ntags) {
+    if (!nsets) {
         tracesv1.push_back(FrameTools::untagged_traces(one));
         tracesv2.push_back(FrameTools::untagged_traces(two));
+        std::cerr << "FrameMerger: see frame: "<<one->ident()<<" no tags, whole frame\n";
     }
     else {
-        for (int ind=0; ind<ntags; ++ind) {
-            std::string tag = m_cfg["tags"][ind].asString();
-            tracesv1.push_back(FrameTools::tagged_traces(one, tag));
-            tracesv2.push_back(FrameTools::tagged_traces(two, tag));
+        std::cerr << "FrameMerger: see frame: "<<one->ident()<<" with tags:\n";
+        for (int ind=0; ind<nsets; ++ind) {
+            auto jtags = jmergemap[ind];
+            std::string tag1 = jtags[0].asString();
+            std::string tag2 = jtags[1].asString();
+            std::cerr << "\ttags: " << tag1 << " + " << tag2 << "\n";
+            tracesv1.push_back(FrameTools::tagged_traces(one, tag1));
+            tracesv2.push_back(FrameTools::tagged_traces(two, tag2));
         }
     }
         
     ITrace::vector out_traces;
     std::vector<IFrame::trace_list_t> tagged_trace_indices;
     
+    // apply rule, collect info for tags even if we may not be
+    // configured to honor them.
+
     auto rule = get<std::string>(m_cfg, "rule"); 
     if (rule == "replace") {
 
@@ -111,10 +130,10 @@ bool SigProc::FrameMerger::operator()(const input_tuple_type& intup,
     }
 
     auto sf = new SimpleFrame(two->ident(), two->time(), out_traces, two->tick());
-    if (ntags) {
-        for (int ind=0; ind<ntags; ++ind) {
-            std::string tag = m_cfg["tags"][ind].asString();
-            sf->tag_traces(tag, tagged_trace_indices[ind]);
+    if (nsets) {
+        for (int ind=0; ind<nsets; ++ind) {
+            std::string otag = jmergemap[ind][2].asString();
+            sf->tag_traces(otag, tagged_trace_indices[ind]);
         }
     }
     out = IFrame::pointer(sf);
