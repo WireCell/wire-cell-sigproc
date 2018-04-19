@@ -76,9 +76,15 @@ bool SigProc::FrameMerger::operator()(const input_tuple_type& intup,
             auto jtags = jmergemap[ind];
             std::string tag1 = jtags[0].asString();
             std::string tag2 = jtags[1].asString();
-            std::cerr << "\ttags: " << tag1 << " + " << tag2 << "\n";
+            std::string tag3 = jtags[2].asString();
             tracesv1.push_back(FrameTools::tagged_traces(one, tag1));
             tracesv2.push_back(FrameTools::tagged_traces(two, tag2));
+            std::cerr << "\ttags: "
+                      << tag1 << "[" << tracesv1.back().size() << "]"
+                      << " + "
+                      << tag2 << "[" << tracesv2.back().size() << "]"
+                      << " -> " << tag3
+                      << "\n";
         }
     }
         

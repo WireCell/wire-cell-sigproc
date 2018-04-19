@@ -69,8 +69,8 @@ bool ChannelSelector::operator()(const input_pointer& in, output_pointer& out)
         std::cerr << "ChannelSelector: see frame: "<<in->ident()<<" with tags:\n";
         for (size_t ind=0; ind<ntags; ++ind) {
             std::string tag = m_tags[ind];
-            std::cerr << "\t" << tag << "\n";
             tracesvin[ind] = FrameTools::tagged_traces(in, tag);
+            std::cerr << "\t" << tag << "[" << tracesvin[ind].size() << "]\n";
         }
     }
         

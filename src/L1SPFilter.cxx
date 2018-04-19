@@ -51,6 +51,11 @@ void L1SPFilter::configure(const WireCell::Configuration& cfg)
 
 bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
 {
+    out = nullptr;
+    if (!in) {
+        return true;            // eos
+    }
+
     std::string adctag = get<std::string>(m_cfg, "adctag");
     std::string sigtag = get<std::string>(m_cfg, "sigtag");
     std::string outtag = get<std::string>(m_cfg, "outtag");
@@ -59,18 +64,13 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     auto adctraces = FrameTools::tagged_traces(in, adctag);
     auto sigtraces = FrameTools::tagged_traces(in, sigtag);
 
-    std::cerr << "L1SPFilter: frame: " << in->ident()
-              << " #adc: " << adctraces.size()
-              << " #sig: " << sigtraces.size()
-              << "\n";
-
 
     /// here, use the ADC and signal traces to do L1SP
     ///  put result in out_traces
     ITrace::vector out_traces;
 
     /// Here is a dummy L1SP filter.  All it does is create new traces
-    /// from the intput signals.
+    /// from the input signals.
     for (auto trace : sigtraces) {
         auto newtrace = std::make_shared<SimpleTrace>(trace->channel(), trace->tbin(), trace->charge());
         out_traces.push_back(newtrace);
@@ -78,17 +78,22 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
 
 
 
+    std::cerr << "L1SPFilter: frame: " << in->ident() << " "
+              << adctag << "[" << adctraces.size() << "] + "
+              << sigtag << "[" << sigtraces.size() << "] --> "
+              << outtag << "[" << out_traces.size() << "]\n";
+
 
     
     // Finally, we save the traces to an output frame with tags.
-    {
+
         IFrame::trace_list_t tl(out_traces.size());
         std::iota(tl.begin(), tl.end(), 0);
         
         auto sf = new SimpleFrame(in->ident(), in->time(), out_traces, in->tick());
         sf->tag_traces(outtag, tl);
         out = IFrame::pointer(sf);
-    }
+
     return true;
 }
 
