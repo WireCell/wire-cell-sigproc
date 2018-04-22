@@ -783,17 +783,44 @@ void OmnibusSigProc::decon_2D_looseROI(int plane){
 
   Array::array_xxc c_data_afterfilter(m_r_data.rows(),m_r_data.cols());
   for (int irow=0; irow<m_c_data.rows(); ++irow) {
-    if (plane == 0 || plane == 1){
+    if (plane == 0 ){
       if (cmm["lf_noisy"].find(nwire_u*plane+irow)!=cmm["lf_noisy"].end()){
 	roi_hf_filter_wf2 = roi_hf_filter_wf1;
       }else if (cmm["lf_noisy"].find(nwire_u*plane+irow+1)!=cmm["lf_noisy"].end()){
 	roi_hf_filter_wf2 = roi_hf_filter_wf1;
       }else if (cmm["lf_noisy"].find(nwire_u*plane+irow-1)!=cmm["lf_noisy"].end()){
 	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow+2)!=cmm["lf_noisy"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow-2)!=cmm["lf_noisy"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["bad"].find(nwire_u*plane+irow)!=cmm["bad"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["bad"].find(nwire_u*plane+irow+1)!=cmm["bad"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["bad"].find(nwire_u*plane+irow-1)!=cmm["bad"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["bad"].find(nwire_u*plane+irow+2)!=cmm["bad"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["bad"].find(nwire_u*plane+irow-2)!=cmm["bad"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
       }else{	
 	roi_hf_filter_wf2 = roi_hf_filter_wf;
       }
-      //Waveform::realseq_t roi_hf_filter_wf;
+    }else if (plane == 1){
+      if (cmm["lf_noisy"].find(nwire_u*plane+irow)!=cmm["lf_noisy"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow+1)!=cmm["lf_noisy"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow-1)!=cmm["lf_noisy"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow+2)!=cmm["lf_noisy"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow-2)!=cmm["lf_noisy"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else{	
+	roi_hf_filter_wf2 = roi_hf_filter_wf;
+      }
     }else{
       roi_hf_filter_wf2 = roi_hf_filter_wf;
     }
