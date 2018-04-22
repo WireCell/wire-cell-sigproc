@@ -5,6 +5,10 @@
 
 #include "WireCellUtil/NamedFactory.h"
 
+#include "WireCellRess/LassoModel.h"
+#include "WireCellRess/ElasticNetModel.h"
+#include <Eigen/Dense>
+
 #include <numeric>
 #include <iostream>
 
