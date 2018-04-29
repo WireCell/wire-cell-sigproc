@@ -21,7 +21,14 @@ using namespace WireCell;
 using namespace WireCell::SigProc;
 
 
-L1SPFilter::L1SPFilter()
+L1SPFilter::L1SPFilter(double gain, 
+		       double shaping_time,
+		       double inter_gain , 
+		       double ADC_mV)
+  : m_gain(gain)
+  , m_shaping_time(shaping_time)
+  , m_inter_gain(inter_gain)
+  , m_ADC_mV(ADC_mV)
 {
 }
 
@@ -71,7 +78,10 @@ WireCell::Configuration L1SPFilter::default_configuration() const
     cfg["l1_niteration"] = 100000;
     cfg["l1_decon_limit"] = 50; // 50 electrons
     
-
+    cfg["gain"] = m_gain;
+    cfg["shaping_time"] = m_shaping_time;
+    cfg["inter_gain"] = m_inter_gain;
+    cfg["ADC_mV"] = m_ADC_mV;
     
     return cfg;
 }
@@ -79,6 +89,13 @@ WireCell::Configuration L1SPFilter::default_configuration() const
 void L1SPFilter::configure(const WireCell::Configuration& cfg)
 {
     m_cfg = cfg;
+
+    m_gain = get(cfg,"gain",m_gain);
+    m_shaping_time = get(cfg,"shaping_time",m_shaping_time);
+    m_inter_gain = get(cfg,"inter_gain", m_inter_gain);
+    m_ADC_mV = get(cfg,"ADC_mV", m_ADC_mV);
+
+    
 }
 
 bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
@@ -113,13 +130,18 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     
     std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << " " << adc_l1_threshold << " " << adc_sum_threshold << " " << adc_sum_rescaling << " " << adc_sum_rescaling_limit << " " << l1_seg_length << " " << l1_scaling_factor << " " << l1_lambda << " " << l1_epsilon << " " << l1_niteration << " " << l1_decon_limit << std::endl;
 
-    // get field response ... 
-    auto ifr = Factory::find<IFieldResponse>("FieldResponse");
-    Response::Schema::FieldResponse fr = ifr->field_response();
-    // Make a new data set which is the average FR
-    Response::Schema::FieldResponse fravg = Response::wire_region_average(fr);
-
     
+    // // get field response ... 
+    // auto ifr = Factory::find<IFieldResponse>("FieldResponse");
+    // Response::Schema::FieldResponse fr = ifr->field_response();
+    // // Make a new data set which is the average FR
+    // Response::Schema::FieldResponse fravg = Response::wire_region_average(fr);
+
+    // get electronics response
+    WireCell::Waveform::compseq_t elec;
+    Response::ColdElec ce(m_gain, m_shaping_time);
+    // auto ewave = ce.generate(tbins);
+    // Waveform::scale(ewave, m_inter_gain * m_ADC_mV);
     
     auto adctraces = FrameTools::tagged_traces(in, adctag);
     auto sigtraces = FrameTools::tagged_traces(in, sigtag);
@@ -129,11 +151,20 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     ///  put result in out_traces
     ITrace::vector out_traces;
 
-    /// Here is a dummy L1SP filter.  All it does is create new traces
-    /// from the input signals.
+    // do ROI from the raw signal
+    
+    // do ROI from the decon signal
+
+    // merge ROIs ... 
+    
+    // prepare for the output signal ...
+    
     for (auto trace : sigtraces) {
-        auto newtrace = std::make_shared<SimpleTrace>(trace->channel(), trace->tbin(), trace->charge());
-        out_traces.push_back(newtrace);
+      auto newtrace = std::make_shared<SimpleTrace>(trace->channel(), trace->tbin(), trace->charge());
+      // How to access the sigtraces together ???
+      
+      // std::cout << trace->channel() << std::endl;
+      out_traces.push_back(newtrace);
     }
 
 
@@ -147,13 +178,13 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     
     // Finally, we save the traces to an output frame with tags.
 
-        IFrame::trace_list_t tl(out_traces.size());
-        std::iota(tl.begin(), tl.end(), 0);
-        
-        auto sf = new SimpleFrame(in->ident(), in->time(), out_traces, in->tick());
-        sf->tag_traces(outtag, tl);
-        out = IFrame::pointer(sf);
-
+    IFrame::trace_list_t tl(out_traces.size());
+    std::iota(tl.begin(), tl.end(), 0);
+    
+    auto sf = new SimpleFrame(in->ident(), in->time(), out_traces, in->tick());
+    sf->tag_traces(outtag, tl);
+    out = IFrame::pointer(sf);
+    
     return true;
 }
 
