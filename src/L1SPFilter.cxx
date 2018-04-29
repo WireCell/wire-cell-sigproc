@@ -56,6 +56,21 @@ WireCell::Configuration L1SPFilter::default_configuration() const
 
     // ROI padding ticks ...
     cfg["roi_pad"] = 20;
+
+    // L1 fit parameters ...
+    cfg["adc_l1_threshold"] = 6;
+    cfg["adc_sum_threshold"] = 160;
+    cfg["adc_sum_rescaling"] = 90.;
+    cfg["adc_sum_rescaling_limit"] = 50.;
+    cfg["l1_seg_length"] = 120;
+    cfg["l1_scaling_factor"] = 500;
+    cfg["l1_lambda"] = 5;
+    cfg["l1_epsilon"] = 0.05;
+    cfg["l1_niteration"] = 100000;
+    cfg["l1_decon_limit"] = 50; // 50 electrons
+    
+
+    
     return cfg;
 }
 
@@ -82,8 +97,19 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     double collect_time_offset = get(m_cfg,"collect_time_offset",collect_time_offset);
     int roi_pad = 0;
     roi_pad = get(m_cfg,"roi_pad",roi_pad);
+
+    double adc_l1_threshold = get(m_cfg,"adc_l1_threshold",adc_l1_threshold);
+    double adc_sum_threshold= get(m_cfg,"adc_sum_threshold",adc_sum_threshold);
+    double adc_sum_rescaling= get(m_cfg,"adc_sum_rescaling",adc_sum_rescaling);
+    double adc_sum_rescaling_limit= get(m_cfg,"adc_sum_rescaling_limit",adc_sum_rescaling_limit);
+    double l1_seg_length= get(m_cfg,"l1_seg_length",l1_seg_length);
+    double l1_scaling_factor= get(m_cfg,"l1_scaling_factor",l1_scaling_factor);
+    double l1_lambda= get(m_cfg,"l1_lambda",l1_lambda);
+    double l1_epsilon= get(m_cfg,"l1_epsilon",l1_epsilon);
+    double l1_niteration= get(m_cfg,"l1_niteration",l1_niteration);
+    double l1_decon_limit= get(m_cfg,"l1_decon_limit",l1_decon_limit);
     
-    std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << std::endl;
+    std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << " " << adc_l1_threshold << " " << adc_sum_threshold << " " << adc_sum_rescaling << " " << adc_sum_rescaling_limit << " " << l1_seg_length << " " << l1_scaling_factor << " " << l1_lambda << " " << l1_epsilon << " " << l1_niteration << " " << l1_decon_limit << std::endl;
     
     auto adctraces = FrameTools::tagged_traces(in, adctag);
     auto sigtraces = FrameTools::tagged_traces(in, sigtag);
