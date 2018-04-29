@@ -142,6 +142,9 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     Response::ColdElec ce(m_gain, m_shaping_time);
     // auto ewave = ce.generate(tbins);
     // Waveform::scale(ewave, m_inter_gain * m_ADC_mV);
+
+    // get the overall response function ...
+    // how to use it ... 
     
     auto adctraces = FrameTools::tagged_traces(in, adctag);
     auto sigtraces = FrameTools::tagged_traces(in, sigtag);
@@ -150,12 +153,54 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     /// here, use the ADC and signal traces to do L1SP
     ///  put result in out_traces
     ITrace::vector out_traces;
-
-    // do ROI from the raw signal
     
+    std::map<int,std::set<int>> init_map;
     // do ROI from the decon signal
+    for (auto trace : sigtraces) {
+      int ch = trace->channel();
+      int tbin = trace->tbin();
+      auto const& charges = trace->charge();
+      const int ntbins = charges.size();
+      std::set<int> time_ticks;
 
+      for (int qi = 0; qi < ntbins; qi++){
+	if (charges[qi]>0){
+	  time_ticks.insert(tbin+qi);
+	}
+      }
+      
+      init_map[ch] = time_ticks;
+      // if (time_ticks.size()>0){
+      // 	std::cout << ch << " " << time_ticks.size() << std::endl;
+      // }
+    }
+    
+    // do ROI from the raw signal
+    for (auto trace : adctraces) {
+      int ch = trace->channel();
+      int tbin = trace->tbin();
+      auto const& charges = trace->charge();
+      const int ntbins = charges.size();
+      std::set<int>& time_ticks = init_map[ch];
+      
+      double mean = Waveform::percentile(charges,0.5);
+      double mean_p1sig = Waveform::percentile(charges,0.5+0.34);
+      double mean_n1sig = Waveform::percentile(charges,0.5-0.34);
+      double cut = raw_ROI_th_nsigma * sqrt((pow(mean_p1sig-mean,2)+pow(mean_n1sig-mean,2))/2.);
+      if (cut < raw_ROI_th_adclimit) cut = raw_ROI_th_adclimit;
+
+      for (int qi = 0; qi < ntbins; qi++){
+	if (fabs(charges[qi])>cut){
+	  time_ticks.insert(tbin+qi);
+	}
+      }
+      // if (time_ticks.size()>0){
+      // 	std::cout << ch << " " << time_ticks.size() << std::endl;
+      // }
+    }
     // merge ROIs ... 
+    
+
     
     // prepare for the output signal ...
     
