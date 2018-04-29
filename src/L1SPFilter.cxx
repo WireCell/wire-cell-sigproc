@@ -77,6 +77,8 @@ WireCell::Configuration L1SPFilter::default_configuration() const
     cfg["l1_epsilon"] = 0.05;
     cfg["l1_niteration"] = 100000;
     cfg["l1_decon_limit"] = 50; // 50 electrons
+
+    cfg["l1_ind_scale"] = 4;
     
     cfg["gain"] = m_gain;
     cfg["shaping_time"] = m_shaping_time;
@@ -127,8 +129,10 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     double l1_epsilon= get(m_cfg,"l1_epsilon",l1_epsilon);
     double l1_niteration= get(m_cfg,"l1_niteration",l1_niteration);
     double l1_decon_limit= get(m_cfg,"l1_decon_limit",l1_decon_limit);
+
+    double l1_ind_scale = get(m_cfg,"l1_ind_scale",l1_ind_scale);
     
-    std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << " " << adc_l1_threshold << " " << adc_sum_threshold << " " << adc_sum_rescaling << " " << adc_sum_rescaling_limit << " " << l1_seg_length << " " << l1_scaling_factor << " " << l1_lambda << " " << l1_epsilon << " " << l1_niteration << " " << l1_decon_limit << std::endl;
+    std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << " " << adc_l1_threshold << " " << adc_sum_threshold << " " << adc_sum_rescaling << " " << adc_sum_rescaling_limit << " " << l1_seg_length << " " << l1_scaling_factor << " " << l1_lambda << " " << l1_epsilon << " " << l1_niteration << " " << l1_decon_limit << " " << l1_ind_scale << std::endl;
 
     
     // // get field response ... 
