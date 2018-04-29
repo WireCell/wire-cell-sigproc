@@ -45,6 +45,17 @@ WireCell::Configuration L1SPFilter::default_configuration() const
     /// The tag to place on the output waveforms
     cfg["outtag"] = "l1sp";
 
+    // 4 sigma for raw waveform ROI identification
+    cfg["raw_ROI_th_nsigma"] = 4;
+    // 10 ADC for upper limit on ADC ... 
+    cfg["raw_ROI_th_adclimit"] = 10;
+    // global offset 
+    cfg["overall_time_offset"] = 0;
+    // need 3 us offset for collection plane relative to the induction plane ...
+    cfg["collect_time_offset"] = 3.0;
+
+    // ROI padding ticks ...
+    cfg["roi_pad"] = 20;
     return cfg;
 }
 
@@ -65,6 +76,15 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     std::string outtag = get<std::string>(m_cfg, "outtag");
     std::vector<float> signal = get< std::vector<float> >(m_cfg, "filter");
 
+    double raw_ROI_th_nsigma = get(m_cfg,"raw_ROI_th_nsigma",raw_ROI_th_nsigma);
+    double raw_ROI_th_adclimit = get(m_cfg,"raw_ROI_th_adclimit",raw_ROI_th_adclimit);
+    double overall_time_offset = get(m_cfg,"overall_time_offset",overall_time_offset);
+    double collect_time_offset = get(m_cfg,"collect_time_offset",collect_time_offset);
+    int roi_pad = 0;
+    roi_pad = get(m_cfg,"roi_pad",roi_pad);
+    
+    std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << std::endl;
+    
     auto adctraces = FrameTools::tagged_traces(in, adctag);
     auto sigtraces = FrameTools::tagged_traces(in, sigtag);
 
