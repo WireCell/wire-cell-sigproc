@@ -176,12 +176,17 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     }
     
     // do ROI from the raw signal
+    int ntot_ticks=0;
+    
     for (auto trace : adctraces) {
       int ch = trace->channel();
       int tbin = trace->tbin();
       auto const& charges = trace->charge();
       const int ntbins = charges.size();
       std::set<int>& time_ticks = init_map[ch];
+
+      if (ntot_ticks < ntbins)
+	ntot_ticks = ntbins;
       
       double mean = Waveform::percentile(charges,0.5);
       double mean_p1sig = Waveform::percentile(charges,0.5+0.34);
@@ -198,9 +203,60 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
       // 	std::cout << ch << " " << time_ticks.size() << std::endl;
       // }
     }
-    // merge ROIs ... 
-    
 
+    
+    // create ROIs ... 
+    std::map<int, std::vector<std::pair<int,int>>> map_ch_rois;
+    
+    for (auto it = init_map.begin(); it!=init_map.end(); it++){
+      int wire_index = it->first;
+      std::set<int>& time_slices_set = it->second;
+      if (time_slices_set.size()==0) continue;
+      std::vector<int> time_slices;
+      std::copy(time_slices_set.begin(), time_slices_set.end(), std::back_inserter(time_slices));
+      
+      std::vector<std::pair<int,int>> rois;
+      std::vector<std::pair<int,int>> rois_save;
+      
+      rois.push_back(std::make_pair(time_slices.front(),time_slices.front()));
+      for (size_t i=1; i<time_slices.size();i++){
+	if (time_slices.at(i) - rois.back().second <= roi_pad*2){
+	  rois.back().second = time_slices.at(i);
+	}else{
+	  rois.push_back(std::make_pair(time_slices.at(i),time_slices.at(i)));
+	}
+      }
+      
+      // extend the rois to both side according to the bin content
+      for (auto it = rois.begin(); it!= rois.end();  it++){
+	int start_bin = it->first;
+	int end_bin = it->second;
+	start_bin = start_bin - roi_pad;
+	end_bin = end_bin + roi_pad;
+	if (start_bin <0) start_bin = 0;
+	if (end_bin>ntot_ticks-1) end_bin = ntot_ticks-1;
+	it->first = start_bin;
+	it->second = end_bin;
+      }
+      
+      for (auto it = rois.begin(); it!= rois.end();  it++){
+	if (rois_save.size()==0){
+	  rois_save.push_back(*it);
+	}else if (it->first <= rois_save.back().second){
+	  rois_save.back().second = it->second;
+	}else{
+	  rois_save.push_back(*it);
+	}
+      }
+
+      if (rois_save.size()>0)
+	map_ch_rois[wire_index] = rois_save;
+      // for (auto it = rois_save.begin(); it!=rois_save.end(); it++){
+      // std::cout << wire_index << " " << it->first << " " << it->second +1 << std::endl;
+      // }
+      
+    }
+    
     
     // prepare for the output signal ...
     
