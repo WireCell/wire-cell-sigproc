@@ -164,7 +164,7 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
       std::set<int> time_ticks;
 
       for (int qi = 0; qi < ntbins; qi++){
-	if (charges[qi]>0){
+	if (charges[qi]!=0){
 	  time_ticks.insert(tbin+qi);
 	}
       }
@@ -254,7 +254,6 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
       // for (auto it = rois_save.begin(); it!=rois_save.end(); it++){
       // std::cout << wire_index << " " << it->first << " " << it->second +1 << std::endl;
       // }
-      
     }
     
     
@@ -263,6 +262,16 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     for (auto trace : sigtraces) {
       auto newtrace = std::make_shared<SimpleTrace>(trace->channel(), trace->tbin(), trace->charge());
       // How to access the sigtraces together ???
+      if (map_ch_rois.find(trace->channel()) != map_ch_rois.end()){
+	std::vector<std::pair<int,int>>& rois_save = map_ch_rois[trace->channel()];
+	for (auto it = rois_save.begin(); it!=rois_save.end(); it++){
+	  for (int time_tick = it->first; time_tick!=it->second+1; time_tick++){
+	    // temporary hack to reset the data ... 
+	    newtrace->charge().at(time_tick-trace->tbin())=0;
+	  }
+	}
+      }
+
       
       // std::cout << trace->channel() << std::endl;
       out_traces.push_back(newtrace);
