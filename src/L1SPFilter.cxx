@@ -161,9 +161,11 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     WireCell::Binning tbins(Response::as_array(fravg.planes[0]).cols(), 0, Response::as_array(fravg.planes[0]).cols() * fravg.period);
     Response::ColdElec ce(m_gain, m_shaping);
     auto ewave = ce.generate(tbins);
-    // Waveform::scale(ewave, m_postgain * m_ADC_mV);
+    Waveform::scale(ewave, m_postgain * m_ADC_mV * units::fC * (-1));
     elec = Waveform::dft(ewave);
 
+    std::complex<float> fine_period(fravg.period,0);
+    
     // do a convolution here ...
     WireCell::Waveform::realseq_t resp_V = fravg.planes[1].paths[0].current ;
     WireCell::Waveform::realseq_t resp_W = fravg.planes[2].paths[0].current ; 
@@ -173,6 +175,10 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
 
     WireCell::Waveform::scale(spectrum_V,elec);
     WireCell::Waveform::scale(spectrum_W,elec);
+    
+    WireCell::Waveform::scale(spectrum_V,fine_period);
+    WireCell::Waveform::scale(spectrum_W,fine_period);
+    
 
     resp_V = WireCell::Waveform::idft(spectrum_V);
     resp_W = WireCell::Waveform::idft(spectrum_W);
@@ -181,13 +187,13 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     double intrinsic_time_offset = fravg.origin/fravg.speed;
     std::cout << intrinsic_time_offset << " " << m_fine_time_offset << " " << m_coarse_time_offset << " " << m_gain << " " << 14.0 * units::mV/units::fC << " " << m_shaping << " " << fravg.period << std::endl;
 
-    // for (size_t i=0; i!=resp_V.size(); i++){
-    //   std::cout << i << " " << resp_V.at(i)/units::fC << " " << resp_W.at(i)/units::fC << " " << ewave.at(i) << std::endl;
-    // }
+    for (size_t i=0; i!=resp_V.size(); i++){
+      std::cout << i << " " << resp_V.at(i)/units::fC << " " << resp_W.at(i)/units::fC << " " << ewave.at(i) << std::endl;
+    }
     
     
     // convolute with V and Y average responses ... 
-    std::complex<float> fine_period(fravg.period,0);
+    // std::complex<float> fine_period(fravg.period,0);
     int fine_nticks = Response::as_array(fravg.planes[0]).cols();
 
     Waveform::realseq_t ftbins(fine_nticks);
