@@ -79,7 +79,7 @@ WireCell::Configuration L1SPFilter::default_configuration() const
     cfg["l1_decon_limit"] = 50; // 50 electrons
 
     cfg["l1_resp_scale"] = 0.5;
-    cfg["l1_col_scale"] = 1.25;
+    cfg["l1_col_scale"] = 1.15;
     cfg["l1_ind_scale"] = 0.5;
 
     
