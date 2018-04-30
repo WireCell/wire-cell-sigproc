@@ -139,13 +139,14 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     
     std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << " " << adc_l1_threshold << " " << adc_sum_threshold << " " << adc_sum_rescaling << " " << adc_sum_rescaling_limit << " " << l1_seg_length << " " << l1_scaling_factor << " " << l1_lambda << " " << l1_epsilon << " " << l1_niteration << " " << l1_decon_limit << " " << l1_resp_scale << " " << l1_col_scale << " " << l1_ind_scale << std::endl;
 
+
     
     // get field response ... 
     auto ifr = Factory::find<IFieldResponse>("FieldResponse");
     Response::Schema::FieldResponse fr = ifr->field_response();
     // Make a new data set which is the average FR
     Response::Schema::FieldResponse fravg = Response::wire_region_average(fr);
-
+    // make an average for V and Y planes ...
     
     // get electronics response
     WireCell::Waveform::compseq_t elec;
@@ -153,8 +154,13 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     // auto ewave = ce.generate(tbins);
     // Waveform::scale(ewave, m_postgain * m_ADC_mV);
 
-    // get the overall response function ...
-    // how to use it ... 
+    // convoluted to get the overall response function ...
+     
+    // and apply the proper shift, and figure out how to use it ...
+
+    
+
+    
     
     auto adctraces = FrameTools::tagged_traces(in, adctag);
     auto sigtraces = FrameTools::tagged_traces(in, sigtag);
