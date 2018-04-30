@@ -105,8 +105,8 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_period = get(config,"period",m_period);
 
   m_gain = get(config,"gain",m_gain);
-  m_shaping_time = get(config,"shaping_time",m_shaping_time);
-  m_inter_gain = get(config,"inter_gain", m_inter_gain);
+  m_shaping_time = get(config,"shaping",m_shaping_time);
+  m_inter_gain = get(config,"postgain", m_inter_gain);
   m_ADC_mV = get(config,"ADC_mV", m_ADC_mV);
 
   m_flag_ch_corr = get(config,"ch_corr",m_flag_ch_corr);

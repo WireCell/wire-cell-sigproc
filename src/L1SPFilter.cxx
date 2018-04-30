@@ -22,12 +22,12 @@ using namespace WireCell::SigProc;
 
 
 L1SPFilter::L1SPFilter(double gain, 
-		       double shaping_time,
-		       double inter_gain , 
+		       double shaping,
+		       double postgain , 
 		       double ADC_mV)
   : m_gain(gain)
-  , m_shaping_time(shaping_time)
-  , m_inter_gain(inter_gain)
+  , m_shaping(shaping)
+  , m_postgain(postgain)
   , m_ADC_mV(ADC_mV)
 {
 }
@@ -84,8 +84,8 @@ WireCell::Configuration L1SPFilter::default_configuration() const
 
     
     cfg["gain"] = m_gain;
-    cfg["shaping_time"] = m_shaping_time;
-    cfg["inter_gain"] = m_inter_gain;
+    cfg["shaping"] = m_shaping;
+    cfg["postgain"] = m_postgain;
     cfg["ADC_mV"] = m_ADC_mV;
     
     return cfg;
@@ -96,8 +96,8 @@ void L1SPFilter::configure(const WireCell::Configuration& cfg)
     m_cfg = cfg;
 
     m_gain = get(cfg,"gain",m_gain);
-    m_shaping_time = get(cfg,"shaping_time",m_shaping_time);
-    m_inter_gain = get(cfg,"inter_gain", m_inter_gain);
+    m_shaping = get(cfg,"shaping",m_shaping);
+    m_postgain = get(cfg,"postgain", m_postgain);
     m_ADC_mV = get(cfg,"ADC_mV", m_ADC_mV);
 
     
@@ -140,17 +140,18 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << " " << adc_l1_threshold << " " << adc_sum_threshold << " " << adc_sum_rescaling << " " << adc_sum_rescaling_limit << " " << l1_seg_length << " " << l1_scaling_factor << " " << l1_lambda << " " << l1_epsilon << " " << l1_niteration << " " << l1_decon_limit << " " << l1_resp_scale << " " << l1_col_scale << " " << l1_ind_scale << std::endl;
 
     
-    // // get field response ... 
-    // auto ifr = Factory::find<IFieldResponse>("FieldResponse");
-    // Response::Schema::FieldResponse fr = ifr->field_response();
-    // // Make a new data set which is the average FR
-    // Response::Schema::FieldResponse fravg = Response::wire_region_average(fr);
+    // get field response ... 
+    auto ifr = Factory::find<IFieldResponse>("FieldResponse");
+    Response::Schema::FieldResponse fr = ifr->field_response();
+    // Make a new data set which is the average FR
+    Response::Schema::FieldResponse fravg = Response::wire_region_average(fr);
 
+    
     // get electronics response
     WireCell::Waveform::compseq_t elec;
-    Response::ColdElec ce(m_gain, m_shaping_time);
+    Response::ColdElec ce(m_gain, m_shaping);
     // auto ewave = ce.generate(tbins);
-    // Waveform::scale(ewave, m_inter_gain * m_ADC_mV);
+    // Waveform::scale(ewave, m_postgain * m_ADC_mV);
 
     // get the overall response function ...
     // how to use it ... 

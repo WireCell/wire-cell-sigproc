@@ -17,8 +17,8 @@ namespace WireCell {
         {
         public:
             L1SPFilter(double gain = 14.0 * units::mV/units::fC, 
-		       double shaping_time = 2.0 * units::microsecond,
-		       double inter_gain = 1.2, 
+		       double shaping = 2.0 * units::microsecond,
+		       double postgain = 1.2, 
 		       double ADC_mV = 4096/2000.);
             virtual ~L1SPFilter();
 
@@ -33,8 +33,8 @@ namespace WireCell {
             Configuration m_cfg;
 
 	    double m_gain;
-	    double m_shaping_time;
-	    double m_inter_gain;
+	    double m_shaping;
+	    double m_postgain;
 	    double m_ADC_mV;
 	    
         };
