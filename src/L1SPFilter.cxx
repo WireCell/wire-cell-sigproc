@@ -161,7 +161,7 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     WireCell::Binning tbins(Response::as_array(fravg.planes[0]).cols(), 0, Response::as_array(fravg.planes[0]).cols() * fravg.period);
     Response::ColdElec ce(m_gain, m_shaping);
     auto ewave = ce.generate(tbins);
-    Waveform::scale(ewave, m_postgain * m_ADC_mV * units::fC * (-1));
+    Waveform::scale(ewave, m_postgain * m_ADC_mV * units::fC * (-1)); // ADC to electron ... 
     elec = Waveform::dft(ewave);
 
     std::complex<float> fine_period(fravg.period,0);
@@ -185,7 +185,7 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     
     
     double intrinsic_time_offset = fravg.origin/fravg.speed;
-    std::cout << intrinsic_time_offset << " " << m_fine_time_offset << " " << m_coarse_time_offset << " " << m_gain << " " << 14.0 * units::mV/units::fC << " " << m_shaping << " " << fravg.period << std::endl;
+    //std::cout << intrinsic_time_offset << " " << m_fine_time_offset << " " << m_coarse_time_offset << " " << m_gain << " " << 14.0 * units::mV/units::fC << " " << m_shaping << " " << fravg.period << std::endl;
 
     for (size_t i=0; i!=resp_V.size(); i++){
       std::cout << i << " " << resp_V.at(i)/units::fC << " " << resp_W.at(i)/units::fC << " " << ewave.at(i) << std::endl;

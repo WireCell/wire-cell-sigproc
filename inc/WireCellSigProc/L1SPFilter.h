@@ -17,7 +17,7 @@ namespace WireCell {
         {
         public:
             L1SPFilter(double gain = 14.0 * units::mV/units::fC, 
-		       double shaping = 2.0 * units::microsecond,
+		       double shaping = 2.2 * units::microsecond,
 		       double postgain = 1.2, 
 		       double ADC_mV = 4096/(2000.*units::mV),
 		       double fine_time_offset = 0.0 * units::microsecond,

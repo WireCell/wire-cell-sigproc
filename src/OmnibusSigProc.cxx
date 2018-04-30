@@ -354,7 +354,7 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
   WireCell::Binning tbins(Response::as_array(fravg.planes[0]).cols(), 0, Response::as_array(fravg.planes[0]).cols() * fravg.period);
   Response::ColdElec ce(m_gain, m_shaping_time);
   auto ewave = ce.generate(tbins);
-  Waveform::scale(ewave, m_inter_gain * m_ADC_mV);
+  Waveform::scale(ewave, m_inter_gain * m_ADC_mV  * (-1));
   elec = Waveform::dft(ewave);
 
   std::complex<float> fine_period(fravg.period,0);
@@ -433,7 +433,7 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
 	
 	    
 	if(fcount < fine_nticks){
-	  wfs.at(i) = ((ctime - ftbins.at(fcount-1)) /fravg.period * arr(irow,fcount-1) + (ftbins.at(fcount)-ctime)/fravg.period * arr(irow,fcount))  / (-1);
+	  wfs.at(i) = ((ctime - ftbins.at(fcount-1)) /fravg.period * arr(irow,fcount-1) + (ftbins.at(fcount)-ctime)/fravg.period * arr(irow,fcount)) ;// / (-1);
 	}else{
 	  wfs.at(i) = 0;
 	}
