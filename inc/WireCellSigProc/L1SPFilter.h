@@ -19,7 +19,9 @@ namespace WireCell {
             L1SPFilter(double gain = 14.0 * units::mV/units::fC, 
 		       double shaping = 2.0 * units::microsecond,
 		       double postgain = 1.2, 
-		       double ADC_mV = 4096/2000.);
+		       double ADC_mV = 4096/(2000.*units::mV),
+		       double fine_time_offset = 0.0 * units::microsecond,
+		       double coarse_time_offset = -8.0 * units::microsecond);
             virtual ~L1SPFilter();
 
 	    /// IFrameFilter interface.
@@ -36,6 +38,8 @@ namespace WireCell {
 	    double m_shaping;
 	    double m_postgain;
 	    double m_ADC_mV;
+	    double m_fine_time_offset;
+	    double m_coarse_time_offset;
 	    
         };
     }

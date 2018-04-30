@@ -24,11 +24,15 @@ using namespace WireCell::SigProc;
 L1SPFilter::L1SPFilter(double gain, 
 		       double shaping,
 		       double postgain , 
-		       double ADC_mV)
+		       double ADC_mV,
+		       double fine_time_offset ,
+		       double coarse_time_offset )
   : m_gain(gain)
   , m_shaping(shaping)
   , m_postgain(postgain)
   , m_ADC_mV(ADC_mV)
+  , m_fine_time_offset(fine_time_offset)
+  , m_coarse_time_offset(coarse_time_offset)
 {
 }
 
@@ -87,6 +91,10 @@ WireCell::Configuration L1SPFilter::default_configuration() const
     cfg["shaping"] = m_shaping;
     cfg["postgain"] = m_postgain;
     cfg["ADC_mV"] = m_ADC_mV;
+
+    cfg["fine_time_offset"] = m_fine_time_offset;
+    cfg["coarse_time_offset"] = m_coarse_time_offset;
+
     
     return cfg;
 }
@@ -100,7 +108,8 @@ void L1SPFilter::configure(const WireCell::Configuration& cfg)
     m_postgain = get(cfg,"postgain", m_postgain);
     m_ADC_mV = get(cfg,"ADC_mV", m_ADC_mV);
 
-    
+    m_fine_time_offset = get(cfg,"fine_time_offset", m_fine_time_offset);
+    m_coarse_time_offset = get(cfg,"coarse_time_offset", m_coarse_time_offset);
 }
 
 bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
@@ -144,8 +153,7 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     // get field response ... 
     auto ifr = Factory::find<IFieldResponse>("FieldResponse");
     Response::Schema::FieldResponse fr = ifr->field_response();
-    // Make a new data set which is the average FR
-    // make an average for V and Y planes ...
+    // Make a new data set which is the average FR, make an average for V and Y planes ...
     Response::Schema::FieldResponse fravg = Response::average_1D(fr);
 
     //get electronics response
@@ -153,11 +161,32 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     WireCell::Binning tbins(Response::as_array(fravg.planes[0]).cols(), 0, Response::as_array(fravg.planes[0]).cols() * fravg.period);
     Response::ColdElec ce(m_gain, m_shaping);
     auto ewave = ce.generate(tbins);
-    Waveform::scale(ewave, m_postgain * m_ADC_mV);
+    // Waveform::scale(ewave, m_postgain * m_ADC_mV);
     elec = Waveform::dft(ewave);
 
-    // convolute with V and Y average responses ... 
+    // do a convolution here ...
+    WireCell::Waveform::realseq_t resp_V = fravg.planes[1].paths[0].current ;
+    WireCell::Waveform::realseq_t resp_W = fravg.planes[2].paths[0].current ; 
+    
+    auto spectrum_V = WireCell::Waveform::dft(resp_V);
+    auto spectrum_W = WireCell::Waveform::dft(resp_W);
 
+    WireCell::Waveform::scale(spectrum_V,elec);
+    WireCell::Waveform::scale(spectrum_W,elec);
+
+    resp_V = WireCell::Waveform::idft(spectrum_V);
+    resp_W = WireCell::Waveform::idft(spectrum_W);
+    
+    
+    double intrinsic_time_offset = fravg.origin/fravg.speed;
+    std::cout << intrinsic_time_offset << " " << m_fine_time_offset << " " << m_coarse_time_offset << " " << m_gain << " " << 14.0 * units::mV/units::fC << " " << m_shaping << " " << fravg.period << std::endl;
+
+    // for (size_t i=0; i!=resp_V.size(); i++){
+    //   std::cout << i << " " << resp_V.at(i)/units::fC << " " << resp_W.at(i)/units::fC << " " << ewave.at(i) << std::endl;
+    // }
+    
+    
+    // convolute with V and Y average responses ... 
     std::complex<float> fine_period(fravg.period,0);
     int fine_nticks = Response::as_array(fravg.planes[0]).cols();
 

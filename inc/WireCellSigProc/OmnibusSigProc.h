@@ -17,7 +17,7 @@ namespace WireCell {
                      double gain = 14.0 * units::mV/units::fC,
                      double shaping_time = 2.0 * units::microsecond,
                      double inter_gain = 1.2,
-                     double ADC_mV = 4096/2000.,
+                     double ADC_mV = 4096/(2000.*units::mV),
                      bool flag_ch_corr = true,
                      float th_factor_ind = 3,
                      float th_factor_col = 5,

@@ -433,7 +433,7 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
 	
 	    
 	if(fcount < fine_nticks){
-	  wfs.at(i) = ((ctime - ftbins.at(fcount-1)) /fravg.period * arr(irow,fcount-1) + (ftbins.at(fcount)-ctime)/fravg.period * arr(irow,fcount)) / units::mV / (-1);
+	  wfs.at(i) = ((ctime - ftbins.at(fcount-1)) /fravg.period * arr(irow,fcount-1) + (ftbins.at(fcount)-ctime)/fravg.period * arr(irow,fcount))  / (-1);
 	}else{
 	  wfs.at(i) = 0;
 	}
