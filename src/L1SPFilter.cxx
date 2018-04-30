@@ -145,12 +145,32 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     auto ifr = Factory::find<IFieldResponse>("FieldResponse");
     Response::Schema::FieldResponse fr = ifr->field_response();
     // Make a new data set which is the average FR
-    Response::Schema::FieldResponse fravg = Response::wire_region_average(fr);
     // make an average for V and Y planes ...
-    
-    // get electronics response
+    Response::Schema::FieldResponse fravg = Response::average_1D(fr);
+
+    //get electronics response
     WireCell::Waveform::compseq_t elec;
+    WireCell::Binning tbins(Response::as_array(fravg.planes[0]).cols(), 0, Response::as_array(fravg.planes[0]).cols() * fravg.period);
     Response::ColdElec ce(m_gain, m_shaping);
+    auto ewave = ce.generate(tbins);
+    Waveform::scale(ewave, m_postgain * m_ADC_mV);
+    elec = Waveform::dft(ewave);
+
+    // convolute with V and Y average responses ... 
+
+    std::complex<float> fine_period(fravg.period,0);
+    int fine_nticks = Response::as_array(fravg.planes[0]).cols();
+
+    Waveform::realseq_t ftbins(fine_nticks);
+    for (int i=0;i!=fine_nticks;i++){
+      ftbins.at(i) = i * fravg.period;
+    }
+
+    
+    
+    // int resp_nwires = Response::as_array(fravg.planes[1]).rows();
+    // std::cout << fine_nticks << " " << resp_nwires << " " << fravg.period/units::us << std::endl;
+    
     // auto ewave = ce.generate(tbins);
     // Waveform::scale(ewave, m_postgain * m_ADC_mV);
 
