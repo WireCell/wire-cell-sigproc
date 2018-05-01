@@ -9,6 +9,8 @@
 #include "WireCellIface/IFrameFilter.h"
 #include "WireCellIface/IConfigurable.h"
 
+#include "WireCellUtil/Interpolate.h"
+
 namespace WireCell {
     namespace SigProc {
 
@@ -31,6 +33,8 @@ namespace WireCell {
 	    virtual void configure(const WireCell::Configuration& config);
 	    virtual WireCell::Configuration default_configuration() const;
 
+	    void init_resp();
+	    
         private:
             Configuration m_cfg;
 
@@ -40,6 +44,11 @@ namespace WireCell {
 	    double m_ADC_mV;
 	    double m_fine_time_offset;
 	    double m_coarse_time_offset;
+	    double m_period;
+
+	    linterp<double> *lin_V;
+	    linterp<double> *lin_W;
+	    
 	    
         };
     }

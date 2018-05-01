@@ -9,6 +9,10 @@
 
 #include "WireCellRess/LassoModel.h"
 #include "WireCellRess/ElasticNetModel.h"
+
+
+
+
 #include <Eigen/Dense>
 
 #include <numeric>
@@ -33,11 +37,64 @@ L1SPFilter::L1SPFilter(double gain,
   , m_ADC_mV(ADC_mV)
   , m_fine_time_offset(fine_time_offset)
   , m_coarse_time_offset(coarse_time_offset)
+  , lin_V(0)
+  , lin_W(0)
 {
 }
 
 L1SPFilter::~L1SPFilter()
 {
+  delete lin_V;
+  delete lin_W;
+}
+
+void L1SPFilter::init_resp(){
+  if (lin_V==0 && lin_W==0){
+   // get field response ... 
+    auto ifr = Factory::find<IFieldResponse>("FieldResponse");
+    Response::Schema::FieldResponse fr = ifr->field_response();
+    // Make a new data set which is the average FR, make an average for V and Y planes ...
+    Response::Schema::FieldResponse fravg = Response::average_1D(fr);
+
+    //get electronics response
+    WireCell::Waveform::compseq_t elec;
+    WireCell::Binning tbins(Response::as_array(fravg.planes[0]).cols(), 0, Response::as_array(fravg.planes[0]).cols() * fravg.period);
+    Response::ColdElec ce(m_gain, m_shaping);
+    auto ewave = ce.generate(tbins);
+    Waveform::scale(ewave, m_postgain * m_ADC_mV * (-1)); // ADC to electron ... 
+    elec = Waveform::dft(ewave);
+
+    std::complex<float> fine_period(fravg.period,0);
+    
+    // do a convolution here ...
+    WireCell::Waveform::realseq_t resp_V = fravg.planes[1].paths[0].current ;
+    WireCell::Waveform::realseq_t resp_W = fravg.planes[2].paths[0].current ; 
+    
+    auto spectrum_V = WireCell::Waveform::dft(resp_V);
+    auto spectrum_W = WireCell::Waveform::dft(resp_W);
+
+    WireCell::Waveform::scale(spectrum_V,elec);
+    WireCell::Waveform::scale(spectrum_W,elec);
+    
+    WireCell::Waveform::scale(spectrum_V,fine_period);
+    WireCell::Waveform::scale(spectrum_W,fine_period);
+    
+    // Now this response is ADC for 1 electron .
+    resp_V = WireCell::Waveform::idft(spectrum_V);
+    resp_W = WireCell::Waveform::idft(spectrum_W);
+    
+    // convolute with V and Y average responses ... 
+    double intrinsic_time_offset = fravg.origin/fravg.speed;
+    //std::cout << intrinsic_time_offset << " " << m_fine_time_offset << " " << m_coarse_time_offset << " " << m_gain << " " << 14.0 * units::mV/units::fC << " " << m_shaping << " " << fravg.period << std::endl;
+
+    double x0 = (- intrinsic_time_offset - m_coarse_time_offset + m_fine_time_offset);
+    double xstep = fravg.period;
+
+    // boost::math::cubic_b_spline<double> spline_v(resp_V.begin(), resp_V.end(), x0, xstep);
+    // boost::math::cubic_b_spline<double> spline_w(resp_W.begin(), resp_W.end(), x0, xstep);
+    lin_V = new linterp<double>(resp_V.begin(), resp_V.end(), x0, xstep);
+    lin_W = new linterp<double>(resp_W.begin(), resp_W.end(), x0, xstep);
+  }
 }
 
 WireCell::Configuration L1SPFilter::default_configuration() const
@@ -146,81 +203,32 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     double l1_col_scale = get(m_cfg,"l1_col_scale",l1_col_scale);
     double l1_ind_scale = get(m_cfg,"l1_ind_scale",l1_ind_scale);
     
-    std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << " " << adc_l1_threshold << " " << adc_sum_threshold << " " << adc_sum_rescaling << " " << adc_sum_rescaling_limit << " " << l1_seg_length << " " << l1_scaling_factor << " " << l1_lambda << " " << l1_epsilon << " " << l1_niteration << " " << l1_decon_limit << " " << l1_resp_scale << " " << l1_col_scale << " " << l1_ind_scale << std::endl;
+    // std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << " " << adc_l1_threshold << " " << adc_sum_threshold << " " << adc_sum_rescaling << " " << adc_sum_rescaling_limit << " " << l1_seg_length << " " << l1_scaling_factor << " " << l1_lambda << " " << l1_epsilon << " " << l1_niteration << " " << l1_decon_limit << " " << l1_resp_scale << " " << l1_col_scale << " " << l1_ind_scale << std::endl;
+    init_resp();
 
+    
+   
 
-    
-    // get field response ... 
-    auto ifr = Factory::find<IFieldResponse>("FieldResponse");
-    Response::Schema::FieldResponse fr = ifr->field_response();
-    // Make a new data set which is the average FR, make an average for V and Y planes ...
-    Response::Schema::FieldResponse fravg = Response::average_1D(fr);
-
-    //get electronics response
-    WireCell::Waveform::compseq_t elec;
-    WireCell::Binning tbins(Response::as_array(fravg.planes[0]).cols(), 0, Response::as_array(fravg.planes[0]).cols() * fravg.period);
-    Response::ColdElec ce(m_gain, m_shaping);
-    auto ewave = ce.generate(tbins);
-    Waveform::scale(ewave, m_postgain * m_ADC_mV * units::fC * (-1)); // ADC to electron ... 
-    elec = Waveform::dft(ewave);
-
-    std::complex<float> fine_period(fravg.period,0);
-    
-    // do a convolution here ...
-    WireCell::Waveform::realseq_t resp_V = fravg.planes[1].paths[0].current ;
-    WireCell::Waveform::realseq_t resp_W = fravg.planes[2].paths[0].current ; 
-    
-    auto spectrum_V = WireCell::Waveform::dft(resp_V);
-    auto spectrum_W = WireCell::Waveform::dft(resp_W);
-
-    WireCell::Waveform::scale(spectrum_V,elec);
-    WireCell::Waveform::scale(spectrum_W,elec);
-    
-    WireCell::Waveform::scale(spectrum_V,fine_period);
-    WireCell::Waveform::scale(spectrum_W,fine_period);
-    
-
-    resp_V = WireCell::Waveform::idft(spectrum_V);
-    resp_W = WireCell::Waveform::idft(spectrum_W);
-    
-    
-    double intrinsic_time_offset = fravg.origin/fravg.speed;
-    //std::cout << intrinsic_time_offset << " " << m_fine_time_offset << " " << m_coarse_time_offset << " " << m_gain << " " << 14.0 * units::mV/units::fC << " " << m_shaping << " " << fravg.period << std::endl;
-
-    for (size_t i=0; i!=resp_V.size(); i++){
-      std::cout << i << " " << resp_V.at(i)/units::fC << " " << resp_W.at(i)/units::fC << " " << ewave.at(i) << std::endl;
-    }
-    
-    
-    // convolute with V and Y average responses ... 
+    // std::cout << (*lin_V)(0*units::us) << " " << (*lin_W)(0*units::us) << std::endl;
+    // std::cout << (*lin_V)(1*units::us) << " " << (*lin_W)(1*units::us) << std::endl;
+    //    for (size_t i=0; i!=resp_V.size(); i++){
+    // std::cout << (i*fravg.period - intrinsic_time_offset - m_coarse_time_offset + m_fine_time_offset)/units::us << " " << resp_V.at(i) << " " << resp_W.at(i) << " " << ewave.at(i) << std::endl;
+    //}
     // std::complex<float> fine_period(fravg.period,0);
-    int fine_nticks = Response::as_array(fravg.planes[0]).cols();
+    // int fine_nticks = Response::as_array(fravg.planes[0]).cols();
+    //    Waveform::realseq_t ftbins(fine_nticks);
+    // for (int i=0;i!=fine_nticks;i++){
+    //  ftbins.at(i) = i * fravg.period;
+    //}
 
-    Waveform::realseq_t ftbins(fine_nticks);
-    for (int i=0;i!=fine_nticks;i++){
-      ftbins.at(i) = i * fravg.period;
-    }
 
-    
-    
-    // int resp_nwires = Response::as_array(fravg.planes[1]).rows();
-    // std::cout << fine_nticks << " " << resp_nwires << " " << fravg.period/units::us << std::endl;
-    
-    // auto ewave = ce.generate(tbins);
-    // Waveform::scale(ewave, m_postgain * m_ADC_mV);
-
-    // convoluted to get the overall response function ...
-     
-    // and apply the proper shift, and figure out how to use it ...
-
-    
-
-    
     
     auto adctraces = FrameTools::tagged_traces(in, adctag);
     auto sigtraces = FrameTools::tagged_traces(in, sigtag);
+    m_period = in->tick();
 
-
+    //std::cout << m_period/units::us << std::endl;
+    
     /// here, use the ADC and signal traces to do L1SP
     ///  put result in out_traces
     ITrace::vector out_traces;
@@ -336,10 +344,15 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
       if (map_ch_rois.find(trace->channel()) != map_ch_rois.end()){
 	std::vector<std::pair<int,int>>& rois_save = map_ch_rois[trace->channel()];
 	for (auto it = rois_save.begin(); it!=rois_save.end(); it++){
+
+	  
+	  
 	  for (int time_tick = it->first; time_tick!=it->second+1; time_tick++){
 	    // temporary hack to reset the data ... 
 	    newtrace->charge().at(time_tick-trace->tbin())=0;
 	  }
+
+	  
 	}
       }
 
