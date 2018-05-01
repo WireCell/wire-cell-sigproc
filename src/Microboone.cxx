@@ -33,7 +33,7 @@ double filter_time(double freq){
 }
 
 double filter_low(double freq){
-    return  1-exp(-pow(freq/0.06,2));
+    return  1-exp(-pow(freq/0.08,8));
 }
 
 

@@ -448,8 +448,8 @@ int main(int argc, char* argv[])
     noise->set_pad_window_front(wchans,10);
     noise->set_pad_window_back(wchans,10);
 
-    noise->set_coherent_nf_decon_limit(uchans,0.05);
-    noise->set_coherent_nf_decon_limit(vchans,0.05);
+    noise->set_coherent_nf_decon_limit(uchans,0.02);
+    noise->set_coherent_nf_decon_limit(vchans,0.02);
     noise->set_coherent_nf_decon_limit(wchans,0.05);
 
     noise->set_coherent_nf_adc_limit(uchans,15);

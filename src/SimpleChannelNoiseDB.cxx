@@ -22,7 +22,7 @@ SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
     , m_default_max_rms(10)
     , m_default_pad_f(0)
     , m_default_pad_b(0)
-    , m_default_decon_limit(0.05)
+    , m_default_decon_limit(0.02)
     , m_default_adc_limit(15.0)
 {
     set_sampling(tick, nsamples);
