@@ -1,6 +1,6 @@
 #include "WireCellSigProc/L1SPFilter.h"
 #include "WireCellIface/FrameTools.h"
-#include "WireCellIface/SimpleTrace.h"
+
 #include "WireCellIface/SimpleFrame.h"
 
 #include "WireCellUtil/NamedFactory.h"
@@ -9,10 +9,6 @@
 
 #include "WireCellRess/LassoModel.h"
 #include "WireCellRess/ElasticNetModel.h"
-
-
-
-
 #include <Eigen/Dense>
 
 #include <numeric>
@@ -21,6 +17,7 @@
 WIRECELL_FACTORY(L1SPFilter, WireCell::SigProc::L1SPFilter,
                  WireCell::IFrameFilter, WireCell::IConfigurable);
 
+using namespace Eigen;
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
@@ -132,6 +129,8 @@ WireCell::Configuration L1SPFilter::default_configuration() const
     cfg["adc_sum_threshold"] = 160;
     cfg["adc_sum_rescaling"] = 90.;
     cfg["adc_sum_rescaling_limit"] = 50.;
+    cfg["adc_ratio_threshold"] = 0.2;
+    
     cfg["l1_seg_length"] = 120;
     cfg["l1_scaling_factor"] = 500;
     cfg["l1_lambda"] = 5;
@@ -181,27 +180,13 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     std::string outtag = get<std::string>(m_cfg, "outtag");
     std::vector<float> signal = get< std::vector<float> >(m_cfg, "filter");
 
-    double raw_ROI_th_nsigma = get(m_cfg,"raw_ROI_th_nsigma",raw_ROI_th_nsigma);
-    double raw_ROI_th_adclimit = get(m_cfg,"raw_ROI_th_adclimit",raw_ROI_th_adclimit);
-    double overall_time_offset = get(m_cfg,"overall_time_offset",overall_time_offset);
-    double collect_time_offset = get(m_cfg,"collect_time_offset",collect_time_offset);
+    
     int roi_pad = 0;
     roi_pad = get(m_cfg,"roi_pad",roi_pad);
 
-    double adc_l1_threshold = get(m_cfg,"adc_l1_threshold",adc_l1_threshold);
-    double adc_sum_threshold= get(m_cfg,"adc_sum_threshold",adc_sum_threshold);
-    double adc_sum_rescaling= get(m_cfg,"adc_sum_rescaling",adc_sum_rescaling);
-    double adc_sum_rescaling_limit= get(m_cfg,"adc_sum_rescaling_limit",adc_sum_rescaling_limit);
-    double l1_seg_length= get(m_cfg,"l1_seg_length",l1_seg_length);
-    double l1_scaling_factor= get(m_cfg,"l1_scaling_factor",l1_scaling_factor);
-    double l1_lambda= get(m_cfg,"l1_lambda",l1_lambda);
-    double l1_epsilon= get(m_cfg,"l1_epsilon",l1_epsilon);
-    double l1_niteration= get(m_cfg,"l1_niteration",l1_niteration);
-    double l1_decon_limit= get(m_cfg,"l1_decon_limit",l1_decon_limit);
+    double raw_ROI_th_nsigma = get(m_cfg,"raw_ROI_th_nsigma",raw_ROI_th_nsigma);
+    double raw_ROI_th_adclimit = get(m_cfg,"raw_ROI_th_adclimit",raw_ROI_th_adclimit);
     
-    double l1_resp_scale = get(m_cfg,"l1_resp_scale",l1_resp_scale);
-    double l1_col_scale = get(m_cfg,"l1_col_scale",l1_col_scale);
-    double l1_ind_scale = get(m_cfg,"l1_ind_scale",l1_ind_scale);
     
     // std::cout << "Xin: " << raw_ROI_th_nsigma << " " << raw_ROI_th_adclimit << " " << overall_time_offset << " " << collect_time_offset << " " << roi_pad << " " << adc_l1_threshold << " " << adc_sum_threshold << " " << adc_sum_rescaling << " " << adc_sum_rescaling_limit << " " << l1_seg_length << " " << l1_scaling_factor << " " << l1_lambda << " " << l1_epsilon << " " << l1_niteration << " " << l1_decon_limit << " " << l1_resp_scale << " " << l1_col_scale << " " << l1_ind_scale << std::endl;
     init_resp();
@@ -256,9 +241,14 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     
     // do ROI from the raw signal
     int ntot_ticks=0;
+
+    std::map<int,std::shared_ptr<const WireCell::ITrace>> adctrace_ch_map;
     
     for (auto trace : adctraces) {
       int ch = trace->channel();
+      
+      adctrace_ch_map[ch] = trace;
+
       int tbin = trace->tbin();
       auto const& charges = trace->charge();
       const int ntbins = charges.size();
@@ -337,7 +327,6 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     
     
     // prepare for the output signal ...
-    
     for (auto trace : sigtraces) {
       auto newtrace = std::make_shared<SimpleTrace>(trace->channel(), trace->tbin(), trace->charge());
       // How to access the sigtraces together ???
@@ -345,12 +334,12 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
 	std::vector<std::pair<int,int>>& rois_save = map_ch_rois[trace->channel()];
 	for (auto it = rois_save.begin(); it!=rois_save.end(); it++){
 
+	  L1_fit(newtrace, adctrace_ch_map[trace->channel()], it->first, it->second+1);
 	  
-	  
-	  for (int time_tick = it->first; time_tick!=it->second+1; time_tick++){
-	    // temporary hack to reset the data ... 
-	    newtrace->charge().at(time_tick-trace->tbin())=0;
-	  }
+	  // for (int time_tick = it->first; time_tick!=it->second+1; time_tick++){
+	  // temporary hack to reset the data ... 
+	  // newtrace->charge().at(time_tick-trace->tbin())=0;
+	  //}
 
 	  
 	}
@@ -383,3 +372,115 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
 }
 
 
+void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::shared_ptr<const WireCell::ITrace>& adctrace, int start_tick, int end_tick){
+  
+  double overall_time_offset = get(m_cfg,"overall_time_offset",overall_time_offset) * units::us;
+  double collect_time_offset = get(m_cfg,"collect_time_offset",collect_time_offset) * units::us;
+  double adc_l1_threshold = get(m_cfg,"adc_l1_threshold",adc_l1_threshold);
+  double adc_sum_threshold= get(m_cfg,"adc_sum_threshold",adc_sum_threshold);
+  double adc_sum_rescaling= get(m_cfg,"adc_sum_rescaling",adc_sum_rescaling);
+  double adc_sum_rescaling_limit= get(m_cfg,"adc_sum_rescaling_limit",adc_sum_rescaling_limit);
+  double adc_ratio_threshold = get(m_cfg,"adc_ratio_threshold",adc_ratio_threshold);
+  
+  double l1_seg_length= get(m_cfg,"l1_seg_length",l1_seg_length);
+  double l1_scaling_factor= get(m_cfg,"l1_scaling_factor",l1_scaling_factor);
+  double l1_lambda= get(m_cfg,"l1_lambda",l1_lambda);
+  double l1_epsilon= get(m_cfg,"l1_epsilon",l1_epsilon);
+  double l1_niteration= get(m_cfg,"l1_niteration",l1_niteration);
+  double l1_decon_limit= get(m_cfg,"l1_decon_limit",l1_decon_limit);
+  
+  double l1_resp_scale = get(m_cfg,"l1_resp_scale",l1_resp_scale);
+  double l1_col_scale = get(m_cfg,"l1_col_scale",l1_col_scale);
+  double l1_ind_scale = get(m_cfg,"l1_ind_scale",l1_ind_scale);
+
+  // algorithm 
+  const int nbin_fit = end_tick-start_tick;
+
+  // fill the data ... 
+  VectorXd init_W = VectorXd::Zero(nbin_fit);
+  VectorXd final_beta = VectorXd::Zero(nbin_fit*2);
+
+  double temp_sum = 0;
+  double temp1_sum = 0;
+  for (int i=0; i!= nbin_fit; i++){
+    init_W(i) =  adctrace->charge().at(i+start_tick-newtrace->tbin()) ;
+    if (fabs(init_W(i))>adc_l1_threshold) {
+      temp_sum += init_W(i);
+      temp1_sum += fabs(init_W(i));
+    }
+  }
+  
+
+  int flag_l1 = 0; // do nothing
+  // 1 do L1 
+  if (temp_sum/(temp1_sum*adc_sum_rescaling*1.0/nbin_fit)>adc_ratio_threshold && temp1_sum>adc_sum_threshold){
+    flag_l1 = 1; // do L1 ...
+  }else if (temp1_sum*adc_sum_rescaling*1.0/nbin_fit < adc_sum_rescaling_limit){
+    flag_l1 = 2; //remove signal ... 
+  }
+
+  // std::cout << temp_sum << " " << temp1_sum << " " << temp_sum/(temp1_sum*adc_sum_rescaling*1.0/nbin_fit) << " " << adc_ratio_threshold << " " << temp1_sum*adc_sum_rescaling*1.0/nbin_fit << " " << flag_l1 << std::endl;
+  
+  if (flag_l1==1){
+    // do L1 fit ...
+    int n_section = std::round(nbin_fit/l1_seg_length*1.0);
+    if (n_section ==0) n_section =1;
+    std::vector<int> boundaries;
+    for (int i=0;i!=n_section;i++){
+      boundaries.push_back(int(i * nbin_fit /n_section));
+    }
+    boundaries.push_back(nbin_fit);
+
+    for (int i=0;i!=n_section;i++){
+      int temp_nbin_fit = boundaries.at(i+1)-boundaries.at(i);
+      VectorXd W = VectorXd::Zero(temp_nbin_fit);
+      for (int j=0;j!=temp_nbin_fit;j++){
+	W(j) = init_W(boundaries.at(i)+j);
+      }
+
+      //for matrix G
+      MatrixXd G = MatrixXd::Zero(temp_nbin_fit, temp_nbin_fit*2);
+
+      for (int i=0;i!=temp_nbin_fit;i++){ 
+	// X 
+	double t1 = i/2.*units::us; // us, measured time  
+	for (int j=0;j!=temp_nbin_fit;j++){
+	  // Y ... 
+	  double t2 = j/2.*units::us; // us, real signal time
+	  double delta_t = t1 - t2;
+	  if (delta_t >-15*units::us - overall_time_offset && delta_t < 10*units::us - overall_time_offset){
+	    G(i,j) = (*lin_W)(delta_t+overall_time_offset+collect_time_offset) * l1_scaling_factor * l1_resp_scale;
+	    G(i,temp_nbin_fit+j) = (*lin_V)(delta_t+overall_time_offset) * l1_scaling_factor * l1_resp_scale; 
+	  }
+	}
+      }
+
+      double lambda = l1_lambda;//1/2.;
+      WireCell::LassoModel m2(lambda, l1_niteration, l1_epsilon);
+      m2.SetData(G, W);
+      m2.Fit();
+      VectorXd beta = m2.Getbeta();
+      for (int j=0;j!=temp_nbin_fit;j++){
+	final_beta(boundaries.at(i)+j) = beta(j);
+	final_beta(nbin_fit + boundaries.at(i)+j) = beta(temp_nbin_fit+j);
+      }
+    }
+
+    double sum1 = 0;
+    double sum2 = 0;
+    for (int i=0;i!=nbin_fit;i++){
+      sum1 += final_beta(i);
+      sum2 += final_beta(nbin_fit+i);
+    }
+
+    
+
+    
+    
+  }else if (flag_l1==2){
+    for (int time_tick = start_tick; time_tick!= end_tick; time_tick++){
+      // temporary hack to reset the data ... 
+      newtrace->charge().at(time_tick-newtrace->tbin())=0;
+    }
+  }
+}

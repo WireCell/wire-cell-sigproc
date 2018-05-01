@@ -10,6 +10,7 @@
 #include "WireCellIface/IConfigurable.h"
 
 #include "WireCellUtil/Interpolate.h"
+#include "WireCellIface/SimpleTrace.h"
 
 namespace WireCell {
     namespace SigProc {
@@ -34,6 +35,8 @@ namespace WireCell {
 	    virtual WireCell::Configuration default_configuration() const;
 
 	    void init_resp();
+
+	    void L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::shared_ptr<const WireCell::ITrace>& adctrace, int start_tick, int end_tick);
 	    
         private:
             Configuration m_cfg;
