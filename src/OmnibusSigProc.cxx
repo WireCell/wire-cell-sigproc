@@ -818,6 +818,12 @@ void OmnibusSigProc::decon_2D_looseROI(int plane){
 	roi_hf_filter_wf2 = roi_hf_filter_wf1;
       }else if (cmm["lf_noisy"].find(nwire_u*plane+irow-2)!=cmm["lf_noisy"].end()){
 	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["bad"].find(nwire_u*plane+irow)!=cmm["bad"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["bad"].find(nwire_u*plane+irow+1)!=cmm["bad"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
+      }else if (cmm["bad"].find(nwire_u*plane+irow-1)!=cmm["bad"].end()){
+	roi_hf_filter_wf2 = roi_hf_filter_wf1;
       }else{	
 	roi_hf_filter_wf2 = roi_hf_filter_wf;
       }
