@@ -178,8 +178,9 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     std::string adctag = get<std::string>(m_cfg, "adctag");
     std::string sigtag = get<std::string>(m_cfg, "sigtag");
     std::string outtag = get<std::string>(m_cfg, "outtag");
-    std::vector<float> signal = get< std::vector<float> >(m_cfg, "filter");
+    
 
+    //    std::cout << smearing_vec.size() << std::endl;
     
     int roi_pad = 0;
     roi_pad = get(m_cfg,"roi_pad",roi_pad);
@@ -392,18 +393,22 @@ void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
   double l1_resp_scale = get(m_cfg,"l1_resp_scale",l1_resp_scale);
   double l1_col_scale = get(m_cfg,"l1_col_scale",l1_col_scale);
   double l1_ind_scale = get(m_cfg,"l1_ind_scale",l1_ind_scale);
-
+  std::vector<double> smearing_vec = get< std::vector<double> >(m_cfg, "filter");
+  
   // algorithm 
   const int nbin_fit = end_tick-start_tick;
 
   // fill the data ... 
   VectorXd init_W = VectorXd::Zero(nbin_fit);
+  VectorXd init_beta = VectorXd::Zero(nbin_fit);
   VectorXd final_beta = VectorXd::Zero(nbin_fit*2);
 
   double temp_sum = 0;
   double temp1_sum = 0;
   for (int i=0; i!= nbin_fit; i++){
     init_W(i) =  adctrace->charge().at(i+start_tick-newtrace->tbin()) ;
+    init_beta(i) = newtrace->charge().at(i+start_tick-newtrace->tbin()) ;
+    
     if (fabs(init_W(i))>adc_l1_threshold) {
       temp_sum += init_W(i);
       temp1_sum += fabs(init_W(i));
@@ -473,10 +478,39 @@ void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
       sum2 += final_beta(nbin_fit+i);
     }
 
-    
+    if (sum1 > adc_l1_threshold){
+      Waveform::realseq_t l1_signal(nbin_fit,0);
+      Waveform::realseq_t l2_signal(nbin_fit,0);
+      for (int j=0;j!=nbin_fit;j++){
+	l1_signal.at(j) = final_beta(j) * l1_col_scale + final_beta(nbin_fit+j) * l1_ind_scale;
+      }
+      int mid_bin = (smearing_vec.size()-1)/2;
+      //std::cout << smearing_vec.size() << " " << mid_bin << std::endl;
+      for (int j=0;j!=nbin_fit;j++){
+	double content = l1_signal.at(j);
+	if (content>0){
+	  for (size_t k=0;k!=smearing_vec.size();k++){
+	    int bin = j+k-mid_bin;
+	    if (bin>=0&&bin<nbin_fit)
+	      l2_signal.at(bin) += content * smearing_vec.at(k);
+	  }
+	}
+      }
+      
+      for (int j=0;j!=nbin_fit;j++){
+      	if (l2_signal.at(j)<l1_decon_limit/l1_scaling_factor){ // 50 electrons
+      	  l1_signal.at(j) = 0;
+      	}else{
+      	  l1_signal.at(j) = l2_signal.at(j) * l1_scaling_factor; 
+      	}
+      }
 
-    
-    
+      for (int time_tick = start_tick; time_tick!= end_tick; time_tick++){
+	// temporary hack to reset the data ... 
+	newtrace->charge().at(time_tick-newtrace->tbin())=l1_signal.at(time_tick-start_tick);
+      }
+      
+    }
   }else if (flag_l1==2){
     for (int time_tick = start_tick; time_tick!= end_tick; time_tick++){
       // temporary hack to reset the data ... 
