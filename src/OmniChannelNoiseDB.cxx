@@ -221,7 +221,7 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::get_reconfig(double from
     int key = int(round(10.0*from_gain/(units::mV/units::fC))) << 24
         | int(round(10.0*from_shaping/units::us)) << 16
         | int(round(10.0*to_gain/(units::mV/units::fC))) << 8
-        | int(round(10.0*to_shaping/units::us)) << 16;
+        | int(round(10.0*to_shaping/units::us));
         
     // std::cerr << "KEY:" << key
     //           << " fg="<<from_gain/(units::mV/units::fC) << " mV/fC,"
