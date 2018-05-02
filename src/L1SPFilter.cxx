@@ -122,7 +122,8 @@ WireCell::Configuration L1SPFilter::default_configuration() const
     cfg["collect_time_offset"] = 3.0;
 
     // ROI padding ticks ...
-    cfg["roi_pad"] = 20;
+    cfg["roi_pad"] = 3;
+    cfg["raw_pad"] = 15;
 
     // L1 fit parameters ...
     cfg["adc_l1_threshold"] = 6;
@@ -136,12 +137,15 @@ WireCell::Configuration L1SPFilter::default_configuration() const
     cfg["l1_lambda"] = 5;
     cfg["l1_epsilon"] = 0.05;
     cfg["l1_niteration"] = 100000;
-    cfg["l1_decon_limit"] = 50; // 50 electrons
+    cfg["l1_decon_limit"] = 100; // 100 electrons
 
     cfg["l1_resp_scale"] = 0.5;
     cfg["l1_col_scale"] = 1.15;
     cfg["l1_ind_scale"] = 0.5;
 
+    cfg["peak_threshold"] = 1000;
+    cfg["mean_threshold"] = 500;
+    
     
     cfg["gain"] = m_gain;
     cfg["shaping"] = m_shaping;
@@ -184,7 +188,9 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     
     int roi_pad = 0;
     roi_pad = get(m_cfg,"roi_pad",roi_pad);
-
+    int raw_pad = 0;
+    raw_pad = get(m_cfg,"raw_pad",raw_pad);
+    
     double raw_ROI_th_nsigma = get(m_cfg,"raw_ROI_th_nsigma",raw_ROI_th_nsigma);
     double raw_ROI_th_adclimit = get(m_cfg,"raw_ROI_th_adclimit",raw_ROI_th_adclimit);
     
@@ -229,7 +235,7 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
       std::set<int> time_ticks;
 
       for (int qi = 0; qi < ntbins; qi++){
-	if (charges[qi]!=0){
+	if (charges[qi]>0){
 	  time_ticks.insert(tbin+qi);
 	}
       }
@@ -264,9 +270,15 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
       double cut = raw_ROI_th_nsigma * sqrt((pow(mean_p1sig-mean,2)+pow(mean_n1sig-mean,2))/2.);
       if (cut < raw_ROI_th_adclimit) cut = raw_ROI_th_adclimit;
 
+      // if (ch==4062)
+      // 	std::cout << cut << std::endl;
+      
       for (int qi = 0; qi < ntbins; qi++){
 	if (fabs(charges[qi])>cut){
-	  time_ticks.insert(tbin+qi);
+	  for (int qii = -raw_pad; qii!=raw_pad+1;qii++){
+	    if (tbin+qi+qii >=0 && tbin+qi+qii<ntot_ticks)
+	      time_ticks.insert(tbin+qi);
+	  }
 	}
       }
       // if (time_ticks.size()>0){
@@ -337,10 +349,11 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
 
 	  L1_fit(newtrace, adctrace_ch_map[trace->channel()], it->first, it->second+1);
 	  
-	  // for (int time_tick = it->first; time_tick!=it->second+1; time_tick++){
-	  // temporary hack to reset the data ... 
-	  // newtrace->charge().at(time_tick-trace->tbin())=0;
-	  //}
+	  for (int time_tick = it->first; time_tick!=it->second+1; time_tick++){
+	  // temporary hack to reset the data ...
+	    if (newtrace->charge().at(time_tick-trace->tbin())<0)
+	      newtrace->charge().at(time_tick-trace->tbin())=0;
+	  }
 
 	  
 	}
@@ -393,6 +406,11 @@ void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
   double l1_resp_scale = get(m_cfg,"l1_resp_scale",l1_resp_scale);
   double l1_col_scale = get(m_cfg,"l1_col_scale",l1_col_scale);
   double l1_ind_scale = get(m_cfg,"l1_ind_scale",l1_ind_scale);
+
+  double mean_threshold = get(m_cfg,"mean_threshold",mean_threshold);
+  double peak_threshold = get(m_cfg,"peak_threshold",peak_threshold);
+  
+  
   std::vector<double> smearing_vec = get< std::vector<double> >(m_cfg, "filter");
   
   // algorithm 
@@ -405,15 +423,23 @@ void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
 
   double temp_sum = 0;
   double temp1_sum = 0;
+  double temp2_sum = 0;
+  double max_val = -1;
+  double min_val = 1;
   for (int i=0; i!= nbin_fit; i++){
     init_W(i) =  adctrace->charge().at(i+start_tick-newtrace->tbin()) ;
     init_beta(i) = newtrace->charge().at(i+start_tick-newtrace->tbin()) ;
+
+    if (max_val < init_W(i)) max_val = init_W(i);
+    if (min_val > init_W(i)) min_val = init_W(i);
     
     if (fabs(init_W(i))>adc_l1_threshold) {
       temp_sum += init_W(i);
       temp1_sum += fabs(init_W(i));
+      temp2_sum += fabs(init_beta(i));
     }
   }
+
   
 
   int flag_l1 = 0; // do nothing
@@ -422,8 +448,14 @@ void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
     flag_l1 = 1; // do L1 ...
   }else if (temp1_sum*adc_sum_rescaling*1.0/nbin_fit < adc_sum_rescaling_limit){
     flag_l1 = 2; //remove signal ... 
+  }else if (temp2_sum > 30 * nbin_fit && temp1_sum < 2.0*nbin_fit && max_val - min_val < 22){
+    flag_l1 = 2;
   }
 
+  // if (adctrace->channel() == 4062){
+  //   std::cout << nbin_fit << " " << start_tick << " " << end_tick << " " << temp_sum << " " << temp1_sum << " " << temp2_sum << " " << max_val << " " << min_val << " " << flag_l1 << std::endl;
+  // }
+  
   // std::cout << temp_sum << " " << temp1_sum << " " << temp_sum/(temp1_sum*adc_sum_rescaling*1.0/nbin_fit) << " " << adc_ratio_threshold << " " << temp1_sum*adc_sum_rescaling*1.0/nbin_fit << " " << flag_l1 << std::endl;
   
   if (flag_l1==1){
@@ -505,8 +537,66 @@ void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
       	}
       }
 
+      {
+	// go through the new data and clean the small peaks ...
+	std::vector<int> nonzero_bins;
+	std::vector<std::pair<int,int>> ROIs;
+	for (int j=0;j!=nbin_fit;j++){
+	  if (l1_signal.at(j)>0)
+	    nonzero_bins.push_back(j);
+	}
+
+	bool flag_start = false;
+	int start_bin=-1,end_bin=-1;
+	for (size_t j=0;j!=nonzero_bins.size();j++){
+	  if (!flag_start){
+	    start_bin = nonzero_bins.at(j);
+	    end_bin = nonzero_bins.at(j);
+	    flag_start = true;
+	  }else{
+	    if (nonzero_bins.at(j) - end_bin == 1){
+	      end_bin = nonzero_bins.at(j);
+	    }else{
+	      ROIs.push_back(std::make_pair(start_bin,end_bin));
+	      start_bin = nonzero_bins.at(j);
+	      end_bin = nonzero_bins.at(j);
+	    }
+	  }
+	}
+	if (start_bin >=0)
+	  ROIs.push_back(std::make_pair(start_bin,end_bin));
+
+	for (size_t j=0;j!=ROIs.size();j++){
+	  double max_val = -1;
+	  double mean_val1 = 0;
+	  double mean_val2 = 0;
+	  for (int k=ROIs.at(j).first; k<=ROIs.at(j).second; k++){
+	    if (l1_signal.at(k) > max_val) max_val = l1_signal.at(k);
+	    mean_val1 += l1_signal.at(k);
+	    mean_val2 ++;
+	  }
+	  if (mean_val2!=0)
+	    mean_val1 /= mean_val2;
+	  if (max_val < peak_threshold && mean_val1 < mean_threshold){
+	    for (int k=ROIs.at(j).first; k<=ROIs.at(j).second; k++){
+	      l1_signal.at(k) = 0;
+	    }
+	  }
+	  //std::cout << max_val << " " << mean_val1 << std::endl;
+	  
+	}
+	
+	// std::cout << nonzero_bins.front() << " X " << nonzero_bins.back() << std::endl;
+	// std::cout << ROIs.size() << std::endl;
+	// for (size_t i=0;i!=ROIs.size();i++){
+	//   std::cout << ROIs.at(i).first << " " << ROIs.at(i).second << std::endl;
+	// }
+
+	// finish cleaning ... 
+      }
+
+      
       for (int time_tick = start_tick; time_tick!= end_tick; time_tick++){
-	// temporary hack to reset the data ... 
 	newtrace->charge().at(time_tick-newtrace->tbin())=l1_signal.at(time_tick-start_tick);
       }
       

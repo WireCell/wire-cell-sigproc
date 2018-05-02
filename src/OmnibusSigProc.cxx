@@ -297,7 +297,11 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& in
   for (int ich=0;ich!=nwire;ich++){
     ITrace::ChargeSequence charge(m_nticks);
     for (int j=0;j!=m_nticks;j++){
-      charge.at(j) = m_r_data(ich,j);
+      if ( m_r_data(ich,j)>0){
+	charge.at(j) = m_r_data(ich,j);
+      }else{
+	charge.at(j) = 0;
+      }
     }
     // correct the dead channels ... 
     if (cmm["bad"].find(ich+offset1)!=cmm["bad"].end()){
