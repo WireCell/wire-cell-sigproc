@@ -36,6 +36,10 @@ double filter_low(double freq){
     return  1-exp(-pow(freq/0.08,8));
 }
 
+double filter_low_loose(double freq){
+    return  1-exp(-pow(freq/0.005,2));
+}
+
 
 bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& chansig,
 				   const WireCell::Waveform::realseq_t& medians)
@@ -169,7 +173,7 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 	float content = medians.at(j);
 	if (fabs(content-mean)>limit){
 	    //protection_factor*rms) {
-	    medians.at(j) = 0; 
+	    //	    medians.at(j) = 0; 
 	    signalsBool.at(j) = true;
 	    // add the front and back padding
 	    for (int k=0;k!=pad_b;k++){
@@ -215,14 +219,17 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     	    limit = upper_decon_limit;
     	}
 
-	//	std::cout << "Xin " << mean << " " << rms *protection_factor << " " << upper_decon_limit << std::endl;
+	
+
+
+
 	
     	for (int j=0;j!=nbin;j++) {
     	    float content = medians_decon.at(j);
     	    if ((content-mean)>limit){
     		int time_bin = j + res_offset;
 		if (time_bin >= nbin) time_bin -= nbin;
-    		medians.at(time_bin) = 0; 
+		//	medians.at(time_bin) = 0; 
     		signalsBool.at(time_bin) = true;
     		// add the front and back padding
     		for (int k=0;k!=pad_b;k++){
@@ -261,56 +268,102 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 		}
             }
         }
+
+	std::map<int, bool> flag_replace;
+
+	for (auto roi: rois){
+	    flag_replace[roi.front()] = true;
+	}
+	
+	if (respec.size() > 0 && (respec.at(0).real()!=1 || respec.at(0).imag()!=0) && res_offset!=0){
+	    // use ROI to get a new waveform
+	    WireCell::Waveform::realseq_t medians_roi(nbin,0);
+	    for (auto roi: rois){
+		const int bin0 = std::max(roi.front()-1, 0);
+		const int binf = std::min(roi.back()+1, nbin-1);
+		const double m0 = medians[bin0];
+		const double mf = medians[binf];
+		const double roi_run = binf - bin0;
+		const double roi_rise = mf - m0;
+		for (auto bin : roi) {
+		    const double m = m0 + (bin - bin0)/roi_run*roi_rise;
+		    medians_roi.at(bin) = medians.at(bin) - m;
+		}
+	    }
+	    // do the deconvolution with a very loose low-frequency filter
+	    WireCell::Waveform::compseq_t medians_roi_freq = WireCell::Waveform::dft(medians_roi);
+	    WireCell::Waveform::shrink(medians_roi_freq,respec);
+	    for (size_t i=0;i!=medians_roi_freq.size();i++){
+		double freq;
+		// assuming 2 MHz digitization
+		if (i <medians_roi_freq.size()/2.){
+		    freq = i/(1.*medians_roi_freq.size())*2.;
+		}else{
+		    freq = (medians_roi_freq.size() - i)/(1.*medians_roi_freq.size())*2.;
+		}
+		std::complex<float> factor = filter_time(freq)*filter_low_loose(freq);
+		medians_roi_freq.at(i) = medians_roi_freq.at(i) * factor;
+	    }
+	    WireCell::Waveform::realseq_t medians_roi_decon = WireCell::Waveform::idft(medians_roi_freq);
+	    
+	    // judge if a roi is good or not ...
+	    //shift things back properly
+	    for (auto roi: rois){
+	    	const int bin0 = std::max(roi.front()-1, 0);
+	    	const int binf = std::min(roi.back()+1, nbin-1);
+	    	flag_replace[roi.front()] = false;
+
+		double max_val=0;
+
+		// double max_adc_val=0;
+		// double min_adc_val=0;
+		
+		for (int i=bin0; i<=binf; i++){
+	    	    int time_bin = i-res_offset;
+	    	    if (time_bin <0) time_bin += nbin;
+		    if (time_bin >=nbin) time_bin -= nbin;
+		    
+		    if (i==bin0){
+			max_val = medians_roi_decon.at(time_bin);
+			// max_adc_val = medians.at(i);
+			// min_adc_val = medians.at(i);
+		    }else{
+			if (medians_roi_decon.at(time_bin) > max_val) max_val = medians_roi_decon.at(time_bin);
+			// if (medians.at(i) > max_adc_val) max_adc_val = medians.at(i);
+			// if (medians.at(i) < min_adc_val) min_adc_val = medians.at(i);
+		    }
+	    	}
+		
+		if ( max_val > 0.08)
+		    flag_replace[roi.front()] = true;
+		
+	    }
+	} 
+	
+	
+	
         // Replace medians for above regions with interpolation on values
         // just outside each region.
         for (auto roi : rois) {
             // original code used the bins just outside the ROI
             const int bin0 = std::max(roi.front()-1, 0);
             const int binf = std::min(roi.back()+1, nbin-1);
-            const double m0 = medians[bin0];
-            const double mf = medians[binf];
-            const double roi_run = binf - bin0;
-            const double roi_rise = mf - m0;
-            for (auto bin : roi) {
-                const double m = m0 + (bin - bin0)/roi_run*roi_rise;
-                medians.at(bin) = m;
-            }
+	    
+	    if (flag_replace[roi.front()]){
+		const double m0 = medians[bin0];
+		const double mf = medians[binf];
+		const double roi_run = binf - bin0;
+		const double roi_rise = mf - m0;
+		for (auto bin : roi) {
+		    const double m = m0 + (bin - bin0)/roi_run*roi_rise;
+		    medians.at(bin) = m;
+		}
+	    }
         }
     }
-    // The above replaces this weirdness:
 
-    // std::vector<int> signals;
-    // for (int j=0;j!=nbin;j++) {
-    //     if( signalsBool.at(j) == 1 ) {
-    //         signals.push_back(j);
-    //     }
-    // }
-    // for (size_t j=0;j!=signals.size();j++) {
-    //     int bin = signals.at(j);
-    //     int prev_bin=bin;
-    //     int next_bin=bin;
-    //     int flag = 1;
-    //     while(flag) {
-    //         prev_bin--;
-    //         if (find(signals.begin(),signals.end(),prev_bin)==signals.end() || prev_bin <=0) {
-    //     	flag = 0;
-    //         }
-    //     }
-    //     flag =1;
-    //     while(flag) {
-    //         next_bin++;
-    //         if (find(signals.begin(),signals.end(),next_bin)==signals.end() || next_bin >=nbin-1) {
-    //     	flag = 0;
-    //         }
-    //     }
-    //     if (prev_bin <0 ) { prev_bin = 0; }
-    //     if (next_bin > nbin - 1) { next_bin = nbin - 1; }
-    //     float prev_content = medians.at(prev_bin);//h44->GetBinContent(prev_bin+1);
-    //     float next_content = medians.at(next_bin);
-    //     float content = prev_content + (bin - prev_bin)/ (next_bin - prev_bin*1.0) 
-    //         * (next_content - prev_content);
-    //     medians.at(bin) = content;
-    // }
+
+   
   
     return true;
 }
