@@ -270,14 +270,14 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
       double cut = raw_ROI_th_nsigma * sqrt((pow(mean_p1sig-mean,2)+pow(mean_n1sig-mean,2))/2.);
       if (cut < raw_ROI_th_adclimit) cut = raw_ROI_th_adclimit;
 
-      // if (ch==4062)
-      // 	std::cout << cut << std::endl;
+      // if (ch==4090)
+      // 	std::cout << cut << " " << raw_pad << std::endl;
       
       for (int qi = 0; qi < ntbins; qi++){
 	if (fabs(charges[qi])>cut){
 	  for (int qii = -raw_pad; qii!=raw_pad+1;qii++){
 	    if (tbin+qi+qii >=0 && tbin+qi+qii<ntot_ticks)
-	      time_ticks.insert(tbin+qi);
+	      time_ticks.insert(tbin+qi+qii);
 	  }
 	}
       }
@@ -452,7 +452,7 @@ void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
     flag_l1 = 2;
   }
 
-  // if (adctrace->channel() == 4062){
+  // if (adctrace->channel() == 4090){
   //   std::cout << nbin_fit << " " << start_tick << " " << end_tick << " " << temp_sum << " " << temp1_sum << " " << temp2_sum << " " << max_val << " " << min_val << " " << flag_l1 << std::endl;
   // }
   
