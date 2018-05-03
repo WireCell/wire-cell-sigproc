@@ -121,7 +121,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
     return true;
 }
 
-bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b, float upper_decon_limit, float upper_adc_limit)
+bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b, float upper_decon_limit, float upper_adc_limit, float upper_decon_limit1)
 {
    
   
@@ -333,8 +333,10 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 			// if (medians.at(i) < min_adc_val) min_adc_val = medians.at(i);
 		    }
 	    	}
+
+		//std::cout << "Xin: " << upper_decon_limit1 << std::endl;
 		
-		if ( max_val > 0.08)
+		if ( max_val > upper_decon_limit1)
 		    flag_replace[roi.front()] = true;
 		
 	    }
@@ -723,9 +725,10 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
 
     // need to move these to data base, consult with Brett ...
     // also need to be time dependent ... 
-    const float decon_limit = m_noisedb->coherent_nf_decon_limit(achannel);// 0.05;
+    const float decon_limit = m_noisedb->coherent_nf_decon_limit(achannel);// 0.02;
     const float adc_limit = m_noisedb->coherent_nf_adc_limit(achannel);//15;
-
+    const float decon_limit1 = m_noisedb->coherent_nf_decon_limit1(achannel);// 0.08; // loose filter
+    
     //std::cout << decon_limit << " " << adc_limit << std::endl;
     
     // if (respec.size()) {
@@ -735,7 +738,7 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     //}
 
     // do the signal protection and adaptive baseline
-    Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, adc_limit);
+    Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, adc_limit, decon_limit1);
     
     //std::cerr <<"\tSigprotection done: " << chansig.size() << " " << medians.size() << " " << medians.at(100) << " " << medians.at(101) << std::endl;
 
