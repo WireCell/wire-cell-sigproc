@@ -33,7 +33,12 @@ double filter_time(double freq){
 }
 
 double filter_low(double freq){
-    return  1-exp(-pow(freq/0.08,8));
+    if ( (freq>0.177 && freq<0.18) || (freq > 0.2143 && freq < 0.215) ||
+	 (freq >=0.106 && freq<=0.109) || (freq >0.25 && freq<0.251)){
+    	return 0;
+    }else{
+	return  1-exp(-pow(freq/0.08,8));
+    }
 }
 
 double filter_low_loose(double freq){
@@ -220,7 +225,7 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     	}
 
 	
-
+	//	std::cout << "Xin: " << protection_factor << " " << rms << " " << upper_decon_limit << std::endl;
 
 
 	
