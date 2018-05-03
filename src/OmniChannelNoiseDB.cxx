@@ -30,8 +30,9 @@ OmniChannelNoiseDB::ChannelInfo::ChannelInfo()
     , max_rms_cut(10.0)
     , pad_window_front(0.0)
     , pad_window_back(0.0)
-    , decon_limit(0.0)
+    , decon_limit(0.02)
     , adc_limit(0.0)
+    , decon_limit1(0.08)
     , rcrc(nullptr)
     , config(nullptr)
     , noise(nullptr)
@@ -430,6 +431,13 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
             m_db.at(ch).decon_limit = val;
         }
     }
+    if (cfg.isMember("decon_limit1")) {
+        float val = cfg["decon_limit1"].asDouble();
+        dump_cfg("deconlimit1", chans, val);
+        for (int ch : chans) {
+            m_db.at(ch).decon_limit1 = val;
+        }
+    }
     if (cfg.isMember("adc_limit")) {
         float val = cfg["adc_limit"].asDouble();
         dump_cfg("adclimit", chans, val);
@@ -570,6 +578,11 @@ int OmniChannelNoiseDB::pad_window_back(int channel) const
 float OmniChannelNoiseDB::coherent_nf_decon_limit(int channel) const
 {
     return dbget(channel).decon_limit;
+}
+
+float OmniChannelNoiseDB::coherent_nf_decon_limit1(int channel) const
+{
+    return dbget(channel).decon_limit1;
 }
 
 float OmniChannelNoiseDB::coherent_nf_adc_limit(int channel) const
