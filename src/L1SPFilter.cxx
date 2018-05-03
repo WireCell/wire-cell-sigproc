@@ -452,7 +452,7 @@ void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
     flag_l1 = 2;
   }
 
-  // if (adctrace->channel() == 4090){
+  // if (adctrace->channel() == 4079){
   //   std::cout << nbin_fit << " " << start_tick << " " << end_tick << " " << temp_sum << " " << temp1_sum << " " << temp2_sum << " " << max_val << " " << min_val << " " << flag_l1 << std::endl;
   // }
   
