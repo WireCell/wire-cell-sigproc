@@ -149,7 +149,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 	    
 	    std::map<int, bool> flag_replace;
 	    for (auto roi: rois){
-		flag_replace[roi.front()] = true;
+		flag_replace[roi.front()] = false;
 	    }
 	    
 	    // judge if any ROI is good ... 
