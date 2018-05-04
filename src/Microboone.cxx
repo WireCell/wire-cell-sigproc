@@ -174,7 +174,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 		//		if (signal.ch==1027)
 		//std::cout << roi.front() << " Xin " << max_val << " " << decon_limit1 << std::endl;
 		
-		if ( max_val > decon_limit1)
+		if ( max_val > decon_limit1 && fabs(min_val) < max_val * 0.8)
 		    flag_replace[roi.front()] = true;
 	    }
 	    
