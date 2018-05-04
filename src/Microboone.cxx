@@ -318,8 +318,8 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 	    	const int binf = std::min(roi.back()+1, nbin-1);
 	    	flag_replace[roi.front()] = false;
 
-		double max_val=0;
-
+		double max_val = 0;
+		double min_val = 0;
 		// double max_adc_val=0;
 		// double min_adc_val=0;
 		
@@ -330,10 +330,12 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 		    
 		    if (i==bin0){
 			max_val = medians_roi_decon.at(time_bin);
+			min_val = medians_roi_decon.at(time_bin);
 			// max_adc_val = medians.at(i);
 			// min_adc_val = medians.at(i);
 		    }else{
 			if (medians_roi_decon.at(time_bin) > max_val) max_val = medians_roi_decon.at(time_bin);
+			if (medians_roi_decon.at(time_bin) < min_val) min_val = medians_roi_decon.at(time_bin);
 			// if (medians.at(i) > max_adc_val) max_adc_val = medians.at(i);
 			// if (medians.at(i) < min_adc_val) min_adc_val = medians.at(i);
 		    }
@@ -342,6 +344,7 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
 		//std::cout << "Xin: " << upper_decon_limit1 << std::endl;
 		
 		if ( max_val > upper_decon_limit1)
+		//	if ( max_val > 0.04 && fabs(min_val) < 0.6*max_val)
 		    flag_replace[roi.front()] = true;
 		
 	    }
