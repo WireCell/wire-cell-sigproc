@@ -47,7 +47,11 @@ double filter_low_loose(double freq){
 
 
 bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& chansig,
-				   const WireCell::Waveform::realseq_t& medians)
+				   const WireCell::Waveform::realseq_t& medians,
+				   const WireCell::Waveform::compseq_t& respec,
+				   int res_offset,
+				   std::vector< std::vector<int> >& rois,
+				   float decon_limit1)
 {
     double ave_coef = 0;
     double_t ave_coef1 = 0;
@@ -109,13 +113,102 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 	// if ( abs(ch-6117)<5)
 	//     std::cout << ch << " " << scaling << " "  << std::endl;
 	//scaling = 1.0;
-	for (int i=0;i!=nbin;i++){
-	    if (fabs(signal.at(i)) > 0.001) {
-		signal.at(i) = signal.at(i) - medians.at(i) * scaling;
+
+
+	if (respec.size() > 0 && (respec.at(0).real()!=1 || respec.at(0).imag()!=0) && res_offset!=0){
+	    int nbin = signal.size();
+	    WireCell::Waveform::realseq_t signal_roi(nbin,0);
+	    for (auto roi: rois){
+		const int bin0 = std::max(roi.front()-1, 0);
+		const int binf = std::min(roi.back()+1, nbin-1);
+		const double m0 = medians[bin0];
+		const double mf = medians[binf];
+		const double roi_run = binf - bin0;
+		const double roi_rise = mf - m0;
+		for (auto bin : roi) {
+		    const double m = m0 + (bin - bin0)/roi_run*roi_rise;
+		    signal_roi.at(bin) = signal.at(bin) - m;
+		}
+	    }
+
+	    // do the deconvolution with a very loose low-frequency filter
+	    WireCell::Waveform::compseq_t signal_roi_freq = WireCell::Waveform::dft(signal_roi);
+	    WireCell::Waveform::shrink(signal_roi_freq,respec);
+	    for (size_t i=0;i!=signal_roi_freq.size();i++){
+		double freq;
+		// assuming 2 MHz digitization
+		if (i <signal_roi_freq.size()/2.){
+		    freq = i/(1.*signal_roi_freq.size())*2.;
+		}else{
+		    freq = (signal_roi_freq.size() - i)/(1.*signal_roi_freq.size())*2.;
+		}
+		std::complex<float> factor = filter_time(freq)*filter_low_loose(freq);
+		signal_roi_freq.at(i) = signal_roi_freq.at(i) * factor;
+	    }
+	    WireCell::Waveform::realseq_t signal_roi_decon = WireCell::Waveform::idft(signal_roi_freq);
+	    
+	    std::map<int, bool> flag_replace;
+	    for (auto roi: rois){
+		flag_replace[roi.front()] = false;
+	    }
+	    
+	    // judge if any ROI is good ... 
+	    for (auto roi: rois){
+         	const int bin0 = std::max(roi.front()-1, 0);
+         	const int binf = std::min(roi.back()+1, nbin-1);
+		double max_val = 0;
+		double min_val = 0;
+		for (int i=bin0; i<=binf; i++){
+         	    int time_bin = i-res_offset;
+         	    if (time_bin <0) time_bin += nbin;
+		    if (time_bin >=nbin) time_bin -= nbin;
+    		    if (i==bin0){
+			max_val = signal_roi_decon.at(time_bin);
+			min_val = signal_roi_decon.at(time_bin);
+		    }else{
+			if (signal_roi_decon.at(time_bin) > max_val) max_val = signal_roi_decon.at(time_bin);
+			if (signal_roi_decon.at(time_bin) < min_val) min_val = signal_roi_decon.at(time_bin);
+		    }
+         	}
+		
+		if ( max_val > decon_limit1)
+		    flag_replace[roi.front()] = true;
+	    }
+	    
+	    WireCell::Waveform::realseq_t  temp_medians = medians;
+
+	    for (auto roi : rois) {
+		// original code used the bins just outside the ROI
+		const int bin0 = std::max(roi.front()-1, 0);
+		const int binf = std::min(roi.back()+1, nbin-1);
+		if (flag_replace[roi.front()]){
+		    const double m0 = medians[bin0];
+		    const double mf = medians[binf];
+		    const double roi_run = binf - bin0;
+		    const double roi_rise = mf - m0;
+		    for (auto bin : roi) {
+			const double m = m0 + (bin - bin0)/roi_run*roi_rise;
+			temp_medians.at(bin) = m;
+		    }
+		}
+	    }
+	    
+	    // collection plane, directly subtracti ... 
+	    for (int i=0;i!=nbin;i++){
+		if (fabs(signal.at(i)) > 0.001) {
+		    signal.at(i) = signal.at(i) - temp_medians.at(i) * scaling;
+		}
+	    }
+	    
+	    
+	}else{
+	    // collection plane, directly subtracti ... 
+	    for (int i=0;i!=nbin;i++){
+		if (fabs(signal.at(i)) > 0.001) {
+		    signal.at(i) = signal.at(i) - medians.at(i) * scaling;
+		}
 	    }
 	}
-	// std::cout << signal.at(0) << std::endl;
-	//std::cout << it.second.at(0) << std::endl;
 	chansig[ch] = signal;
     }
 
@@ -126,7 +219,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
     return true;
 }
 
-bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b, float upper_decon_limit, float upper_adc_limit, float upper_decon_limit1)
+std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b, float upper_decon_limit, float upper_adc_limit)
 {
    
   
@@ -251,131 +344,132 @@ bool Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const 
     	}
     }
 
-    {
-        // partition waveform indices into consecutive regions with
-        // signalsBool true.
-        std::vector< std::vector<int> > rois;
-        bool inside = false;
-        for (int ind=0; ind<nbin; ++ind) {
-            if (inside) {
-                if (signalsBool[ind]) { // still inside
-                    rois.back().push_back(ind);
-                }else{
-		    inside = false;
-		}
-            }
-            else {                  // outside the Rio
-                if (signalsBool[ind]) { // just entered ROI
-                    std::vector<int> roi;
-                    roi.push_back(ind);
-                    rois.push_back(roi);
-		    inside = true;
-		}
-            }
-        }
-
-	std::map<int, bool> flag_replace;
-
-	for (auto roi: rois){
-	    flag_replace[roi.front()] = true;
+    // {
+    // partition waveform indices into consecutive regions with
+    // signalsBool true.
+    std::vector< std::vector<int> > rois;
+    bool inside = false;
+    for (int ind=0; ind<nbin; ++ind) {
+	if (inside) {
+	    if (signalsBool[ind]) { // still inside
+		rois.back().push_back(ind);
+	    }else{
+		inside = false;
+	    }
 	}
-	
-	if (respec.size() > 0 && (respec.at(0).real()!=1 || respec.at(0).imag()!=0) && res_offset!=0){
-	    // use ROI to get a new waveform
-	    WireCell::Waveform::realseq_t medians_roi(nbin,0);
-	    for (auto roi: rois){
-		const int bin0 = std::max(roi.front()-1, 0);
-		const int binf = std::min(roi.back()+1, nbin-1);
-		const double m0 = medians[bin0];
-		const double mf = medians[binf];
-		const double roi_run = binf - bin0;
-		const double roi_rise = mf - m0;
-		for (auto bin : roi) {
-		    const double m = m0 + (bin - bin0)/roi_run*roi_rise;
-		    medians_roi.at(bin) = medians.at(bin) - m;
-		}
+	else {                  // outside the Rio
+	    if (signalsBool[ind]) { // just entered ROI
+		std::vector<int> roi;
+		roi.push_back(ind);
+		rois.push_back(roi);
+		inside = true;
 	    }
-	    // do the deconvolution with a very loose low-frequency filter
-	    WireCell::Waveform::compseq_t medians_roi_freq = WireCell::Waveform::dft(medians_roi);
-	    WireCell::Waveform::shrink(medians_roi_freq,respec);
-	    for (size_t i=0;i!=medians_roi_freq.size();i++){
-		double freq;
-		// assuming 2 MHz digitization
-		if (i <medians_roi_freq.size()/2.){
-		    freq = i/(1.*medians_roi_freq.size())*2.;
-		}else{
-		    freq = (medians_roi_freq.size() - i)/(1.*medians_roi_freq.size())*2.;
-		}
-		std::complex<float> factor = filter_time(freq)*filter_low_loose(freq);
-		medians_roi_freq.at(i) = medians_roi_freq.at(i) * factor;
-	    }
-	    WireCell::Waveform::realseq_t medians_roi_decon = WireCell::Waveform::idft(medians_roi_freq);
-	    
-	    // judge if a roi is good or not ...
-	    //shift things back properly
-	    for (auto roi: rois){
-	    	const int bin0 = std::max(roi.front()-1, 0);
-	    	const int binf = std::min(roi.back()+1, nbin-1);
-	    	flag_replace[roi.front()] = false;
+	}
+    }
 
-		double max_val = 0;
-		double min_val = 0;
-		// double max_adc_val=0;
-		// double min_adc_val=0;
-		
-		for (int i=bin0; i<=binf; i++){
-	    	    int time_bin = i-res_offset;
-	    	    if (time_bin <0) time_bin += nbin;
-		    if (time_bin >=nbin) time_bin -= nbin;
-		    
-		    if (i==bin0){
-			max_val = medians_roi_decon.at(time_bin);
-			min_val = medians_roi_decon.at(time_bin);
-			// max_adc_val = medians.at(i);
-			// min_adc_val = medians.at(i);
-		    }else{
-			if (medians_roi_decon.at(time_bin) > max_val) max_val = medians_roi_decon.at(time_bin);
-			if (medians_roi_decon.at(time_bin) < min_val) min_val = medians_roi_decon.at(time_bin);
-			// if (medians.at(i) > max_adc_val) max_adc_val = medians.at(i);
-			// if (medians.at(i) < min_adc_val) min_adc_val = medians.at(i);
-		    }
-	    	}
+    
+    
+    std::map<int, bool> flag_replace;
+    for (auto roi: rois){
+    	flag_replace[roi.front()] = true;
+    }
+    
+    if (respec.size() > 0 && (respec.at(0).real()!=1 || respec.at(0).imag()!=0) && res_offset!=0){
+	for (auto roi: rois){
+	    flag_replace[roi.front()] = false;
+	}
+    }
+    
+    
+    //     // use ROI to get a new waveform
+    //     WireCell::Waveform::realseq_t medians_roi(nbin,0);
+    //     for (auto roi: rois){
+    // 	const int bin0 = std::max(roi.front()-1, 0);
+    // 	const int binf = std::min(roi.back()+1, nbin-1);
+    // 	const double m0 = medians[bin0];
+    // 	const double mf = medians[binf];
+    // 	const double roi_run = binf - bin0;
+    // 	const double roi_rise = mf - m0;
+    // 	for (auto bin : roi) {
+    // 	    const double m = m0 + (bin - bin0)/roi_run*roi_rise;
+    // 	    medians_roi.at(bin) = medians.at(bin) - m;
+    // 	}
+    //     }
+    //     // do the deconvolution with a very loose low-frequency filter
+    //     WireCell::Waveform::compseq_t medians_roi_freq = WireCell::Waveform::dft(medians_roi);
+    //     WireCell::Waveform::shrink(medians_roi_freq,respec);
+    //     for (size_t i=0;i!=medians_roi_freq.size();i++){
+    // 	double freq;
+    // 	// assuming 2 MHz digitization
+    // 	if (i <medians_roi_freq.size()/2.){
+    // 	    freq = i/(1.*medians_roi_freq.size())*2.;
+    // 	}else{
+    // 	    freq = (medians_roi_freq.size() - i)/(1.*medians_roi_freq.size())*2.;
+    // 	}
+    // 	std::complex<float> factor = filter_time(freq)*filter_low_loose(freq);
+    // 	medians_roi_freq.at(i) = medians_roi_freq.at(i) * factor;
+    //     }
+    //     WireCell::Waveform::realseq_t medians_roi_decon = WireCell::Waveform::idft(medians_roi_freq);
+    
+    //     // judge if a roi is good or not ...
+    //     //shift things back properly
+    //     for (auto roi: rois){
+    //     	const int bin0 = std::max(roi.front()-1, 0);
+    //     	const int binf = std::min(roi.back()+1, nbin-1);
+    //     	flag_replace[roi.front()] = false;
+    
+    // 	double max_val = 0;
+    // 	double min_val = 0;
+    // 	// double max_adc_val=0;
+    // 	// double min_adc_val=0;
+    
+    // 	for (int i=bin0; i<=binf; i++){
+    //     	    int time_bin = i-res_offset;
+    //     	    if (time_bin <0) time_bin += nbin;
+    // 	    if (time_bin >=nbin) time_bin -= nbin;
+    
+    // 	    if (i==bin0){
+    // 		max_val = medians_roi_decon.at(time_bin);
+    // 		min_val = medians_roi_decon.at(time_bin);
+    // 		// max_adc_val = medians.at(i);
+    // 		// min_adc_val = medians.at(i);
+    // 	    }else{
+    // 		if (medians_roi_decon.at(time_bin) > max_val) max_val = medians_roi_decon.at(time_bin);
+    // 		if (medians_roi_decon.at(time_bin) < min_val) min_val = medians_roi_decon.at(time_bin);
+    // 		// if (medians.at(i) > max_adc_val) max_adc_val = medians.at(i);
+    // 		// if (medians.at(i) < min_adc_val) min_adc_val = medians.at(i);
+    // 	    }
+    //     	}
+    
+    // 	//std::cout << "Xin: " << upper_decon_limit1 << std::endl;
+    // 	//	if ( max_val > upper_decon_limit1)
+    // 	//	if ( max_val > 0.04 && fabs(min_val) < 0.6*max_val)
+    // 	//if (max_val > 0.06 && fabs(min_val) < 0.6*max_val)
+    // 	if (max_val > 0.06)
+    // 	    flag_replace[roi.front()] = true;
+    //     }
+    // } 
 
-		//std::cout << "Xin: " << upper_decon_limit1 << std::endl;
-		
-		if ( max_val > upper_decon_limit1)
-		//	if ( max_val > 0.04 && fabs(min_val) < 0.6*max_val)
-		    flag_replace[roi.front()] = true;
-		
-	    }
-	} 
-	
-	
-	
-        // Replace medians for above regions with interpolation on values
-        // just outside each region.
-        for (auto roi : rois) {
-            // original code used the bins just outside the ROI
-            const int bin0 = std::max(roi.front()-1, 0);
-            const int binf = std::min(roi.back()+1, nbin-1);
-	    
-	    if (flag_replace[roi.front()]){
-		const double m0 = medians[bin0];
-		const double mf = medians[binf];
-		const double roi_run = binf - bin0;
-		const double roi_rise = mf - m0;
-		for (auto bin : roi) {
-		    const double m = m0 + (bin - bin0)/roi_run*roi_rise;
-		    medians.at(bin) = m;
-		}
+    // Replace medians for above regions with interpolation on values
+    // just outside each region.
+    for (auto roi : rois) {
+        // original code used the bins just outside the ROI
+        const int bin0 = std::max(roi.front()-1, 0);
+        const int binf = std::min(roi.back()+1, nbin-1);
+        if (flag_replace[roi.front()]){
+	    const double m0 = medians[bin0];
+	    const double mf = medians[binf];
+	    const double roi_run = binf - bin0;
+	    const double roi_rise = mf - m0;
+	    for (auto bin : roi) {
+		const double m = m0 + (bin - bin0)/roi_run*roi_rise;
+		medians.at(bin) = m;
 	    }
         }
     }
-
-
-   
+    
   
-    return true;
+    return rois;
 }
 
 bool Microboone::NoisyFilterAlg(WireCell::Waveform::realseq_t& sig, float min_rms, float max_rms)
@@ -746,12 +840,12 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     //}
 
     // do the signal protection and adaptive baseline
-    Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, adc_limit, decon_limit1);
+    std::vector< std::vector<int> > rois = Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, adc_limit);
     
     //std::cerr <<"\tSigprotection done: " << chansig.size() << " " << medians.size() << " " << medians.at(100) << " " << medians.at(101) << std::endl;
 
     // calculate the scaling coefficient and subtract
-    Microboone::Subtract_WScaling(chansig, medians);
+    Microboone::Subtract_WScaling(chansig, medians, respec, res_offset, rois, decon_limit1);
 
     
     // WireCell::IChannelFilter::signal_t& signal = chansig.begin()->second;
