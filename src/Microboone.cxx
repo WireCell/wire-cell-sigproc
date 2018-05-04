@@ -121,8 +121,8 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 	    for (auto roi: rois){
 		const int bin0 = std::max(roi.front()-1, 0);
 		const int binf = std::min(roi.back()+1, nbin-1);
-		const double m0 = medians[bin0];
-		const double mf = medians[binf];
+		const double m0 = signal[bin0];
+		const double mf = signal[binf];
 		const double roi_run = binf - bin0;
 		const double roi_rise = mf - m0;
 		for (auto bin : roi) {
@@ -149,7 +149,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 	    
 	    std::map<int, bool> flag_replace;
 	    for (auto roi: rois){
-		flag_replace[roi.front()] = false;
+		flag_replace[roi.front()] = true;
 	    }
 	    
 	    // judge if any ROI is good ... 
@@ -170,6 +170,9 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 			if (signal_roi_decon.at(time_bin) < min_val) min_val = signal_roi_decon.at(time_bin);
 		    }
          	}
+
+		//		if (signal.ch==1027)
+		//std::cout << roi.front() << " Xin " << max_val << " " << decon_limit1 << std::endl;
 		
 		if ( max_val > decon_limit1)
 		    flag_replace[roi.front()] = true;
@@ -182,8 +185,8 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 		const int bin0 = std::max(roi.front()-1, 0);
 		const int binf = std::min(roi.back()+1, nbin-1);
 		if (flag_replace[roi.front()]){
-		    const double m0 = medians[bin0];
-		    const double mf = medians[binf];
+		    const double m0 = temp_medians[bin0];
+		    const double mf = temp_medians[binf];
 		    const double roi_run = binf - bin0;
 		    const double roi_rise = mf - m0;
 		    for (auto bin : roi) {
