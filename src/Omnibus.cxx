@@ -2,7 +2,7 @@
 
 #include "WireCellUtil/Exceptions.h"
 #include "WireCellUtil/NamedFactory.h"
-#include "WireCellUtil/ExecMon.h"
+// #include "WireCellUtil/ExecMon.h"
 
 #include "FrameUtils.h"
 using wct::sigproc::dump_frame;
@@ -59,7 +59,7 @@ void SigProc::Omnibus::configure(const WireCell::Configuration& cfg)
 
 void SigProc::Omnibus::execute()
 {
-    ExecMon em("omnibus starts");
+    // ExecMon em("omnibus starts");
 
     IFrame::pointer frame;
     if (!(*m_input)(frame)) {
@@ -79,7 +79,7 @@ void SigProc::Omnibus::execute()
         dump_frame(frame);
     }
 
-    em("sourced frame");
+    //em("sourced frame");
 
     int count = 0;
     for (auto ff : m_filters) {
@@ -96,11 +96,11 @@ void SigProc::Omnibus::execute()
             std::cerr << "Omnibus: filter "<<tn<<" returned a null frame\n";
             THROW(RuntimeError() << errmsg{"filter returned a null frame"});
         }
-        em("filtered frame from " + tn);
+        //em("filtered frame from " + tn);
 
         frame = nextframe;
         nextframe = nullptr;
-        em("dropped input to " + tn);
+        //em("dropped input to " + tn);
 
         if (frame) {
             std::cerr << "Omnibus: got frame from "<<tn<<" with " << frame->traces()->size() << " traces\n";
@@ -114,12 +114,12 @@ void SigProc::Omnibus::execute()
             THROW(RuntimeError() << errmsg{"failed to send output frame"});
         }
     }
-    em("sunk frame");
+    //em("sunk frame");
 
     frame = nullptr;
-    em("dropped output frame");
+    //em("dropped output frame");
 
-    std::cerr << em.summary() << std::endl;
+    //std::cerr << em.summary() << std::endl;
 }
 
 // Local Variables:
