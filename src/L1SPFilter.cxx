@@ -217,6 +217,14 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
     
     auto adctraces = FrameTools::tagged_traces(in, adctag);
     auto sigtraces = FrameTools::tagged_traces(in, sigtag);
+
+    if (adctraces.empty() or sigtraces.empty() or adctraces.size() != sigtraces.size()) {
+        std::cerr << "L1SPFilter got unexpected input: "
+                  << adctraces.size() << " ADC traces and "
+                  << sigtraces.size() << " signal traces\n";
+        THROW(RuntimeError() << errmsg{"L1SPFilter: unexpected input"});
+    }
+
     m_period = in->tick();
 
     //std::cout << m_period/units::us << std::endl;
