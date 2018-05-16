@@ -1927,7 +1927,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
     // std::cout << "kaka5 " << std::endl;
     // test
     
-    if (saved_b.size() >=0){
+    //    if (saved_b.size() >=0){
+    {
       Waveform::realseq_t temp1_signal = temp_signal;
       temp_signal.clear();
       temp_signal.resize(temp1_signal.size(),0);
