@@ -111,7 +111,7 @@ local anodes = import "multi/anodes.jsonnet";
 
 
 
-
+#include "anode_loader.h"
 using namespace WireCell;
 using namespace std;
 
@@ -170,57 +170,44 @@ void plot_spec(const filter_bag_t& specs, const std::string& name)
 int main(int argc, char* argv[])
 {
     /// User code should never do this.
+    auto anode_tns = anode_loader("uboone");
     const std::string pcr_filename = "microboone-channel-responses-v1.json.bz2";
-    const std::string fr_filename = "ub-10-wnormed.json.bz2";
-    const std::string wires_filename = "microboone-celltree-wires-v2.1.json.bz2";
-    try {
-        auto& pm = PluginManager::instance();
-        pm.add("WireCellSigProc");
-        pm.add("WireCellGen");
 
-        auto iapcfg = Factory::lookup<IConfigurable>("AnodePlane");
-        auto cfg = iapcfg->default_configuration();
-        cfg["fields"] = fr_filename;
-        cfg["wires"] = wires_filename;
-        iapcfg->configure(cfg);
+    {
+        Configuration cfg;
+
+        if (argc > 1) {
+            cerr << "testing with " << argv[1] << endl;
+            WireCell::Persist::externalvars_t extvar;
+            extvar["detector"] = "uboone";
+            cfg = Persist::load(argv[1], extvar);
+            if (cfg.isArray()) {	// probably a full configuration
+                for (auto jone : cfg) {
+                    string the_type = jone["type"].asString();
+                    if (the_type == "wclsChannelNoiseDB" || the_type == "OmniChannelNoiseDB") {
+                        //cerr << "Found my config\n" << jone << "\n";
+                        cfg = jone["data"];
+                        break;
+                    }
+                }
+            }
+        }
+        else {
+            cerr << "testing with build in config text\n";
+            cfg = Persist::loads(config_text);
+        }
+        cfg["anode"] = anode_tns[0];
+
+        auto icfg = Factory::lookup_tn<IConfigurable>("OmniChannelNoiseDB");
+        auto def = icfg->default_configuration();
+        cfg = update(def, cfg);
+        icfg->configure(cfg);
     }
-    catch (Exception& e) {
-        cerr << "caught Exception: " << errstr(e) << endl;
-        return 1;
-    }
-
-
-
-    Configuration cfg;
-    if (argc > 1) {
-        cerr << "testing with " << argv[1] << endl;
-        WireCell::Persist::externalvars_t extvar;
-        extvar["detector"] = "uboone";
-        cfg = Persist::load(argv[1], extvar);
-	if (cfg.isArray()) {	// probably a full configuration
-	    for (auto jone : cfg) {
-		string the_type = jone["type"].asString();
-		if (the_type == "wclsChannelNoiseDB" || the_type == "OmniChannelNoiseDB") {
-		    //cerr << "Found my config\n" << jone << "\n";
-		    cfg = jone["data"];
-		    break;
-		}
-	    }
-	}
-    }
-    else {
-        cerr << "testing with build in config text\n";
-        cfg = Persist::loads(config_text);
-    }
-
-    SigProc::OmniChannelNoiseDB db;
-    auto def = db.default_configuration();
-    auto newcfg = update(def, cfg);
-    db.configure(cfg);
-
     
-    auto anode = Factory::find<IAnodePlane>("AnodePlane");
+    auto anode = Factory::find_tn<IAnodePlane>(anode_tns[0]);
     const int nchannels = anode->channels().size();
+
+    auto idb = Factory::find_tn<IChannelNoiseDatabase>("OmniChannelNoiseDB");
 
     gStyle->SetOptStat(0);
     TCanvas canvas("canvas","canvas",500,500);
@@ -230,7 +217,7 @@ int main(int argc, char* argv[])
     canvas.Print((pdfname+"[").c_str(),"pdf");
     canvas.SetGridx(1);
     canvas.SetGridy(1);
-    double tick = db.sample_time();
+    double tick = idb->sample_time();
     cerr << "tick = " << tick/units::us << " us.\n";
 
     std::vector<std::string> scalar_names{
@@ -241,18 +228,18 @@ int main(int argc, char* argv[])
     std::vector<TGraph*> scalars;
     for (int ind=0; ind<11; ++ind) { scalars.push_back(new TGraph); }
     for (int ch=0; ch<nchannels; ++ch) {
-        scalars[0]->SetPoint(ch, ch, db.nominal_baseline(ch));
-        scalars[1]->SetPoint(ch, ch, db.gain_correction(ch));
-        scalars[2]->SetPoint(ch, ch, db.response_offset(ch));
-        scalars[3]->SetPoint(ch, ch, db.pad_window_front(ch));
-        scalars[4]->SetPoint(ch, ch, db.pad_window_back(ch));
-        scalars[5]->SetPoint(ch, ch, db.min_rms_cut(ch));
-        scalars[6]->SetPoint(ch, ch, db.max_rms_cut(ch));
+        scalars[0]->SetPoint(ch, ch, idb->nominal_baseline(ch));
+        scalars[1]->SetPoint(ch, ch, idb->gain_correction(ch));
+        scalars[2]->SetPoint(ch, ch, idb->response_offset(ch));
+        scalars[3]->SetPoint(ch, ch, idb->pad_window_front(ch));
+        scalars[4]->SetPoint(ch, ch, idb->pad_window_back(ch));
+        scalars[5]->SetPoint(ch, ch, idb->min_rms_cut(ch));
+        scalars[6]->SetPoint(ch, ch, idb->max_rms_cut(ch));
 
-	scalars[7]->SetPoint(ch, ch,  std::abs(Waveform::sum(db.rcrc(ch))));
-	scalars[8]->SetPoint(ch, ch,  std::abs(Waveform::sum(db.config(ch))));
-	scalars[9]->SetPoint(ch, ch,  std::abs(Waveform::sum(db.noise(ch))));
-	scalars[10]->SetPoint(ch, ch, std::abs(Waveform::sum(db.response(ch))));
+	scalars[7]->SetPoint(ch, ch,  std::abs(Waveform::sum(idb->rcrc(ch))));
+	scalars[8]->SetPoint(ch, ch,  std::abs(Waveform::sum(idb->config(ch))));
+	scalars[9]->SetPoint(ch, ch,  std::abs(Waveform::sum(idb->noise(ch))));
+	scalars[10]->SetPoint(ch, ch, std::abs(Waveform::sum(idb->response(ch))));
 
     }
 

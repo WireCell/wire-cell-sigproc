@@ -21,6 +21,8 @@
 #include <algorithm>
 #include <iostream>
 
+#include "anode_loader.h"       // do not use this
+
 using namespace WireCell;
 using WireCell::units::mV;
 using WireCell::units::fC;
@@ -30,41 +32,31 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-    /// Real component code would get this info from its
-    /// configuration.
-    const std::string cr_tn = "PerChannelResponse";
-    const std::string ap_tn = "AnodePlane";
-    const std::string pcr_filename = "microboone-channel-responses-v1.json.bz2";
-    const std::string fr_filename = "ub-10-wnormed.json.bz2";
-    const std::string wires_filename = "microboone-celltree-wires-v2.1.json.bz2";
-
-
-    /// User code should never do this.
-    try {                           
-        PluginManager& pm = PluginManager::instance();
-        pm.add("WireCellSigProc");
-        pm.add("WireCellGen");
-
-        auto icrcfg = Factory::lookup<IConfigurable>(cr_tn);
-        auto cfg = icrcfg->default_configuration();
-        cfg["filename"] = pcr_filename;
-        icrcfg->configure(cfg);
-
-        auto iapcfg = Factory::lookup<IConfigurable>(ap_tn);
-        cfg = iapcfg->default_configuration();
-        cfg["fields"] = fr_filename;
-        cfg["wires"] = wires_filename;
-        iapcfg->configure(cfg);
+    std::string detector = "uboone";
+    if (argc > 1) {
+        detector = argv[1];
     }
-    catch (Exception& e) {
-        cerr << "caught Exception: " << errstr(e) << endl;
-        return 1;
+    auto anode_tns = anode_loader(detector);
+
+
+    // Real component code would get this info from its
+    // configuration.
+    const std::string cr_tn = "PerChannelResponse";
+    const std::string ap_tn = anode_tns[0];
+    const std::string pcr_filename = "microboone-channel-responses-v1.json.bz2";
+
+    
+    {                           // User code should never do this.
+        auto icfg = Factory::lookup<IConfigurable>(cr_tn);
+        auto cfg = icfg->default_configuration();
+        cfg["filename"] = pcr_filename;
+        icfg->configure(cfg);
     }
 
 
     /// Finally, we now pretend to be real component code.
-    auto cr = Factory::find<IChannelResponse>(cr_tn);
-    auto ap = Factory::find<IAnodePlane>(ap_tn);
+    auto cr = Factory::find_tn<IChannelResponse>(cr_tn);
+    auto ap = Factory::find_tn<IAnodePlane>(ap_tn);
 
     auto bins = cr->channel_response_binning();
     cerr << "PerChannelResponse with binning: " << bins.nbins() << " bins "

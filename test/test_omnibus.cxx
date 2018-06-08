@@ -64,6 +64,7 @@ int main(int argc, char* argv[])
     WireCellSst::FrameSource fs;
     auto cfg = fs.default_configuration();
     put(cfg, "filename", url);
+    cerr << "FrameSource configured with:\n" << cfg << endl;
     fs.configure(cfg);
 
     // S&C microboone sampling parameter database
