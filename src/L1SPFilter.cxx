@@ -48,7 +48,7 @@ L1SPFilter::~L1SPFilter()
 void L1SPFilter::init_resp(){
   if (lin_V==0 && lin_W==0){
    // get field response ... 
-    auto ifr = Factory::find<IFieldResponse>("FieldResponse");
+    auto ifr = Factory::find<IFieldResponse>(get<std::string>(m_cfg, "fidles", "FieldResponse"));
     Response::Schema::FieldResponse fr = ifr->field_response();
     // Make a new data set which is the average FR, make an average for V and Y planes ...
     Response::Schema::FieldResponse fravg = Response::average_1D(fr);
@@ -97,6 +97,9 @@ void L1SPFilter::init_resp(){
 WireCell::Configuration L1SPFilter::default_configuration() const
 {
     Configuration cfg;
+
+    /// Name of component providing field responses
+    cfg["fields"] = "FieldResponse";
 
     /// An array holding a waveform to use as the "smearing" filter.
     cfg["filter"] = Json::arrayValue;
