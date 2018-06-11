@@ -23,19 +23,16 @@ WireCell::Waveform::realseq_t Derivations::CalcMedian(const WireCell::IChannelFi
 {
     float max_rms = 0;
     float count_max_rms = 0;
-    //std::cout << "Xin3: " << chansig.size() << std::endl;
     const int nchannel = chansig.size();
     const int nbins = (chansig.begin()->second).size();
-    float content[nchannel][nbins];
+    //float content[nchannel][nbins];
+    std::vector<float> content(nchannel*nbins, 0.0); // 2D array [channel*nbins + bin]
+
     int start_ch = 0;
     for (auto it: chansig){
      	//const int ch = it.first;
      	WireCell::IChannelFilter::signal_t& signal = it.second;
     	std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
-
-	//if (temp.second > max_rms) {
-    	//    max_rms = temp.second;
-    	//}
 
 	if (temp.second >0){
 	    max_rms += temp.second;
@@ -43,48 +40,30 @@ WireCell::Waveform::realseq_t Derivations::CalcMedian(const WireCell::IChannelFi
 	}
 	
 	for (int i=0;i!=nbins;i++){
-	    content[start_ch][i] = signal.at(i);
+	    content[start_ch*nbins + i] = signal.at(i);
 	}
 	start_ch ++;
-    	//std::cout << ch << " " << signal.size() << std::endl;
-	//nbins = signal.size();
-	//std::cout << ch << " " << signal.size() << std::endl;
     }
-    //std::cout << max_rms << std::endl;
 	
-    if (count_max_rms >0)
+    if (count_max_rms >0) {
 	max_rms /= count_max_rms;
-      
+    }      
   
-
-    // std::cout << nbins << " " << chansig.size() << std::endl;
-    WireCell::Waveform::realseq_t medians(nbins);//(chansig.size());
-    for (int i=0;i!=nbins;i++){
+    WireCell::Waveform::realseq_t medians(nbins);
+    for (int ibin=0;ibin!=nbins;ibin++){
 	WireCell::Waveform::realseq_t temp;
-	for (int j=0;j!=nchannel;j++){
-	    if (fabs(content[j][i]) < 5 * max_rms && 
-	 	fabs(content[j][i]) > 0.001){
-	 	temp.push_back(content[j][i]);
+	for (int ich=0; ich!=nchannel; ich++) {
+            const float cont = content.at(ich*nbins + ibin);
+	    if (fabs(cont) < 5 * max_rms && 
+	 	fabs(cont) > 0.001){
+	 	temp.push_back(cont);
 	    } 
 	}
-// for (auto it: chansig){
-	//     WireCell::IChannelFilter::signal_t& signal = it.second;
-	//     // std::cout << signal.at(i) << " " << max_rms << std::endl;
-	//     if (fabs(signal.at(i)) < 5 * max_rms && 
-	// 	fabs(signal.at(i)) > 0.001){
-	// 	temp.push_back(signal.at(i));
-	//     } 
-	//     // if (i==10){
-	//     // 	std::cout << it.first << " " << signal.at(i) << std::endl;
-	//     // }
-
-	// }
-	// if (i==10)
-	//   std::cout << temp.size() << std::endl;
 	if (temp.size()>0){
-	    medians.at(i)=WireCell::Waveform::median_binned(temp);
-	}else{
-	    medians.at(i)=0;
+	    medians.at(ibin)=WireCell::Waveform::median_binned(temp);
+	}
+        else{
+	    medians.at(ibin)=0;
 	}
     }
 

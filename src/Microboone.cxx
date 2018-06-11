@@ -1144,7 +1144,7 @@ WireCell::Waveform::ChannelMaskMap Microboone::ADCBitShift::apply(int ch, signal
 
 	// do the correction ...
 	const int nl = signal.size();
-	int x[nl], x_orig[nl];
+        std::vector<int> x(nl,0), x_orig(nl,0);
 	for (int i=0;i!=nl;i++){
 	    x_orig[i] = signal.at(i);
 	    x[i] = signal.at(i);
