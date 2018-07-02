@@ -24,14 +24,15 @@ using namespace WireCell;
 
 using namespace WireCell::SigProc;
 
-OmnibusSigProc::OmnibusSigProc(const std::string anode_tn,
+OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
+                               const std::string& per_chan_resp_tn,
+                               const std::string& field_response,
                                double fine_time_offset,
                                double coarse_time_offset,
                                double gain, 
                                double shaping_time,
                                double inter_gain , 
                                double ADC_mV,
-                               bool flag_ch_corr,
                                float th_factor_ind,
                                float th_factor_col,
                                int pad,
@@ -54,6 +55,8 @@ OmnibusSigProc::OmnibusSigProc(const std::string anode_tn,
                                double r_th_percent ,
                                int charge_ch_offset  )
   : m_anode_tn (anode_tn)
+  , m_per_chan_resp(per_chan_resp_tn)
+  , m_field_response(field_response)
   , m_fine_time_offset(fine_time_offset)
   , m_coarse_time_offset(coarse_time_offset)
   , m_period(0)
@@ -62,7 +65,6 @@ OmnibusSigProc::OmnibusSigProc(const std::string anode_tn,
   , m_shaping_time(shaping_time)
   , m_inter_gain(inter_gain)
   , m_ADC_mV(ADC_mV)
-  , m_flag_ch_corr(flag_ch_corr)
   , m_th_factor_ind(th_factor_ind)
   , m_th_factor_col(th_factor_col)
   , m_pad(pad)
@@ -109,7 +111,8 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_inter_gain = get(config,"postgain", m_inter_gain);
   m_ADC_mV = get(config,"ADC_mV", m_ADC_mV);
 
-  m_flag_ch_corr = get(config,"ch_corr",m_flag_ch_corr);
+  m_per_chan_resp = get(config, "per_chan_resp", m_per_chan_resp);
+  m_field_response = get(config, "field_response", m_field_response);
 
   m_th_factor_ind = get(config,"troi_ind_th_factor",m_th_factor_ind);
   m_th_factor_col = get(config,"troi_col_th_factor",m_th_factor_col);
@@ -175,7 +178,8 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["inter_gain"] = m_inter_gain;
   cfg["ADC_mV"] = m_ADC_mV;
 
-  cfg["ch_corr"] = m_flag_ch_corr;
+  cfg["per_chan_resp"] = m_per_chan_resp;
+  cfg["field_response"] = m_field_response;
 
   cfg["troi_ind_th_factor"] = m_th_factor_ind;
   cfg["troi_col_th_factor"] = m_th_factor_col;
@@ -346,7 +350,7 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
     std::cerr <<"OmnibusSigProc: nticks=" << m_nticks << " tbinmin="<<tbinmin << " tbinmax="<<tbinmax<<std::endl;
   }
 
-  auto ifr = Factory::find<IFieldResponse>("FieldResponse");
+  auto ifr = Factory::find_tn<IFieldResponse>(m_field_response);
   // Get full, "fine-grained" field responses defined at impact
   // positions.
   Response::Schema::FieldResponse fr = ifr->field_response();
@@ -499,9 +503,8 @@ void OmnibusSigProc::decon_2D_init(int plane){
 
   
   // now apply the ch-by-ch response ...
-  //  bool flag_ch_corr = false;
-  if (m_flag_ch_corr){
-    auto cr = Factory::find<IChannelResponse>("PerChannelResponse");
+  if (! m_per_chan_resp.empty()) {
+    auto cr = Factory::find_tn<IChannelResponse>(m_per_chan_resp);
     auto cr_bins = cr->channel_response_binning();
     assert(cr_bins.binsize()==m_period);
     //starndard electronics response ... 

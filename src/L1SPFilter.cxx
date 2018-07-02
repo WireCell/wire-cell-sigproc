@@ -48,7 +48,7 @@ L1SPFilter::~L1SPFilter()
 void L1SPFilter::init_resp(){
   if (lin_V==0 && lin_W==0){
    // get field response ... 
-    auto ifr = Factory::find<IFieldResponse>(get<std::string>(m_cfg, "fidles", "FieldResponse"));
+    auto ifr = Factory::find_tn<IFieldResponse>(get<std::string>(m_cfg, "fields", "FieldResponse"));
     Response::Schema::FieldResponse fr = ifr->field_response();
     // Make a new data set which is the average FR, make an average for V and Y planes ...
     Response::Schema::FieldResponse fravg = Response::average_1D(fr);

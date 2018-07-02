@@ -11,14 +11,15 @@ namespace WireCell {
   namespace SigProc {
     class OmnibusSigProc : public WireCell::IFrameFilter, public WireCell::IConfigurable {
     public:
-      OmnibusSigProc(const std::string anode_tn = "AnodePlane",
+      OmnibusSigProc(const std::string& anode_tn = "AnodePlane",
+                     const std::string& per_chan_resp_tn = "PerChannelResponse",
+                     const std::string& field_response = "FieldResponse",
                      double fine_time_offset = 0.0 * units::microsecond,
                      double coarse_time_offset = -8.0 * units::microsecond,
                      double gain = 14.0 * units::mV/units::fC,
                      double shaping_time = 2.0 * units::microsecond,
                      double inter_gain = 1.2,
                      double ADC_mV = 4096/(2000.*units::mV),
-                     bool flag_ch_corr = true,
                      float th_factor_ind = 3,
                      float th_factor_col = 5,
                      int pad = 5,
@@ -73,6 +74,8 @@ namespace WireCell {
       // Anode plane for geometry
       std::string m_anode_tn;
       IAnodePlane::pointer m_anode;
+      std::string m_per_chan_resp;
+      std::string m_field_response;
       
       // Overall time offset
       double m_fine_time_offset; // must be positive, between 0-0.5 us, shift the response function to earlier time --> shift the deconvoluted signal to a later time
@@ -87,7 +90,6 @@ namespace WireCell {
       // gain, shaping time, other applification factors
       double m_gain, m_shaping_time;
       double m_inter_gain, m_ADC_mV;
-      bool m_flag_ch_corr;
 
       // some parameters for ROI creating
       float m_th_factor_ind;
