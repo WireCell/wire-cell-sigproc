@@ -1641,11 +1641,11 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
     int npeaks = s.GetNPeaks();
     double *peak_pos = s.GetPositionX();
     double  *peak_height = s.GetPositionY();
-    const int temp_length = max_npeaks + 5;
-    std::vector<int> order_peak_pos(temp_length, 0);
+    //const int temp_length = max_npeaks + 5;
+    std::vector<int> order_peak_pos;
     int npeaks_threshold = 0;
     for (int j=0;j!=npeaks;j++){
-      order_peak_pos[j] = *(peak_pos+j) + start_bin;
+      order_peak_pos.push_back(*(peak_pos+j) + start_bin);
       if (*(peak_height+j)>th_peak*rms){
    	npeaks_threshold ++;
       }
