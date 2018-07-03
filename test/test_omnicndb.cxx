@@ -22,9 +22,9 @@ const std::string config_text = R"JSONNET(
 // example OmniChannelNoiseDB configuration.
 
 local wc = import "wirecell.jsonnet";
-local anodes = import "multi/anodes.jsonnet"; 
+
 {
-    anode: wc.tn(anodes.nominal),  
+    anode: "AnodePlane:0",  
     tick: 0.5*wc.us,
     nsamples: 9600,
 

@@ -52,6 +52,7 @@ WireCell::Configuration OmniChannelNoiseDB::default_configuration() const
     // applied, except by accident or contrivance.
     cfg["nsamples"] = m_nsamples;
     cfg["anode"] = "AnodePlane";
+    cfg["field_response"] = "FieldResponse";
 
     /// These must be provided
     cfg["groups"] = Json::arrayValue;
@@ -294,11 +295,7 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_response(Json::Val
         if (it != m_response_cache.end()) {
             return it->second;
         }
-        // fixme: move to this.  See bug #4 in iface
-        //auto wp = m_anode->face(wpid)->plane(wpid);
-        // for now:   
-        auto wp = m_anode->face(wpid.face())->plane(wpid.index());
-        auto const& fr = wp->pir()->field_response();
+        auto const& fr = m_fr->field_response();
         auto fravg = Response::wire_region_average(fr);
         auto const& pr = fravg.planes[wpid.index()];
 
@@ -497,6 +494,8 @@ void OmniChannelNoiseDB::configure(const WireCell::Configuration& cfg)
     m_nsamples = get(cfg, "nsamples", m_nsamples);
     std::string anode_tn = get<std::string>(cfg, "anode", "AnodePlane");
     m_anode = Factory::find_tn<IAnodePlane>(anode_tn);
+    std::string fr_tn = get<std::string>(cfg, "field_response", "FieldResponse");
+    m_fr = Factory::find_tn<IFieldResponse>(fr_tn);
 
     // WARNING: this assumes channel numbers count from 0 with no gaps!
     int nchans = m_anode->channels().size();

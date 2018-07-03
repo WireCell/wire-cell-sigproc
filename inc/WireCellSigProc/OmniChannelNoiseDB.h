@@ -4,6 +4,7 @@
 #include "WireCellIface/IChannelNoiseDatabase.h"
 #include "WireCellIface/IConfigurable.h"
 #include "WireCellIface/IAnodePlane.h"
+#include "WireCellIface/IFieldResponse.h"
 #include "WireCellIface/WirePlaneId.h"
 
 #include "WireCellUtil/Waveform.h"
@@ -90,6 +91,7 @@ namespace WireCell {
             double m_tick;
             int m_nsamples;
             IAnodePlane::pointer m_anode;
+            IFieldResponse::pointer m_fr;
 
 	    typedef std::shared_ptr<filter_t> shared_filter_t;
 	    typedef std::vector<shared_filter_t> filter_vector_t;

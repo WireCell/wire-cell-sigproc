@@ -33,7 +33,7 @@ namespace WireCell {
 	    typedef std::vector< std::vector<int> > grouped_channels_t;
 
 	    /// Create an OmnibusNoiseFilter.
-	    OmnibusNoiseFilter();
+	    OmnibusNoiseFilter(std::string intag="orig", std::string outtag="raw");
 	    virtual ~OmnibusNoiseFilter();
 
 	    /// IFrameFilter interface.

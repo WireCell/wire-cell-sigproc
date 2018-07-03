@@ -21,9 +21,9 @@ using namespace WireCell;
 
 using namespace WireCell::SigProc;
 
-OmnibusNoiseFilter::OmnibusNoiseFilter()
-    : m_intag("orig")
-    , m_outtag("raw")
+OmnibusNoiseFilter::OmnibusNoiseFilter(std::string intag, std::string outtag)
+    : m_intag(intag)            // orig
+    , m_outtag(outtag)          // raw
 {
 }
 OmnibusNoiseFilter::~OmnibusNoiseFilter()
