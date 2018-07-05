@@ -22,7 +22,8 @@ using namespace WireCell;
 using namespace WireCell::SigProc;
 
 OmnibusNoiseFilter::OmnibusNoiseFilter(std::string intag, std::string outtag)
-    : m_intag(intag)            // orig
+    : m_nsamples(0)
+    , m_intag(intag)            // orig
     , m_outtag(outtag)          // raw
 {
 }
@@ -33,6 +34,8 @@ OmnibusNoiseFilter::~OmnibusNoiseFilter()
 void OmnibusNoiseFilter::configure(const WireCell::Configuration& cfg)
 {
     //std::cerr << "OmnibusNoiseFilter: configuring with:\n" << cfg << std::endl;
+    m_nsamples = (size_t)get(cfg, "nsamples", (int)m_nsamples);
+
     auto jmm = cfg["maskmap"];
     for (auto name : jmm.getMemberNames()) {
         m_maskmap[name] = jmm[name].asString();
@@ -71,6 +74,7 @@ void OmnibusNoiseFilter::configure(const WireCell::Configuration& cfg)
 WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
 {
     Configuration cfg;
+    cfg["nsamples"] = m_nsamples;
     cfg["maskmap"]["chirp"] = "bad";
     cfg["maskmap"]["noisy"] = "bad";
     
@@ -105,9 +109,16 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
     }
     // em("got tagged traces");
 
-    // Warning: this implicitly assumes a dense frame (ie, all tbin=0 and all waveforms same size).
-    const size_t nsamples = traces.at(0)->charge().size();
-
+    if (m_nsamples) {
+        std::cerr << "OmnibusNoiseFilter: will resize working waveforms from "
+                  << traces.at(0)->charge().size()
+                  << " to " << m_nsamples;
+    }
+    else {
+        // Warning: this implicitly assumes a dense frame (ie, all tbin=0 and all waveforms same size).
+        // It also won't stop triggering a warning inside OneChannelNoise if there is a mismatch.
+        m_nsamples = traces.at(0)->charge().size();
+    }
 
     // For now, just collect any and all masks and interpret them as "bad".
     Waveform::ChannelMaskMap input_cmm = inframe->masks();
@@ -119,7 +130,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
     {
 	Waveform::BinRange bad_bins;
 	bad_bins.first = 0;
-	bad_bins.second = (int) nsamples;
+	bad_bins.second = (int) m_nsamples;
 	Waveform::ChannelMasks temp;
 	for (size_t i = 0; i< bad_channels.size();i++){
 	    temp[bad_channels.at(i)].push_back(bad_bins);
@@ -132,13 +143,15 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 
     // em("Starting loop on traces");
 
+    int nchanged_samples = 0;
+
     // Collect our working area indexed by channel.
     std::unordered_map<int, SimpleTrace*> bychan;
     for (auto trace : traces) {
     	int ch = trace->channel();
 
 	// make working area directly in simple trace to avoid memory fragmentation
-	SimpleTrace* signal = new SimpleTrace(ch, 0, nsamples);
+	SimpleTrace* signal = new SimpleTrace(ch, 0, m_nsamples);
 	bychan[ch] = signal;
 
 	// if good
@@ -147,17 +160,12 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 	    auto const& charge = trace->charge();
 	    const size_t ncharges = charge.size();	    
 
-	    { // sanity check.  This "should" never print.
-		if (ncharges != nsamples) { // this block "should" never be called
-		    std::cerr << "OmnibusNoiseFilter: WARNING: found different length waveforms: "
-			      << nsamples << " != " << ncharges << " in channel " << ch
-			      << ". Will pad/truncate to the first one."
-			      << std::endl;
-		}
-	    }
+	    signal->charge().resize(m_nsamples, 0.0);
 
-	    // Do assignment with care not to overflow input nor output
-	    signal->charge().assign(charge.begin(), charge.begin() + std::min(nsamples, ncharges));
+            if (ncharges != m_nsamples) {
+                nchanged_samples += std::abs((int)m_nsamples - (int)ncharges);
+            }
+
 	}
 
         int filt_count=0;
@@ -171,6 +179,10 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
         }
     }
     traces.clear();		// done with our copy of vector of shared pointers
+
+    if (nchanged_samples) {
+        std::cerr << "OmnibusNoiseFilter: warning, truncated or extended " << nchanged_samples << " samples\n";
+    }
 
     // em("starting coherent loop");
 

@@ -62,6 +62,7 @@ namespace WireCell {
 	    }
 
 	private:
+            size_t m_nsamples;
             std::string m_intag, m_outtag;
 	    std::vector<WireCell::IChannelFilter::pointer> m_perchan, m_grouped, m_perchan_status;
 	    WireCell::IChannelNoiseDatabase::pointer m_noisedb;
