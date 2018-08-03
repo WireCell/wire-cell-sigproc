@@ -112,7 +112,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
     if (m_nsamples) {
         std::cerr << "OmnibusNoiseFilter: will resize working waveforms from "
                   << traces.at(0)->charge().size()
-                  << " to " << m_nsamples;
+                  << " to " << m_nsamples << std::endl;
     }
     else {
         // Warning: this implicitly assumes a dense frame (ie, all tbin=0 and all waveforms same size).
@@ -160,8 +160,9 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 	    auto const& charge = trace->charge();
 	    const size_t ncharges = charge.size();	    
 
+            signal->charge().assign(charge.begin(), charge.begin() + std::min(m_nsamples, ncharges));
 	    signal->charge().resize(m_nsamples, 0.0);
-
+            
             if (ncharges != m_nsamples) {
                 nchanged_samples += std::abs((int)m_nsamples - (int)ncharges);
             }

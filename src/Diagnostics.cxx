@@ -125,6 +125,7 @@ bool Diagnostics::Chirp::operator()(const WireCell::Waveform::realseq_t& sig, in
 	  || ((numLowRMS < 2.0/maxNormalNeighborFrac)
 	      && (lastLowRMSBin-firstLowRMSBin == numLowRMS*windowSize)))
 	) {
+
 	firstLowRMSBin = std::max(1, firstLowRMSBin - windowSize);
 	lastLowRMSBin = std::min(numBins, lastLowRMSBin + 2*windowSize);
       

@@ -897,14 +897,10 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
 
     // get signal with nominal baseline correction
     float baseline = m_noisedb->nominal_baseline(ch);
-    WireCell::Waveform::increase(signal, baseline *(-1));
 
     // get signal with nominal gain correction 
     float gc = m_noisedb->gain_correction(ch);
-
-    // std::cerr << "OneChannelNoise: ch="<<ch<<" set baseline="<<baseline<<", gc="<<gc
-    //           << " sum=" << Waveform::sum(signal)
-    //           << std::endl;;
+    WireCell::Waveform::increase(signal, baseline *(-1));
 
     auto signal_gc = signal; // copy, need to keep original signal
     
@@ -1028,17 +1024,19 @@ WireCell::Waveform::ChannelMaskMap Microboone::OneChannelNoise::apply(int ch, si
     //
     const float min_rms = m_noisedb->min_rms_cut(ch);
     const float max_rms = m_noisedb->max_rms_cut(ch);
-
-    // std::cerr << "OneChannelNoise: "<<ch<< " RMS:["<<min_rms<<","<<max_rms<<"] sigsum="<<Waveform::sum(signal)<<"\n";
+    
+    //std::cerr << "OneChannelNoise: "<<ch<< " RMS:["<<min_rms<<","<<max_rms<<"] sigsum="<<Waveform::sum(signal)<<"\n";
 
     bool is_noisy = Microboone::NoisyFilterAlg(signal,min_rms,max_rms);
     Microboone::RemoveFilterFlags(signal);
 
-
-    // std::cerr << "OneChannelNoise: "<<ch<<" is_noisy="<<is_noisy<<", is_chirp="<<is_chirp<<", is_partial="<<is_partial<<", baseline="<<baseline<<std::endl;
-
-
     if (is_noisy) {
+        // std::cerr << "OneChannelNoise: "<<ch
+        //           <<" is_noisy="<<is_noisy
+        //           <<", is_chirp="<<is_chirp
+        //           <<", is_partial="<<is_partial
+        //           <<", baseline="<<baseline<<std::endl;
+
 	chirped_bins.first = 0;
 	chirped_bins.second = signal.size();
 	ret["noisy"][ch].push_back(chirped_bins);
