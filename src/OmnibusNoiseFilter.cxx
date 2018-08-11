@@ -74,7 +74,7 @@ void OmnibusNoiseFilter::configure(const WireCell::Configuration& cfg)
 WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
 {
     Configuration cfg;
-    cfg["nsamples"] = m_nsamples;
+    cfg["nsamples"] = (int)m_nsamples;
     cfg["maskmap"]["chirp"] = "bad";
     cfg["maskmap"]["noisy"] = "bad";
     
