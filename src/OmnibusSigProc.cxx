@@ -504,6 +504,7 @@ void OmnibusSigProc::decon_2D_init(int plane){
   
   // now apply the ch-by-ch response ...
   if (! m_per_chan_resp.empty()) {
+    std::cerr<<"OmnibusSigProc: CH-BY-CH ELECTRONICS RESPONSE CORRECTION\n";
     auto cr = Factory::find_tn<IChannelResponse>(m_per_chan_resp);
     auto cr_bins = cr->channel_response_binning();
     assert(cr_bins.binsize()==m_period);
