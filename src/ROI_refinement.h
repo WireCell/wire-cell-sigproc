@@ -88,3 +88,7 @@ namespace WireCell{
   }
 }
 #endif
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:

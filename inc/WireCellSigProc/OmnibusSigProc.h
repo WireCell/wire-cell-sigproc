@@ -49,7 +49,7 @@ namespace WireCell {
       virtual WireCell::Configuration default_configuration() const;
       
     private:
-      
+
       // convert data into Eigen Matrix
       void load_data(const input_pointer& in, int plane);
 
@@ -69,6 +69,21 @@ namespace WireCell {
       void init_overall_response(IFrame::pointer frame);
 
       void restore_baseline(WireCell::Array::array_xxf& arr);
+
+      
+      // This little struct is used to map between WCT channel idents
+      // and internal OmnibusSigProc wire/channel numbers.  See
+      // m_channel_map and m_channel_range below.
+      struct OspChan {
+        int channel;            // between 0 and nwire_u+nwire_v+nwire_w-1
+        int wire;               // between 0 and nwire_{u,v,w,}-1 depending on plane
+        int plane;              // 0,1,2
+        int ident;              // wct ident, opaque non-negative number.  set in wires geom file
+        OspChan(int c=-1, int w=-1, int p=-1, int id=-1) : channel(c), wire(w), plane(p), ident(id) {}
+      };
+
+      // find if neighbor channels hare masked.
+      bool masked_neighbors(const std::string& cmname, OspChan& ochan, int nnn);
       
       
       // Anode plane for geometry
@@ -119,14 +134,36 @@ namespace WireCell {
       // channel offset
       int m_charge_ch_offset;
       
-      // Some global data useful
-      int nwire_u, nwire_v, nwire_w;
-      Waveform::ChannelMaskMap cmm;
-      std::map<int,int> ch_plane_map;
+      // CAUTION: this class was originally written for microboone
+      // which is degenerate in how wires and channels may be
+      // numbered.  DUNE APAs do not have a one-to-one nor simple
+      // mapping between a sequenctial "channel number", "wire number"
+      // and "channel ident".  In OSP and the related ROI code,
+      // wherever you see a "wire" number, it counts the segment-0
+      // wire segment in order of increasing pitch and assuming one
+      // logical plane so it will wrap around for two-faced APAs like
+      // in DUNE.  An OSP "channel" number goes from 0 to
+      // nwire_u+nwire_v+nwire_w-1 over the entire APA.  A WCT "ident"
+      // number is totally opaque, you can't assume anything about it
+      // except that it is nonnegative.  
+      int m_nwires[3];
 
-      // data after decon steps before final ifft ...
-      Array::array_xxf m_r_data; // evil
-      Array::array_xxc m_c_data; // evil
+      // Need to go from WCT channel ident to {OSP channel, wire and plane}
+      std::map<int,OspChan> m_channel_map;
+
+      // Need to go from OSP plane to iterable {OSP channel an wire and WCT ident}
+      std::vector<OspChan> m_channel_range[3];
+
+      // This is the input channel mask map but converted to OSP
+      // channel number indices.  See above.  This is NOT a direct
+      // copy from the IFrame.  It's reindexed by osp channel, not WCT
+      // channel ident!
+      Waveform::ChannelMaskMap m_cmm; 
+
+      // Per-plane temporary working arrays.  Each column is one tick,
+      // each row is indexec by an "OSP wire" number
+      Array::array_xxf m_r_data;
+      Array::array_xxc m_c_data;
       
       //average overall responses
       std::vector<Waveform::realseq_t> overall_resp[3];

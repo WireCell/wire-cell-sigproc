@@ -142,26 +142,44 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   // this throws if not found
   m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
 
-  // give the configuration, trying to understand how many wires are there for each plane
-  nwire_u = 0;
-  nwire_v = 0;
-  nwire_w = 0;
-  for (int i=0;i!=int(m_anode->channels().size());i++){
-    int ch = m_anode->channels().at(i);
-    auto wpid = m_anode->resolve(ch);      
-    int iplane = wpid.index();
-    ch_plane_map[ch] = iplane;
-
-    if (iplane==0){
-      nwire_u ++;
-    }else if (iplane==1){
-      nwire_v ++;
-    }else if (iplane==2){
-      nwire_w ++;
+  // Build up the channel map.  The OSP channel must run contiguously
+  // first up the U, then V, then W "wires".  Ie, face-major order,
+  // but we have plane-major order so make a temporary collection.
+  IChannel::vector plane_channels[3];
+  for (auto face : m_anode->faces()) {
+    if (!face) { // A null face means one sided AnodePlane.  
+      continue;  // Can be "back" or "front" face.
     }
-    
+    for (auto plane: face->planes()) {
+      int plane_index = plane->planeid().index();
+      auto& pchans = plane_channels[plane_index];
+      // These IChannel vectors are ordered in same order as wire-in-plane.
+      const auto& ichans = plane->channels();
+      // Append
+      pchans.reserve(pchans.size() + ichans.size());
+      pchans.insert(pchans.end(), ichans.begin(), ichans.end());
+      std::cerr << "a" << m_anode->ident() << " "
+                << "f" << face->ident() << " "
+                << "p" << plane->ident() << " "
+                << "c" << ichans.front()->ident() << " -> c" << ichans.back()->ident() << ", "
+                << "i" << ichans.front()->index() << " -> i" << ichans.back()->index() << "\n";
+    }
   }
-  
+
+  int osp_channel_number = 0;
+  for (int iplane = 0; iplane < 3; ++iplane) {
+    m_nwires[iplane] = plane_channels[iplane].size();
+    int osp_wire_number = 0;
+    for (auto ichan : plane_channels[iplane]) {
+      const int wct_chan_ident = ichan->ident();
+      OspChan och(osp_channel_number, osp_wire_number, iplane, wct_chan_ident);
+      m_channel_map[wct_chan_ident] = och; // we could save some space by storing
+      m_channel_range[iplane].push_back(och);// wct ident here instead of a whole och.
+      ++osp_wire_number;
+      ++osp_channel_number;
+    }
+  }
+
 }
 
 WireCell::Configuration OmnibusSigProc::default_configuration() const
@@ -210,36 +228,18 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
 }
 
 void OmnibusSigProc::load_data(const input_pointer& in, int plane){
-  if (plane ==0){
-    m_r_data = Array::array_xxf::Zero(nwire_u,m_nticks);
-  }else if (plane==1){
-    m_r_data = Array::array_xxf::Zero(nwire_v,m_nticks);
-  }else if (plane==2){
-    m_r_data = Array::array_xxf::Zero(nwire_w,m_nticks);
-  }
-  
+  m_r_data = Array::array_xxf::Zero(m_nwires[plane],m_nticks);
+
   auto traces = in->traces();
-  int offset=0;
-  if (plane==0){
-    offset = 0;
-  }else if (plane==1){
-    offset = nwire_u;
-  }else if (plane==2){
-    offset = nwire_u+nwire_v;
-  }
-  else {
-    THROW(RuntimeError() << errmsg{String::format("Unknown plane index: %d", plane)});
-  }
 
-
-  auto& bad = cmm["bad"];
+  auto& bad = m_cmm["bad"];
   int nbad = 0;
 
-  //fixme, this mapping needs to be fixed ... 
   for (auto trace : *traces.get()) {
-    int ch = trace->channel();
-    if (plane != ch_plane_map[ch]) {
-      continue;
+    int wct_channel_ident = trace->channel();
+    OspChan och = m_channel_map[wct_channel_ident];
+    if (plane != och.plane) {
+      continue;         // we'll catch it in another call to load_data
     }
 
     // fixme: this code uses tbin() but other places in this file will barf if tbin!=0.
@@ -247,11 +247,11 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
     auto const& charges = trace->charge();
     const int ntbins = std::min((int)charges.size(), m_nticks);
     for (int qind = 0; qind < ntbins; ++qind) {
-      m_r_data(ch - offset, tbin + qind) = charges[qind];
+      m_r_data(och.wire, tbin + qind) = charges[qind];
     }
 
     //ensure dead channels are indeed dead ...
-    auto const& badch = bad.find(ch);
+    auto const& badch = bad.find(och.channel);
     if (badch == bad.end()) {
       continue;
     }
@@ -260,74 +260,56 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
     for (auto const& br : binranges) {
       ++nbad;
       for (int i = br.first; i != br.second; ++i) {
-        m_r_data(ch-offset, i) = 0;
+        m_r_data(och.wire, i) = 0;
       }
       //std::cerr << plane << " " << ch << ": [" << br.first << "," << br.second << "]\n";
     }
-      // if (cmm["bad"].find(ch)!=cmm["bad"].end()){
-      //   for (size_t ind = 0; ind < cmm["bad"][ch].size();++ind){
-      //     for (int i=cmm["bad"][ch][ind].first; i!=cmm["bad"][ch][ind].second; i++){
-      //       r_data(ch-offset,i) = 0;
-      //     }
-      //   }
-      // }
-      
+
   }
   std::cerr << "OmnibusSigProc: plane index: " << plane << " configured with " << nbad << " bad regions\n";
-  
-  // std::cout << m_r_data(14,2000) << " " << m_r_data(1000,2000) << " " << m_r_data(1000,3000) << std::endl;
   
 }
 
 
+// Note, this MUST fill itraces in OSP channel/wire order
 void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane)
 {
-
-  int offset1=0;
-  int nwire = 0;
-  if (plane==0){
-    offset1 = 0;
-    nwire = nwire_u;
-  }else if (plane==1){
-    offset1 = nwire_u;
-    nwire = nwire_v;
-  }else if (plane==2){
-    offset1 = nwire_u + nwire_v;
-    nwire = nwire_w;
-  }
-  
-  
   double qtot = 0.0;
-  for (int ich=0;ich!=nwire;ich++){
-    ITrace::ChargeSequence charge(m_nticks);
-    for (int j=0;j!=m_nticks;j++){
-      if ( m_r_data(ich,j)>0){
-	charge.at(j) = m_r_data(ich,j);
-      }else{
-	charge.at(j) = 0;
-      }
-    }
-    // correct the dead channels ... 
-    if (cmm["bad"].find(ich+offset1)!=cmm["bad"].end()){
-      for (size_t k=0;k!=cmm["bad"][ich+offset1].size();k++){
-	for (int j=cmm["bad"][ich+offset1].at(k).first; j!=cmm["bad"][ich+offset1].at(k).second;j++){
-	  charge.at(j)=0;
-	}
-      }
-    }
+  for (auto och : m_channel_range[plane]) { // ordered by osp channel
     
+    ITrace::ChargeSequence charge(m_nticks);
+    for (int itick=0;itick!=m_nticks;itick++){
+      const float q = m_r_data(och.wire, itick);
+      charge.at(itick) = q > 0.0 ? q : 0.0;
+    }
+
+    // zero the bad channels ... 
+    {
+      auto& bad = m_cmm["bad"];
+      auto badit = bad.find(och.channel);
+      if (badit != bad.end()) {
+        for (auto bad : badit->second) {
+          for (int itick=bad.first; itick < bad.second; ++itick) {
+            charge.at(itick) = 0.0;
+          }
+        }
+      }
+    }
+
     // debug
     for (int j=0;j!=m_nticks;j++){
       qtot += charge.at(j);
     }
 
-    SimpleTrace *trace = new SimpleTrace(ich + offset1, 0, charge);
+    SimpleTrace *trace = new SimpleTrace(och.ident, 0, charge);
     const size_t trace_index = itraces.size();
     indices.push_back(trace_index);
     itraces.push_back(ITrace::pointer(trace));
   }
-  std::cerr << "OmnibusSigProc: plane index: " << plane << " Qtot=" << qtot
-            << " traces=" << indices.size() << ":[" << indices.front() << "," << indices.back() << "]\n";
+  const int nadded = indices.back() - indices.front() + 1;
+  std::cerr << "OmnibusSigProc::save_data plane index: " << plane << " Qtot=" << qtot
+            << " added " << nadded << " traces to total " << indices.size()
+            << " indices:[" << indices.front() << "," << indices.back() << "]\n";
   
 }
 
@@ -389,8 +371,8 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
 
   
   // Convert each average FR to a 2D array
-  for (int ind=0; ind<3; ++ind) {
-    auto arr = Response::as_array(fravg.planes[ind]);
+  for (int iplane=0; iplane<3; ++iplane) {
+    auto arr = Response::as_array(fravg.planes[iplane]);
 
     // do FFT for response ... 
     Array::array_xxc c_data = Array::dft_rc(arr,0);
@@ -447,11 +429,11 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
 	}
       }
       
-      overall_resp[ind].push_back(wfs);
+      overall_resp[iplane].push_back(wfs);
       //wfs.clear();
     } // loop inside wire ...
     // calculated the wire shift ...     
-    m_wire_shift[ind] = (int(overall_resp[ind].size())-1)/2;
+    m_wire_shift[iplane] = (int(overall_resp[iplane].size())-1)/2;
 
     //    std::cout << /m_period << std::endl;
   }//  loop over plane
@@ -520,39 +502,19 @@ void OmnibusSigProc::decon_2D_init(int plane){
     //// microboone-channel-responses-v1.json.bz2
     WireCell::Binning tbins(m_nticks, cr_bins.min(), cr_bins.min() + m_nticks*m_period);
     Response::ColdElec ce(m_gain, m_shaping_time);
-    // ...
     
-    auto ewave = ce.generate(tbins);
-    //ch-by-ch electronics response
-    int offset = 0;
-    int nwire = 0;
-    if (plane==0){
-      offset = 0;
-      nwire = nwire_u;
-    }else if (plane==1){
-      offset = nwire_u;
-      nwire = nwire_v;
-    }else{
-      offset = nwire_u + nwire_v;
-      nwire = nwire_w;
-    }
-    std::vector<Waveform::realseq_t> ch_wfs;
-    ch_wfs.resize(nwire);
-    for (int ich=0;ich!=nwire;ich++){
-      ch_wfs.at(ich).resize(m_nticks,0);
-      auto& resp = cr->channel_response(ich+offset);
-      for (size_t i=0;i!=resp.size();i++){
-	ch_wfs.at(ich).at(i) = resp.at(i);
-      }
-      //std::cout << ich << " " << resp.size() << std::endl;
-    }
-    
-    WireCell::Waveform::compseq_t elec = Waveform::dft(ewave);
-    for (int irow = 0; irow != m_c_data.rows(); irow++){
-      WireCell::Waveform::compseq_t ch_elec = Waveform::dft(ch_wfs.at(irow));
+    const auto ewave = ce.generate(tbins);
+    const WireCell::Waveform::compseq_t elec = Waveform::dft(ewave);
+
+    for (auto och : m_channel_range[plane]) {
+      const auto& ch_resp = cr->channel_response(och.ident);
+      const WireCell::Waveform::compseq_t ch_elec = Waveform::dft(ch_resp);
+
+      const int irow = och.wire;
       for (int icol = 0; icol != m_c_data.cols(); icol++){
-	if (abs(ch_elec.at(icol))!=0){
-	  m_c_data(irow,icol) *= elec.at(icol) / ch_elec.at(icol);
+        const auto four = ch_elec.at(icol);
+	if (std::abs(four) != 0){
+	  m_c_data(irow,icol) *= elec.at(icol) / four;
 	}else{
 	  m_c_data(irow,icol) = 0;
 	}
@@ -584,14 +546,10 @@ void OmnibusSigProc::decon_2D_init(int plane){
   m_c_data = m_c_data/c_resp;
   //std::cout << "Apply Wire Filter! " << std::endl;
   // apply software filter on wire
+  const std::vector<std::string> filter_names{"Wire_ind", "Wire_ind", "Wire_col"};
   Waveform::realseq_t wire_filter_wf;
-  if (plane ==0 || plane == 1){
-    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wire_ind");
-    wire_filter_wf = ncr1->filter_waveform(m_c_data.rows());
-  }else{
-    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wire_col");
-    wire_filter_wf = ncr1->filter_waveform(m_c_data.rows());
-  }
+  auto ncr1 = Factory::find<IFilterWaveform>("HfFilter", filter_names[plane]);
+  wire_filter_wf = ncr1->filter_waveform(m_c_data.rows());
   for (int irow=0; irow<m_c_data.rows(); ++irow) {
     for (int icol=0; icol<m_c_data.cols(); ++icol) {
       float val = abs(m_c_data(irow,icol));
@@ -612,8 +570,8 @@ void OmnibusSigProc::decon_2D_init(int plane){
   m_r_data = Array::idft_cr(m_c_data,0);
 
   // do the shift in wire 
-  int nrows = m_r_data.rows();
-  int ncols = m_r_data.cols();
+  const int nrows = m_r_data.rows();
+  const int ncols = m_r_data.cols();
   {    // std::cout << nrows << " " << ncols << " " << m_wire_shift[plane] << std::endl;
     Array::array_xxf arr1(m_wire_shift[plane], ncols) ;
     arr1 = m_r_data.block(nrows-m_wire_shift[plane] , 0 , m_wire_shift[plane], ncols);
@@ -634,25 +592,17 @@ void OmnibusSigProc::decon_2D_init(int plane){
     m_r_data.block(0,time_shift,nrows,ncols-time_shift) = arr1;
   }
   m_c_data = Array::dft_rc(m_r_data,0);
-  
-  
-  
 }
+
 
 void OmnibusSigProc::decon_2D_ROI_refine(int plane){
    // apply software filter on time
   //std::cout << "Apply Time Filter! " << std::endl;
+  const std::vector<std::string> filter_names{"Wiener_tight_U", "Wiener_tight_V", "Wiener_tight_W"};
   Waveform::realseq_t roi_hf_filter_wf;
-  if (plane ==0){
-    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_U");
-    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
-  }else if (plane==1){
-    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_V");
-    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
-  }else{
-    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_W");
-    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
-  }
+
+  auto ncr1 = Factory::find<IFilterWaveform>("HfFilter", filter_names[plane]);
+  roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
 
   Array::array_xxc c_data_afterfilter(m_r_data.rows(),m_r_data.cols());
   for (int irow=0; irow<m_c_data.rows(); ++irow) {
@@ -665,6 +615,7 @@ void OmnibusSigProc::decon_2D_ROI_refine(int plane){
   m_r_data = Array::idft_cr(c_data_afterfilter,0);
   restore_baseline(m_r_data);
 }
+
 
 void OmnibusSigProc::decon_2D_tightROI(int plane){
   // apply software filter on time
@@ -703,6 +654,7 @@ void OmnibusSigProc::decon_2D_tightROI(int plane){
   restore_baseline(m_r_data);
 }
  
+// same as above but with "tight" -> "tighter" for ROI filterss.
 void OmnibusSigProc::decon_2D_tighterROI(int plane){
   // apply software filter on time
   //std::cout << "Apply Time Filter! " << std::endl;
@@ -742,7 +694,10 @@ void OmnibusSigProc::decon_2D_tighterROI(int plane){
  
 
 void OmnibusSigProc::decon_2D_looseROI(int plane){
-  if (plane == 2) return;
+  if (plane == 2) {
+    return;                     // don't filter colleciton
+  }
+
    // apply software filter on time
   //std::cout << "Apply Time Filter! " << std::endl;
   Waveform::realseq_t roi_hf_filter_wf;
@@ -789,54 +744,18 @@ void OmnibusSigProc::decon_2D_looseROI(int plane){
     roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
   }
 
+  const int n_lfn_nn = 2;
+  const int n_bad_nn = plane ? 1 : 2;
+
   Array::array_xxc c_data_afterfilter(m_r_data.rows(),m_r_data.cols());
-  for (int irow=0; irow<m_c_data.rows(); ++irow) {
-    if (plane == 0 ){
-      if (cmm["lf_noisy"].find(nwire_u*plane+irow)!=cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow+1)!=cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow-1)!=cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow+2)!=cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow-2)!=cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["bad"].find(nwire_u*plane+irow)!=cmm["bad"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["bad"].find(nwire_u*plane+irow+1)!=cmm["bad"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["bad"].find(nwire_u*plane+irow-1)!=cmm["bad"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["bad"].find(nwire_u*plane+irow+2)!=cmm["bad"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["bad"].find(nwire_u*plane+irow-2)!=cmm["bad"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else{	
-	roi_hf_filter_wf2 = roi_hf_filter_wf;
-      }
-    }else if (plane == 1){
-      if (cmm["lf_noisy"].find(nwire_u*plane+irow)!=cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow+1)!=cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow-1)!=cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow+2)!=cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["lf_noisy"].find(nwire_u*plane+irow-2)!=cmm["lf_noisy"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["bad"].find(nwire_u*plane+irow)!=cmm["bad"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["bad"].find(nwire_u*plane+irow+1)!=cmm["bad"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else if (cmm["bad"].find(nwire_u*plane+irow-1)!=cmm["bad"].end()){
-	roi_hf_filter_wf2 = roi_hf_filter_wf1;
-      }else{	
-	roi_hf_filter_wf2 = roi_hf_filter_wf;
-      }
-    }else{
-      roi_hf_filter_wf2 = roi_hf_filter_wf;
+  for (auto och : m_channel_range[plane]) {
+    const int irow = och.wire;
+
+    roi_hf_filter_wf2 = roi_hf_filter_wf;
+    if (masked_neighbors("bad", och, n_bad_nn) or
+        masked_neighbors("lf_noisy", och, n_lfn_nn))
+    {
+      roi_hf_filter_wf2 = roi_hf_filter_wf1;
     }
     
     for (int icol=0; icol<m_c_data.cols(); ++icol) {
@@ -847,6 +766,37 @@ void OmnibusSigProc::decon_2D_looseROI(int plane){
   //do the second round of inverse FFT on wire
   m_r_data = Array::idft_cr(c_data_afterfilter,0);
   restore_baseline(m_r_data);
+}
+
+
+// return true if any channels w/in +/- nnn, inclusive, of the channel has the mask.
+bool OmnibusSigProc::masked_neighbors(const std::string& cmname, OspChan& ochan, int nnn)
+{
+  // take care of boundary cases
+  int lo_wire = ochan.wire - nnn;
+  int lo_chan = ochan.channel - nnn;
+  while (lo_wire < 0) {
+    ++lo_wire;
+    ++lo_chan;
+  }
+  const int nwires = m_nwires[ochan.plane];
+  int hi_wire = ochan.wire + nnn;
+  int hi_chan = ochan.channel + nnn;
+  while (hi_wire >= nwires) {
+    --hi_wire;
+    --hi_chan;
+  }
+  if (hi_chan < lo_chan) {      // how?  bogus inputs?
+    return false;              
+  }
+
+  auto& cm = m_cmm[cmname];
+  for (int och = lo_chan; och <= hi_chan; ++och) {
+    if (cm.find(och) != cm.end()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void OmnibusSigProc::decon_2D_hits(int plane){
@@ -873,8 +823,9 @@ void OmnibusSigProc::decon_2D_hits(int plane){
   
   //do the second round of inverse FFT on wire
   m_r_data = Array::idft_cr(c_data_afterfilter,0);
-  if (plane==2)
+  if (plane==2) {
     restore_baseline(m_r_data);
+  }
 }
 
 void OmnibusSigProc::decon_2D_charge(int plane){
@@ -916,7 +867,19 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     out = nullptr;
     return true;
   }
-  cmm = in->masks();
+
+  // Convert to OSP cmm indexed by OSB sequential channels, NOT WCT channel ID.
+  m_cmm.clear();
+  // double emap: name -> channel -> pair<int,int>
+  for (auto cm : in->masks()) {
+    const std::string name = cm.first;
+    for (auto m: cm.second) {
+      const int wct_channel_ident = m.first;
+      const int osp_channel = m_channel_map[wct_channel_ident].channel;
+      m_cmm[name][osp_channel] = m.second;
+    }
+  }
+
   ITrace::vector itraces;
   IFrame::trace_list_t wiener_traces, gauss_traces, perframe_traces[3];
 
@@ -924,8 +887,8 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   init_overall_response(in);
 
   // create a class for ROIs ... 
-  ROI_formation roi_form(cmm,nwire_u, nwire_v, nwire_w, m_nticks, m_th_factor_ind, m_th_factor_col, m_pad, m_asy, m_rebin, m_l_factor, m_l_max_th, m_l_factor1, m_l_short_length);
-  ROI_refinement roi_refine(cmm,nwire_u,nwire_v,nwire_w,m_r_th_factor,m_r_fake_signal_low_th,m_r_fake_signal_high_th,m_r_pad,m_r_break_roi_loop,m_r_th_peak,m_r_sep_peak,m_r_low_peak_sep_threshold_pre,m_r_max_npeaks,m_r_sigma,m_r_th_percent);//
+  ROI_formation roi_form(m_cmm, m_nwires[0], m_nwires[1], m_nwires[2], m_nticks, m_th_factor_ind, m_th_factor_col, m_pad, m_asy, m_rebin, m_l_factor, m_l_max_th, m_l_factor1, m_l_short_length);
+  ROI_refinement roi_refine(m_cmm, m_nwires[0], m_nwires[1], m_nwires[2],m_r_th_factor,m_r_fake_signal_low_th,m_r_fake_signal_high_th,m_r_pad,m_r_break_roi_loop,m_r_th_peak,m_r_sep_peak,m_r_low_peak_sep_threshold_pre,m_r_max_npeaks,m_r_sigma,m_r_th_percent);//
 
   
   for (int iplane = 0; iplane != 3; ++iplane){
@@ -977,9 +940,10 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   }
 
 
-  SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick(), cmm);
+  SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick(), m_cmm);
   sframe->tag_frame("sigproc");
 
+  // this assumes save_data produces itraces in OSP channel order
   std::vector<float> perplane_thresholds[3] = {
     roi_form.get_uplane_rms(),
     roi_form.get_vplane_rms(),

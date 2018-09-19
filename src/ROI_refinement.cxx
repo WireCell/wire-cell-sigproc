@@ -2393,3 +2393,7 @@ void ROI_refinement::ExtendROIs(){
 
 
 
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:
