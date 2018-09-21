@@ -98,6 +98,14 @@ OmnibusSigProc::~OmnibusSigProc()
 {
 }
 
+std::string WireCell::SigProc::OmnibusSigProc::OspChan::str() const
+{
+  std::stringstream ss;
+  ss<<"OspChan<c:"<<channel<<",w:"<<wire<<",p:"<<plane<<",i:"<<ident<<">";
+  return ss.str();
+}
+
+
 void OmnibusSigProc::configure(const WireCell::Configuration& config)
 {
   m_fine_time_offset = get(config,"ftoffset",m_fine_time_offset);
@@ -178,6 +186,11 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
       ++osp_wire_number;
       ++osp_channel_number;
     }
+    // std::cerr << iplane << ": och:["
+    //           << m_channel_range[iplane].front().str()
+    //           << " -> "
+    //           << m_channel_range[iplane].back().str()
+    //           << std::endl;
   }
 
 }
@@ -875,8 +888,9 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     const std::string name = cm.first;
     for (auto m: cm.second) {
       const int wct_channel_ident = m.first;
-      const int osp_channel = m_channel_map[wct_channel_ident].channel;
-      m_cmm[name][osp_channel] = m.second;
+      const OspChan& och = m_channel_map[wct_channel_ident];
+      m_cmm[name][och.channel] = m.second;
+      //std::cerr << wct_channel_ident << " " << och.str() << std::endl;
     }
   }
 

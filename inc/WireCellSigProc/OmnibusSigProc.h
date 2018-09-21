@@ -70,18 +70,19 @@ namespace WireCell {
 
       void restore_baseline(WireCell::Array::array_xxf& arr);
 
-      
       // This little struct is used to map between WCT channel idents
       // and internal OmnibusSigProc wire/channel numbers.  See
-      // m_channel_map and m_channel_range below.
+      // m_channel_map and m_channel_range below.  
       struct OspChan {
         int channel;            // between 0 and nwire_u+nwire_v+nwire_w-1
         int wire;               // between 0 and nwire_{u,v,w,}-1 depending on plane
         int plane;              // 0,1,2
         int ident;              // wct ident, opaque non-negative number.  set in wires geom file
         OspChan(int c=-1, int w=-1, int p=-1, int id=-1) : channel(c), wire(w), plane(p), ident(id) {}
+        std::string str() const;
       };
 
+      
       // find if neighbor channels hare masked.
       bool masked_neighbors(const std::string& cmname, OspChan& ochan, int nnn);
       
