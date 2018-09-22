@@ -102,7 +102,8 @@ namespace WireCell {
       // bins
       double m_period;
       int m_nticks;
-      int m_fft_nwires, m_pad_nwires;
+      int m_fft_flag;
+      int m_fft_nwires[3], m_pad_nwires[3];
       int m_fft_nticks, m_pad_nticks;
       
       // gain, shaping time, other applification factors
