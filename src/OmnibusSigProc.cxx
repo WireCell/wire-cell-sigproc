@@ -3,6 +3,7 @@
 #include "WireCellUtil/NamedFactory.h"
 #include "WireCellUtil/Exceptions.h"
 #include "WireCellUtil/String.h"
+#include "WireCellUtil/FFTBestLength.h"
 
 #include "WireCellIface/SimpleFrame.h"
 #include "WireCellIface/SimpleTrace.h"
@@ -241,6 +242,9 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
 }
 
 void OmnibusSigProc::load_data(const input_pointer& in, int plane){
+
+  //m_fft_nwires = cal_best_fft_length(m_nwires[plane]+,1);
+  
   m_r_data = Array::array_xxf::Zero(m_nwires[plane],m_nticks);
 
   auto traces = in->traces();
