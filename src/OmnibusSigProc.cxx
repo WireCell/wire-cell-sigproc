@@ -211,7 +211,7 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["fft_flag"] = m_fft_flag;
   
   cfg["gain"] = m_gain;
-  cfg["shaping_time"] = m_shaping_time;
+  cfg["shaping"] = m_shaping_time;
   cfg["inter_gain"] = m_inter_gain;
   cfg["ADC_mV"] = m_ADC_mV;
 

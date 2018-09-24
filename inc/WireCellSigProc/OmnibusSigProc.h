@@ -17,7 +17,7 @@ namespace WireCell {
                      double fine_time_offset = 0.0 * units::microsecond,
                      double coarse_time_offset = -8.0 * units::microsecond,
                      double gain = 14.0 * units::mV/units::fC,
-                     double shaping_time = 2.0 * units::microsecond,
+                     double shaping_time = 2.2 * units::microsecond,
                      double inter_gain = 1.2,
                      double ADC_mV = 4096/(2000.*units::mV),
                      float th_factor_ind = 3,
