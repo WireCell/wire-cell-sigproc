@@ -6,8 +6,7 @@
 #include <iostream>
 
 WIRECELL_FACTORY(FrameSplitter, WireCell::SigProc::FrameSplitter,
-                 WireCell::IFrameSplitter);
-
+                 WireCell::IFrameSplitter)
 
 
 using namespace WireCell::SigProc;

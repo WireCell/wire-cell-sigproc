@@ -9,7 +9,8 @@ using wct::sigproc::dump_frame;
 
 #include <iostream>
 
-WIRECELL_FACTORY(Omnibus, WireCell::SigProc::Omnibus, WireCell::IApplication, WireCell::IConfigurable);
+WIRECELL_FACTORY(Omnibus, WireCell::SigProc::Omnibus,
+                 WireCell::IApplication, WireCell::IConfigurable)
 
 using namespace WireCell;
 

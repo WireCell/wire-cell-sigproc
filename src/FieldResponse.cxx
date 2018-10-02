@@ -5,7 +5,7 @@
 
 WIRECELL_FACTORY(FieldResponse,
                  WireCell::SigProc::FieldResponse,
-                 WireCell::IFieldResponse, WireCell::IConfigurable);
+                 WireCell::IFieldResponse, WireCell::IConfigurable)
 
 using namespace WireCell;
 

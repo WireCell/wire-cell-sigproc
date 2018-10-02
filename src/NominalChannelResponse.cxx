@@ -6,7 +6,7 @@
 
 WIRECELL_FACTORY(NominalChannelResponse,
                  WireCell::SigProc::NominalChannelResponse,
-                 WireCell::IChannelResponse, WireCell::IConfigurable);
+                 WireCell::IChannelResponse, WireCell::IConfigurable)
 
 using namespace WireCell;
 SigProc::NominalChannelResponse::NominalChannelResponse(double gain,

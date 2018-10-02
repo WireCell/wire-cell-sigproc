@@ -5,7 +5,7 @@
 #include "WireCellUtil/NamedFactory.h"
 
 WIRECELL_FACTORY(ChannelSelector, WireCell::SigProc::ChannelSelector,
-                 WireCell::IFrameFilter, WireCell::IConfigurable);
+                 WireCell::IFrameFilter, WireCell::IConfigurable)
 
 using namespace WireCell;
 using namespace WireCell::SigProc;

@@ -3,7 +3,7 @@
 #include "WireCellUtil/NamedFactory.h"
 
 WIRECELL_FACTORY(HfFilter,WireCell::SigProc::HfFilter,
-		 WireCell::IFilterWaveform, WireCell::IConfigurable);
+		 WireCell::IFilterWaveform, WireCell::IConfigurable)
 
 
 using namespace WireCell;

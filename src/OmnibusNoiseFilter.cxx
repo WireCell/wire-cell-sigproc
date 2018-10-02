@@ -15,7 +15,7 @@
 #include <unordered_map>
 
 WIRECELL_FACTORY(OmnibusNoiseFilter, WireCell::SigProc::OmnibusNoiseFilter,
-                 WireCell::IFrameFilter, WireCell::IConfigurable);
+                 WireCell::IFrameFilter, WireCell::IConfigurable)
 
 using namespace WireCell;
 

@@ -5,7 +5,7 @@
 #include <cmath>
 
 WIRECELL_FACTORY(OmniChannelNoiseDB, WireCell::SigProc::OmniChannelNoiseDB,
-                 WireCell::IChannelNoiseDatabase, WireCell::IConfigurable);
+                 WireCell::IChannelNoiseDatabase, WireCell::IConfigurable)
 
 using namespace WireCell;
 using namespace WireCell::SigProc;

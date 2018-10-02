@@ -15,7 +15,7 @@
 #include <iostream>
 
 WIRECELL_FACTORY(L1SPFilter, WireCell::SigProc::L1SPFilter,
-                 WireCell::IFrameFilter, WireCell::IConfigurable);
+                 WireCell::IFrameFilter, WireCell::IConfigurable)
 
 using namespace Eigen;
 using namespace WireCell;

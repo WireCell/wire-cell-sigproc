@@ -13,14 +13,18 @@
 #include <set>
 
 // Register the components defined here
-WIRECELL_FACTORY(mbCoherentNoiseSub, WireCell::SigProc::Microboone::CoherentNoiseSub,
-                 WireCell::IChannelFilter);
-WIRECELL_FACTORY(mbOneChannelNoise, WireCell::SigProc::Microboone::OneChannelNoise,
-                 WireCell::IChannelFilter, WireCell::IConfigurable);
-WIRECELL_FACTORY(mbOneChannelStatus, WireCell::SigProc::Microboone::OneChannelStatus,
-                 WireCell::IChannelFilter, WireCell::IConfigurable);
-WIRECELL_FACTORY(mbADCBitShift, WireCell::SigProc::Microboone::ADCBitShift,
-                 WireCell::IChannelFilter, WireCell::IConfigurable);
+WIRECELL_FACTORY(mbCoherentNoiseSub,
+                 WireCell::SigProc::Microboone::CoherentNoiseSub,
+                 WireCell::IChannelFilter)
+WIRECELL_FACTORY(mbOneChannelNoise,
+                 WireCell::SigProc::Microboone::OneChannelNoise,
+                 WireCell::IChannelFilter, WireCell::IConfigurable)
+WIRECELL_FACTORY(mbOneChannelStatus,
+                 WireCell::SigProc::Microboone::OneChannelStatus,
+                 WireCell::IChannelFilter, WireCell::IConfigurable)
+WIRECELL_FACTORY(mbADCBitShift,
+                 WireCell::SigProc::Microboone::ADCBitShift,
+                 WireCell::IChannelFilter, WireCell::IConfigurable)
 
 
 

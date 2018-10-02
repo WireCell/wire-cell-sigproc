@@ -18,7 +18,7 @@
 #include "WireCellUtil/NamedFactory.h"
 
 WIRECELL_FACTORY(OmnibusSigProc, WireCell::SigProc::OmnibusSigProc,
-                 WireCell::IFrameFilter, WireCell::IConfigurable);
+                 WireCell::IFrameFilter, WireCell::IConfigurable)
 
 
 using namespace WireCell;
@@ -62,6 +62,7 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
   , m_coarse_time_offset(coarse_time_offset)
   , m_period(0)
   , m_nticks(0)
+  , m_fft_flag(0)
   , m_gain(gain)
   , m_shaping_time(shaping_time)
   , m_inter_gain(inter_gain)
@@ -87,7 +88,6 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
   , m_r_sigma(r_sigma)
   , m_r_th_percent(r_th_percent)
   , m_charge_ch_offset(charge_ch_offset)
-  , m_fft_flag(0)
 {
   // get wires for each plane
 
@@ -356,7 +356,7 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
     if (m_fft_flag==0){
       m_fft_nticks = m_nticks;
     }else{
-      m_fft_nticks = cal_fft_best_length(m_nticks);
+      m_fft_nticks = fft_best_length(m_nticks);
       std::cerr << "SigProc: enlarge window from " << m_nticks << " to " << m_fft_nticks << std::endl;
     }
     //
@@ -377,7 +377,7 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
     if (m_fft_flag==0){
       m_fft_nwires[i] = m_nwires[i];
     }else{
-      m_fft_nwires[i] = cal_fft_best_length(m_nwires[i]+fravg.planes[0].paths.size()-1,1);
+      m_fft_nwires[i] = fft_best_length(m_nwires[i]+fravg.planes[0].paths.size()-1,1);
       std::cerr << "SigProc: enlarge wire number in plane " << i << " from " << m_nwires[i] << " to " << m_fft_nwires[i] << std::endl;
     }
     m_pad_nwires[i] = (m_fft_nwires[i]-m_nwires[i])/2;
@@ -388,7 +388,7 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
   //std::cout << Response::as_array(fravg.planes[0]).cols() << " " << Response::as_array(fravg.planes[0]).rows() << std::endl;
 
   // since we only do FFT along time, no need to change dimension for wire ...
-  int fine_nticks = cal_fft_best_length(fravg.planes[0].paths[0].current.size());
+  const size_t fine_nticks = fft_best_length(fravg.planes[0].paths[0].current.size());
   int fine_nwires = fravg.planes[0].paths.size();
 
   //std::cout << fine_nticks << " " << fine_nwires << std::endl;
@@ -411,7 +411,7 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
   
   
   Waveform::realseq_t ftbins(fine_nticks);
-  for (int i=0;i!=fine_nticks;i++){
+  for (size_t i=0;i!=fine_nticks;i++){
     ftbins.at(i) = i * fravg.period;
   }
 
@@ -464,7 +464,7 @@ void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
     for (int irow = 0; irow < fine_nwires; ++ irow){
       // gtemp = new TGraph();
       
-      int fcount = 1;
+      size_t fcount = 1;
       for (int i=0;i!=m_fft_nticks;i++){
 	double ctime = ctbins.at(i);
 	
