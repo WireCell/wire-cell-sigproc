@@ -1667,7 +1667,10 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
 	}
       }
       if (valley_pos[0] != start_bin){
-   	for (int j=npeaks-1;j>=0;j--){
+	// temporarily push n a value ...
+	order_peak_pos.push_back(0);
+	//
+	for (int j=npeaks-1;j>=0;j--){
    	  order_peak_pos[j+1] = order_peak_pos[j];
    	}
    	npeaks ++;
@@ -1713,7 +1716,9 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
       if (valley_pos[npeaks]!=end_bin){
    	npeaks ++;
    	valley_pos[npeaks] = end_bin;
-   	order_peak_pos[npeaks-1] = end_bin;
+	// temporarily add an elements ...
+	order_peak_pos.push_back(end_bin);
+	//	order_peak_pos[npeaks-1] = end_bin;
    	for (int j=valley_pos[npeaks-1];j!=valley_pos[npeaks];j++){
    	  if (temp_signal.at(j-start_bin) > temp_signal.at(order_peak_pos[npeaks-1] -start_bin))
 	    order_peak_pos[npeaks-1] = j;
