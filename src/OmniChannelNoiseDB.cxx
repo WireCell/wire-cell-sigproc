@@ -18,10 +18,10 @@ OmniChannelNoiseDB::OmniChannelNoiseDB()
 }
 OmniChannelNoiseDB::~OmniChannelNoiseDB()
 {
-    for (auto it = m_db.begin(); it!= m_db.end(); it++){
-       delete it->second;
-    }
-    m_db.clear();
+    // for (auto it = m_db.begin(); it!= m_db.end(); it++){
+    //    delete it->second;
+    // }
+    // m_db.clear();
 }
 
 
@@ -281,7 +281,7 @@ void OmniChannelNoiseDB::set_misconfigured(const std::vector<int>& channels,
     if (reset) {
         auto def = default_filter();
         for (auto& it : m_db) {
-            it.second->config = def;
+            it.second.config = def;
         }
     }
     auto val = get_reconfig(from_gain, from_shaping, to_gain, to_shaping);
@@ -527,12 +527,13 @@ void OmniChannelNoiseDB::configure(const WireCell::Configuration& cfg)
     //m_db.resize(nchans);
 
     // clear any previous config, and recover the memory
-    for (auto it = m_db.begin(); it!= m_db.end(); it++){
-       delete it->second;
-    }
-    m_db.clear();
+    // for (auto it = m_db.begin(); it!= m_db.end(); it++){
+    //    delete it->second;
+    // }
+    // m_db.clear();
     for(auto ch: m_anode->channels()){
-        m_db.insert(std::make_pair(ch, new ChannelInfo));
+        // m_db.insert(std::make_pair(ch, new ChannelInfo));
+        m_db[ch] = ChannelInfo();
     }
 
     m_channel_groups.clear();

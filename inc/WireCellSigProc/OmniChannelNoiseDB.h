@@ -9,6 +9,8 @@
 
 #include "WireCellUtil/Waveform.h"
 #include "WireCellUtil/Units.h"
+#include "WireCellUtil/String.h"
+#include "WireCellUtil/Exceptions.h"
 
 #include <vector>
 #include <tuple>
@@ -120,19 +122,20 @@ namespace WireCell {
             };
 
             //std::vector<ChannelInfo> m_db;
-            std::unordered_map<int, ChannelInfo*> m_db;
-            //std::unordered_map<int, ChannelInfo> m_db;
+            //std::unordered_map<int, ChannelInfo*> m_db;
+            std::unordered_map<int, ChannelInfo> m_db;
 
             //const ChannelInfo& dbget(int ch) const {
             ChannelInfo& dbget(int ch) const{
                  auto it = m_db.find(ch);
-                 // if (it == m_db.end()) {
+                 if (it == m_db.end()) {
                      //it = m_db.find(defch);
                      //return *(it->second);
                      // m_db.insert(std::make_pair(ch, new ChannelInfo));
                      // return *(m_db[ch]);
-                 // }
-                 return *(it->second);
+                 	THROW(KeyError() << errmsg{String::format("no db info for channel %d", ch)});
+                 }
+                 return it->second;
                 //return m_db.at(ch);
             }
 
