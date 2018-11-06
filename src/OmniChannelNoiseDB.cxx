@@ -287,7 +287,8 @@ void OmniChannelNoiseDB::set_misconfigured(const std::vector<int>& channels,
     auto val = get_reconfig(from_gain, from_shaping, to_gain, to_shaping);
     for (int ch : channels) {
         //m_db.at(ch).config = val;
-        dbget(ch).config = val;
+        //dbget(ch).config = val;
+        get_ci(ch).config = val;
         m_miscfg_channels.push_back(ch);
     }
 }
@@ -349,10 +350,15 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_response(Json::Val
 }
 
 
-// OmniChannelNoiseDB::ChannelInfo& OmniChannelNoiseDB::get_ci(int chid)
-// {
-//     return m_db.at(chid);
-// }
+OmniChannelNoiseDB::ChannelInfo& OmniChannelNoiseDB::get_ci(int chid)
+{
+    auto it = m_db.find(chid);
+    if (it == m_db.end()) {
+        THROW(KeyError() << errmsg{String::format("no db info for channel %d", chid)});	
+    }
+    return it->second;
+    //return m_db.at(chid);
+}
 
 template<typename Type>
 void dump_cfg(const std::string& name, std::vector<int> chans, Type val)
@@ -370,7 +376,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         dump_cfg("baseline", chans, val);
         for (int ch : chans) {
             //m_db.at(ch).nominal_baseline = val;
-            dbget(ch).nominal_baseline = val;
+            //dbget(ch).nominal_baseline = val;
+            get_ci(ch).nominal_baseline = val;
         }
     }
     if (cfg.isMember("gain_correction")) {
@@ -378,7 +385,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         dump_cfg("gain", chans, val);
         for (int ch : chans) {
             //m_db.at(ch).gain_correction = val;
-            dbget(ch).gain_correction = val;
+            //dbget(ch).gain_correction = val;
+            get_ci(ch).gain_correction = val;
         }
     }
     // fixme: why have two ways to set the same thing?  
@@ -389,7 +397,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
             dump_cfg("gain", chans, val);
             for (int ch : chans) {
                 //m_db.at(ch).gain_correction = val;
-                dbget(ch).gain_correction = val;
+                //dbget(ch).gain_correction = val;
+                get_ci(ch).gain_correction = val;
             }
         }
     }
@@ -399,7 +408,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         dump_cfg("offset", chans, val);
         for (int ch : chans) {
             //m_db.at(ch).response_offset = val;
-            dbget(ch).response_offset = val;
+            //dbget(ch).response_offset = val;
+            get_ci(ch).response_offset = val;
         }
     }
     if (cfg.isMember("min_rms_cut")) {
@@ -407,7 +417,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         dump_cfg("minrms", chans, val);
         for (int ch : chans) {
             //m_db.at(ch).min_rms_cut = val;
-            dbget(ch).min_rms_cut = val;
+            //dbget(ch).min_rms_cut = val;
+            get_ci(ch).min_rms_cut = val;
         }
     }
     if (cfg.isMember("max_rms_cut")) {
@@ -415,7 +426,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         dump_cfg("maxrms", chans, val);
         for (int ch : chans) {
             //m_db.at(ch).max_rms_cut = val;
-            dbget(ch).max_rms_cut = val;
+            //dbget(ch).max_rms_cut = val;
+            get_ci(ch).max_rms_cut = val;
         }
     }
     if (cfg.isMember("pad_window_front")) {
@@ -423,7 +435,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         dump_cfg("padfront", chans, val);
         for (int ch : chans) {
             //m_db.at(ch).pad_window_front = val;
-            dbget(ch).pad_window_front = val;
+            //dbget(ch).pad_window_front = val;
+            get_ci(ch).pad_window_front = val;
         }
     }
     if (cfg.isMember("pad_window_back")) {
@@ -431,7 +444,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         dump_cfg("padback", chans, val);
         for (int ch : chans) {
             //m_db.at(ch).pad_window_back = val;
-            dbget(ch).pad_window_back = val;
+            //dbget(ch).pad_window_back = val;
+            get_ci(ch).pad_window_back = val;
         }
     }
 
@@ -440,7 +454,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         dump_cfg("deconlimit", chans, val);
         for (int ch : chans) {
             //m_db.at(ch).decon_limit = val;
-            dbget(ch).decon_limit = val;
+            //dbget(ch).decon_limit = val;
+            get_ci(ch).decon_limit = val;
         }
     }
     if (cfg.isMember("decon_limit1")) {
@@ -448,7 +463,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         dump_cfg("deconlimit1", chans, val);
         for (int ch : chans) {
             //m_db.at(ch).decon_limit1 = val;
-            dbget(ch).decon_limit1 = val;
+            //dbget(ch).decon_limit1 = val;
+            get_ci(ch).decon_limit1 = val;
         }
     }
     if (cfg.isMember("adc_limit")) {
@@ -456,7 +472,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         dump_cfg("adclimit", chans, val);
         for (int ch : chans) {
             //m_db.at(ch).adc_limit = val;
-            dbget(ch).adc_limit = val;
+            //dbget(ch).adc_limit = val;
+            get_ci(ch).adc_limit = val;
         }
     }
     
@@ -467,7 +484,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
             dump_cfg("rcrc", chans, Waveform::sum(*val));
             for (int ch : chans) {
                 //m_db.at(ch).rcrc = val;
-                dbget(ch).rcrc = val;
+                //dbget(ch).rcrc = val;
+                get_ci(ch).rcrc = val;
             }
         }
     }
@@ -478,7 +496,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
             dump_cfg("reconfig", chans, Waveform::sum(*val));
             for (int ch : chans) {
                 //m_db.at(ch).config = val;
-                dbget(ch).config = val;
+                //dbget(ch).config = val;
+                get_ci(ch).config = val;
                 // fill in misconfgured channels
                 //std::cout <<" miscfg_channels fill: "<< ch <<"\n"
                 if(!jfilt.empty()) m_miscfg_channels.push_back(ch);
@@ -493,7 +512,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
             // std::cerr << jfilt << std::endl;
             for (int ch : chans) {
                 //m_db.at(ch).noise = val;
-                dbget(ch).noise = val;
+                //dbget(ch).noise = val;
+                get_ci(ch).noise = val;
             }
         }
     }
@@ -504,7 +524,8 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
             dump_cfg("response", chans, Waveform::sum(*val));
             for (int ch : chans) {
                 //m_db.at(ch).response = val;
-                dbget(ch).response = val;
+                //dbget(ch).response = val;
+                get_ci(ch).response = val;
             }
         }
     }
