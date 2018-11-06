@@ -116,17 +116,21 @@ namespace WireCell {
                 ChannelInfo();
             };
 
-            std::vector<ChannelInfo> m_db;
-            //std::unordered_map<int, ChannelInfo*> m_db;
+            //std::vector<ChannelInfo> m_db;
+            std::unordered_map<int, ChannelInfo*> m_db;
+            //std::unordered_map<int, ChannelInfo> m_db;
 
-            const ChannelInfo& dbget(int ch) const {
-                // auto it = m_db.find(ch);
-                // if (it == m_db.end()) {
-                //     it = m_db.find(defch);
-                //     return *(it->second);
-                // }
-                // return *(it->second);
-                return m_db.at(ch);
+            //const ChannelInfo& dbget(int ch) const {
+            ChannelInfo& dbget(int ch) const{
+                 auto it = m_db.find(ch);
+                 // if (it == m_db.end()) {
+                     //it = m_db.find(defch);
+                     //return *(it->second);
+                     // m_db.insert(std::make_pair(ch, new ChannelInfo));
+                     // return *(m_db[ch]);
+                 // }
+                 return *(it->second);
+                //return m_db.at(ch);
             }
 
 	    std::vector< channel_group_t > m_channel_groups;
@@ -145,7 +149,7 @@ namespace WireCell {
             shared_filter_t parse_response(Json::Value jreconfig);
             //ChannelInfo* make_ci(int chid, Json::Value jci);
             void update_channels(Json::Value cfg);
-            ChannelInfo& get_ci(int chid);
+            //ChannelInfo& get_ci(int chid);
 
 
             // Reuse the same filter spectra for matching input parameters.
