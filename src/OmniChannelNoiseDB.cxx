@@ -283,6 +283,7 @@ void OmniChannelNoiseDB::set_misconfigured(const std::vector<int>& channels,
     auto val = get_reconfig(from_gain, from_shaping, to_gain, to_shaping);
     for (int ch : channels) {
         m_db.at(ch).config = val;
+        m_miscfg_channels.push_back(ch);
     }
 }
 
@@ -460,6 +461,9 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
             dump_cfg("reconfig", chans, Waveform::sum(*val));
             for (int ch : chans) {
                 m_db.at(ch).config = val;
+                // fill in misconfgured channels
+                //std::cout <<" miscfg_channels fill: "<< ch <<"\n"
+                if(!jfilt.empty()) m_miscfg_channels.push_back(ch);
             }
         }
     }
@@ -523,6 +527,7 @@ void OmniChannelNoiseDB::configure(const WireCell::Configuration& cfg)
     }
 
     
+    m_miscfg_channels.clear();
     for (auto jci : cfg["channel_info"]) {
         update_channels(jci);
     }

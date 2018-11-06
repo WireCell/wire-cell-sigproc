@@ -61,6 +61,9 @@ namespace WireCell {
 	    virtual channel_group_t bad_channels() const {
 		return m_bad_channels;
 	    }
+	    virtual channel_group_t miscfg_channels() const {
+		return m_miscfg_channels;
+	    }
 
 
 	protected:
@@ -131,6 +134,7 @@ namespace WireCell {
 
 	    std::vector< channel_group_t > m_channel_groups;
 	    channel_group_t m_bad_channels;
+	    channel_group_t m_miscfg_channels;
 
             // JSON parsing.  Exhausting.
             std::vector<int> parse_channels(const Json::Value& jchannels);
