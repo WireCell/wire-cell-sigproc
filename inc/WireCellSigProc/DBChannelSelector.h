@@ -26,8 +26,6 @@ namespace WireCell {
 	    void configure(const WireCell::Configuration& config);
 	    WireCell::Configuration default_configuration() const;
             
-        private:
-            std::unordered_set<int> m_channels;
         };
     }
 }

@@ -28,7 +28,10 @@ namespace WireCell {
 	    /// IConfigurable interface.
 	    virtual void configure(const WireCell::Configuration& config);
 	    virtual WireCell::Configuration default_configuration() const;
-            
+           
+        protected:
+           virtual void set_channels(const std::vector<int>& channels);
+
         private:
             std::vector<std::string> m_tags;
             std::unordered_set<int> m_channels;

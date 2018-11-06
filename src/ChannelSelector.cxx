@@ -50,6 +50,14 @@ void ChannelSelector::configure(const WireCell::Configuration& cfg)
     }
 }
 
+void ChannelSelector::set_channels(const std::vector<int>& channels)
+{
+    for(int ch : channels) {
+        m_channels.insert(ch);
+    }
+}
+
+
 bool ChannelSelector::operator()(const input_pointer& in, output_pointer& out)
 {
     out = nullptr;
