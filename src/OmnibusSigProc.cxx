@@ -54,7 +54,10 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
                                int r_max_npeaks ,
                                double r_sigma ,
                                double r_th_percent ,
-                               int charge_ch_offset  )
+                               int charge_ch_offset,
+                               const std::string& wiener_tag,
+                               const std::string& wiener_threshold_tag,
+                               const std::string& gauss_tag )
   : m_anode_tn (anode_tn)
   , m_per_chan_resp(per_chan_resp_tn)
   , m_field_response(field_response)
@@ -88,6 +91,9 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
   , m_r_sigma(r_sigma)
   , m_r_th_percent(r_th_percent)
   , m_charge_ch_offset(charge_ch_offset)
+  , m_wiener_tag(wiener_tag)
+  , m_wiener_threshold_tag(wiener_threshold_tag)
+  , m_gauss_tag(gauss_tag) 
 {
   // get wires for each plane
 
@@ -151,6 +157,11 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
 
   m_charge_ch_offset = get(config,"charge_ch_offset",m_charge_ch_offset);
   
+  m_wiener_tag = get(config,"wiener_tag",m_wiener_tag);
+  m_wiener_threshold_tag = get(config,"wiener_threshold_tag",m_wiener_threshold_tag);
+  m_gauss_tag = get(config,"gauss_tag",m_gauss_tag);  
+
+
   // this throws if not found
   m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
 
@@ -241,6 +252,10 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["r_th_precent"] = m_r_th_percent;
       
   cfg["charge_ch_offset"] = m_charge_ch_offset;
+
+  cfg["m_wiener_tag"] = m_wiener_tag;
+  cfg["m_wiener_threshold_tag"] = m_wiener_threshold_tag;
+  cfg["m_gauss_tag"] = m_gauss_tag;
   
   return cfg;
   
@@ -1024,9 +1039,12 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     }
   }
 
-  sframe->tag_traces("wiener", wiener_traces);
-  sframe->tag_traces("threshold", wiener_traces, threshold);
-  sframe->tag_traces("gauss", gauss_traces);
+  // sframe->tag_traces("wiener", wiener_traces);
+  // sframe->tag_traces("threshold", wiener_traces, threshold);
+  // sframe->tag_traces("gauss", gauss_traces);
+  sframe->tag_traces(m_wiener_tag, wiener_traces);
+  sframe->tag_traces(m_wiener_threshold_tag, wiener_traces, threshold);
+  sframe->tag_traces(m_gauss_tag, gauss_traces);
 
   std::cerr << "OmnibusSigProc: produce " << itraces.size() << " traces\n"
 	    << "\t" << wiener_traces.size() << " wiener\n"

@@ -40,7 +40,10 @@ namespace WireCell {
                      int r_max_npeaks = 200,
                      double r_sigma = 2.0,
                      double r_th_percent = 0.1,
-                     int charge_ch_offset = 10000 );
+                     int charge_ch_offset = 10000,
+                     const std::string& wiener_tag = "wiener",
+                     const std::string& wiener_threshold_tag = "threshold",
+                     const std::string& gauss_tag = "gauss" );
       virtual ~OmnibusSigProc();
       
       virtual bool operator()(const input_pointer& in, output_pointer& out);
@@ -171,6 +174,12 @@ namespace WireCell {
       
       //average overall responses
       std::vector<Waveform::realseq_t> overall_resp[3];
+
+      // tag name for traces
+      std::string m_wiener_tag;
+      std::string m_wiener_threshold_tag;
+      std::string m_gauss_tag;
+
       
     };
   }
