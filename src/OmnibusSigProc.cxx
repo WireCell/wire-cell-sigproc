@@ -958,6 +958,9 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     for (auto m: cm.second) {
       const int wct_channel_ident = m.first;
       const OspChan& och = m_channel_map[wct_channel_ident];
+      if (och.plane < 0) {
+        continue;               // in case user gives us multi apa frame
+      }
       m_cmm[name][och.channel] = m.second;
       //std::cerr << wct_channel_ident << " " << och.str() << std::endl;
     }
