@@ -1050,8 +1050,10 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   sframe->tag_traces(m_gauss_tag, gauss_traces);
 
   std::cerr << "OmnibusSigProc: produce " << itraces.size() << " traces\n"
-	    << "\t" << wiener_traces.size() << " wiener\n"
-	    << "\t" << gauss_traces.size() << " gauss\n";
+	    //<< "\t" << wiener_traces.size() << " wiener\n"
+	    //<< "\t" << gauss_traces.size() << " gauss\n";
+	    << "\t" << wiener_traces.size() << " " << m_wiener_tag << " \n"
+	    << "\t" << gauss_traces.size() << " " << m_gauss_tag << " \n";
 
   out = IFrame::pointer(sframe);
   
