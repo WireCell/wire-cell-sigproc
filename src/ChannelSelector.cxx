@@ -110,7 +110,7 @@ bool ChannelSelector::operator()(const input_pointer& in, output_pointer& out)
     }
     for(auto ftag: in->frame_tags()){
         sf->tag_frame(ftag);
-        std::cerr << "ChannelSelector: copy inframe tag " << ftag << std::endl;
+        //std::cerr << "ChannelSelector: copy inframe tag " << ftag << std::endl;
     }
 
     out = IFrame::pointer(sf);
