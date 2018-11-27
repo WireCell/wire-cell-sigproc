@@ -108,6 +108,11 @@ bool ChannelSelector::operator()(const input_pointer& in, output_pointer& out)
             sf->tag_traces(tag, tagged_trace_indices[ind]);
         }
     }
+    for(auto ftag: in->frame_tags()){
+        sf->tag_frame(ftag);
+        std::cerr << "ChannelSelector: copy inframe tag " << ftag << std::endl;
+    }
+
     out = IFrame::pointer(sf);
     return true;
 }
