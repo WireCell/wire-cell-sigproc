@@ -560,7 +560,9 @@ void OmnibusSigProc::decon_2D_init(int plane){
     std::cerr<<"OmnibusSigProc: CH-BY-CH ELECTRONICS RESPONSE CORRECTION\n";
     auto cr = Factory::find_tn<IChannelResponse>(m_per_chan_resp);
     auto cr_bins = cr->channel_response_binning();
-    assert(cr_bins.binsize()==m_period);
+    if (cr_bins.binsize() != m_period) {
+      THROW(ValueError() << errmsg{"OmnibusSigProc::decon_2D_init: channel response size mismatch"});
+    }
     //starndard electronics response ... 
     // WireCell::Binning tbins(m_nticks, 0-m_period/2., m_nticks*m_period-m_period/2.);
     // Response::ColdElec ce(m_gain, m_shaping_time);
