@@ -22,5 +22,5 @@ int main(int argc, char* argv[])
 {
     Microboone::SignalFilter(horig);
     bool is_noisy = Microboone::NoisyFilterAlg(horig,0.7,10.0);
-    assert(is_noisy);
+    Assert(is_noisy);
 }
