@@ -342,7 +342,8 @@ void ROI_formation::find_ROI_by_decon_itself(int plane, const Array::array_xxf& 
       threshold = th_factor_col * rms + 1;
       wplane_rms.at(irow) = rms;
     }
-    // std::cout << plane << " " << signal.size() << " " << irow << " " << rms << std::endl;
+    
+    //  std::cout << plane << " " << signal.size() << " " << irow << " " << rms << std::endl;
     
     // create rois
     int roi_begin=-1;
@@ -387,6 +388,13 @@ void ROI_formation::find_ROI_by_decon_itself(int plane, const Array::array_xxf& 
       }
     }
 
+    // if (plane==2 && irow == 69){
+    //   std::cout << "Xin: " << irow << " " << rms << " " << temp_rois.size() << std::endl;
+    //   for (size_t i=0;i!=temp_rois.size();i++){
+    // 	std::cout << "Xin: " << temp_rois.at(i).first << " " << temp_rois.at(i).second << std::endl;
+    //   }
+    // }
+    
     
     // fill rois ...
     if (plane==0){
@@ -400,6 +408,11 @@ void ROI_formation::find_ROI_by_decon_itself(int plane, const Array::array_xxf& 
   }
   
   extend_ROI_self(plane);
+
+  // for (size_t i=0;i!=self_rois_w.at(69).size();i++){
+  //   std::cout << "Xin: " << self_rois_w.at(69).at(i).first << " " << self_rois_w.at(69).at(i).second << std::endl;
+  // }
+  
   create_ROI_connect_info(plane);
 }
 

@@ -160,6 +160,17 @@ void ROI_refinement::apply_roi(int plane, Array::array_xxf& r_data){
     for (int irow = 0 ; irow != r_data.rows(); irow++){
       //refresh ... 
       Waveform::realseq_t signal(r_data.cols(),0);
+
+      // if (irow==69){
+      // 	std::cout << "Xin: " << rois_w_tight.at(irow).size() << " " << std::endl;
+      // 	for (auto it = rois_w_tight.at(irow).begin(); it!= rois_w_tight.at(irow).end(); it++){
+      // 	  SignalROI *roi =  *it;
+      // 	  int start_bin = roi->get_ext_start_bin();
+      // 	  int end_bin = roi->get_ext_end_bin();
+      // 	  std::cout << "Xin: " << start_bin << " " << end_bin << std::endl;
+      // 	}
+      // }
+      
       // loop ROIs and assign data
       for (auto it = rois_w_tight.at(irow).begin(); it!= rois_w_tight.at(irow).end(); it++){
 	SignalROI *roi =  *it;
@@ -2126,11 +2137,16 @@ void ROI_refinement::BreakROIs(int plane, ROI_formation& roi_form){
 
 
 void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
+
+  //if (plane==2) std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
+  
   //std::cout << "Clean up loose ROIs" << std::endl;
   CleanUpROIs(plane);
   //std::cout << "Generate more loose ROIs from isolated good tight ROIs" << std::endl;
   generate_merge_ROIs(plane);
 
+  // if (plane==2)  std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
+  
   for (int qx = 0; qx!=break_roi_loop; qx++){
     // std::cout << "Break loose ROIs" << std::endl;
     BreakROIs(plane, roi_form);
@@ -2138,7 +2154,8 @@ void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
     CheckROIs(plane, roi_form);
     CleanUpROIs(plane);
   }
-  
+
+  // if (plane==2)  std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
   
   
   //  std::cout << "Shrink ROIs" << std::endl;
@@ -2147,6 +2164,7 @@ void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
   CheckROIs(plane, roi_form);
   CleanUpROIs(plane);
 
+  //  if (plane==2)  std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
 
   // Further reduce fake hits
   // std::cout << "Remove fake hits " << std::endl;
@@ -2158,7 +2176,7 @@ void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
 
   ExtendROIs();
   //TestROIs();
-  
+  //if (plane==2)  std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
 }
 
 void ROI_refinement::TestROIs(){
