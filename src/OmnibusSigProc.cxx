@@ -46,6 +46,7 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
                                double r_th_factor ,
                                double r_fake_signal_low_th ,
                                double r_fake_signal_high_th,
+                               double r_fake_signal_th_ind_factor,
                                int r_pad ,
                                int r_break_roi_loop ,
                                double r_th_peak ,
@@ -82,6 +83,7 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
   , m_r_th_factor(r_th_factor)
   , m_r_fake_signal_low_th(r_fake_signal_low_th)
   , m_r_fake_signal_high_th(r_fake_signal_high_th)
+  , m_r_fake_signal_th_ind_factor(r_fake_signal_th_ind_factor)
   , m_r_pad(r_pad)
   , m_r_break_roi_loop(r_break_roi_loop)
   , m_r_th_peak(r_th_peak)
@@ -146,6 +148,7 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_r_th_factor = get(config,"r_th_factor",m_r_th_factor);
   m_r_fake_signal_low_th = get(config,"r_fake_signal_low_th",m_r_fake_signal_low_th);
   m_r_fake_signal_high_th = get(config,"r_fake_signal_high_th",m_r_fake_signal_high_th);
+  m_r_fake_signal_th_ind_factor = get(config,"r_fake_signal_th_ind_factor",m_r_fake_signal_th_ind_factor);
   m_r_pad = get(config,"r_pad",m_r_pad);
   m_r_break_roi_loop = get(config,"r_break_roi_loop",m_r_break_roi_loop);
   m_r_th_peak = get(config,"r_th_peak",m_r_th_peak);
@@ -242,6 +245,7 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["r_th_factor"] = m_r_th_factor;
   cfg["r_fake_signal_low_th"] = m_r_fake_signal_low_th;
   cfg["r_fake_signal_high_th"] = m_r_fake_signal_high_th;
+  cfg["r_fake_signal_th_ind_factor"] = m_r_fake_signal_th_ind_factor;
   cfg["r_pad"] = m_r_pad;
   cfg["r_break_roi_loop"] = m_r_break_roi_loop;
   cfg["r_th_peak"] = m_r_th_peak;
@@ -976,7 +980,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 
   // create a class for ROIs ... 
   ROI_formation roi_form(m_cmm, m_nwires[0], m_nwires[1], m_nwires[2], m_nticks, m_th_factor_ind, m_th_factor_col, m_pad, m_asy, m_rebin, m_l_factor, m_l_max_th, m_l_factor1, m_l_short_length);
-  ROI_refinement roi_refine(m_cmm, m_nwires[0], m_nwires[1], m_nwires[2],m_r_th_factor,m_r_fake_signal_low_th,m_r_fake_signal_high_th,m_r_pad,m_r_break_roi_loop,m_r_th_peak,m_r_sep_peak,m_r_low_peak_sep_threshold_pre,m_r_max_npeaks,m_r_sigma,m_r_th_percent);//
+  ROI_refinement roi_refine(m_cmm, m_nwires[0], m_nwires[1], m_nwires[2],m_r_th_factor,m_r_fake_signal_low_th,m_r_fake_signal_high_th,m_r_fake_signal_th_ind_factor,m_r_pad,m_r_break_roi_loop,m_r_th_peak,m_r_sep_peak,m_r_low_peak_sep_threshold_pre,m_r_max_npeaks,m_r_sigma,m_r_th_percent);//
 
   
   for (int iplane = 0; iplane != 3; ++iplane){

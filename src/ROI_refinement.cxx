@@ -6,13 +6,14 @@
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
-ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th, int pad, int break_roi_loop, float th_peak, float sep_peak, float low_peak_sep_threshold_pre, int max_npeaks, float sigma, float th_percent)
+ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th, float fake_signal_th_ind_factor, int pad, int break_roi_loop, float th_peak, float sep_peak, float low_peak_sep_threshold_pre, int max_npeaks, float sigma, float th_percent)
   : nwire_u(nwire_u)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
   , th_factor(th_factor)
   , fake_signal_low_th(fake_signal_low_th)
   , fake_signal_high_th(fake_signal_high_th)
+  , fake_signal_th_ind_factor(fake_signal_th_ind_factor)
   , pad(pad)
   , break_roi_loop(break_roi_loop)
   , th_peak(th_peak)
@@ -1133,6 +1134,8 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
   // focus on the isolated ones first
   float mean_threshold = fake_signal_low_th;
   float threshold = fake_signal_high_th;
+  mean_threshold *= fake_signal_th_ind_factor;
+  threshold *= fake_signal_th_ind_factor;
   
   std::list<SignalROI*> Bad_ROIs;
   if (plane==0){
