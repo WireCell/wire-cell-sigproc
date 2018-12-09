@@ -32,7 +32,8 @@ namespace WireCell {
                      double r_th_factor = 3.0,
                      double r_fake_signal_low_th = 500,
                      double r_fake_signal_high_th = 1000,
-                     double r_fake_signal_th_ind_factor = 1.0,
+                     double r_fake_signal_low_th_ind_factor = 1.0,
+                     double r_fake_signal_high_th_ind_factor = 1.0,
                      int r_pad = 5,
                      int r_break_roi_loop = 2,
                      double r_th_peak = 3.0,
@@ -130,7 +131,8 @@ namespace WireCell {
       double m_r_th_factor;
       double m_r_fake_signal_low_th;
       double m_r_fake_signal_high_th;
-      double m_r_fake_signal_th_ind_factor;
+      double m_r_fake_signal_low_th_ind_factor;
+      double m_r_fake_signal_high_th_ind_factor;
       int m_r_pad;
       int m_r_break_roi_loop;
       double m_r_th_peak;
