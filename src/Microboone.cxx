@@ -293,6 +293,11 @@ std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform:
 	    }
 	}
     }
+<<<<<<< HEAD
+=======
+
+    //std::cout << "Xin: " << respec.size() << " " << res_offset << std::endl;
+>>>>>>> 361e4a0cba2b9ca5e3c439621152fb03dc8df064
     
     // the deconvolution protection code ... 
     if (respec.size() > 0 && (respec.at(0).real()!=1 || respec.at(0).imag()!=0) && res_offset!=0){
@@ -848,6 +853,13 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
 
     // do the signal protection and adaptive baseline
     std::vector< std::vector<int> > rois = Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, adc_limit);
+
+    // if (achannel == 3840){
+    // 	std::cout << "Xin1: " << rois.size() << std::endl;
+    // 	for (size_t i=0;i!=rois.size();i++){
+    // 	    std::cout << "Xin1: " << rois.at(i).front() << " " << rois.at(i).back() << std::endl;
+    // 	}
+    // }
     
     //std::cerr <<"\tSigprotection done: " << chansig.size() << " " << medians.size() << " " << medians.at(100) << " " << medians.at(101) << std::endl;
 
