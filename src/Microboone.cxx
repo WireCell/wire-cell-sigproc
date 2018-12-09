@@ -293,12 +293,9 @@ std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform:
 	    }
 	}
     }
-<<<<<<< HEAD
-=======
+
 
     //std::cout << "Xin: " << respec.size() << " " << res_offset << std::endl;
->>>>>>> 361e4a0cba2b9ca5e3c439621152fb03dc8df064
-    
     // the deconvolution protection code ... 
     if (respec.size() > 0 && (respec.at(0).real()!=1 || respec.at(0).imag()!=0) && res_offset!=0){
 	//std::cout << nbin << std::endl;
