@@ -25,6 +25,8 @@ SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
     , m_default_decon_limit(0.02)
     , m_default_adc_limit(15.0)
     , m_default_decon_limit1(0.08)
+    , m_default_protection_factor(5.0)
+    , m_default_min_adc_limit(50)
 {
     set_sampling(tick, nsamples);
 }
@@ -127,6 +129,24 @@ float SimpleChannelNoiseDB::coherent_nf_adc_limit(int channel) const
 	return m_adc_limit[ind];
     }
     return m_default_adc_limit;
+}
+
+float SimpleChannelNoiseDB::coherent_nf_protection_factor(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < (int)m_protection_factor.size()) {
+	return m_protection_factor[ind];
+    }
+    return m_default_protection_factor;
+}
+
+float SimpleChannelNoiseDB::coherent_nf_min_adc_limit(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < (int)m_min_adc_limit.size()) {
+	return m_min_adc_limit[ind];
+    }
+    return m_default_min_adc_limit;
 }
 
 
@@ -389,6 +409,23 @@ void SimpleChannelNoiseDB::set_coherent_nf_adc_limit(const std::vector<int>& cha
     }
 }
 
+void SimpleChannelNoiseDB::set_coherent_nf_protection_factor(const std::vector<int>& channels, float protection_factor)
+{
+    //std::cerr << "SimpleChannelNoiseDB: set pad window back on " << channels.size() << " channels: " << pad_b << std::endl;
+    for (auto ch : channels) {
+	int ind = chind(ch);
+	set_one(ind, protection_factor, m_protection_factor, m_default_protection_factor);
+    }
+}
+
+void SimpleChannelNoiseDB::set_coherent_nf_min_adc_limit(const std::vector<int>& channels, float min_adc_limit)
+{
+    //std::cerr << "SimpleChannelNoiseDB: set pad window back on " << channels.size() << " channels: " << pad_b << std::endl;
+    for (auto ch : channels) {
+	int ind = chind(ch);
+	set_one(ind, min_adc_limit, m_min_adc_limit, m_default_min_adc_limit);
+    }
+}
 
 
 void SimpleChannelNoiseDB::set_filter(const std::vector<int>& channels, const multimask_t& masks)

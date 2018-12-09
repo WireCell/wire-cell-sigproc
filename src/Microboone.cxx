@@ -226,7 +226,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
     return true;
 }
 
-std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b, float upper_decon_limit, float upper_adc_limit)
+std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b, float upper_decon_limit, float upper_adc_limit, float protection_factor, float min_adc_limit)
 {
    
   
@@ -242,11 +242,11 @@ std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform:
     //std::cout << temp.first << " " << temp.second << std::endl;
     const int nbin = medians.size();
 
-    const int protection_factor = 5.0;
+    //    const int protection_factor = 5.0;
     // move to input ... 
     // const float upper_decon_limit = 0.05;
     // const float upper_adc_limit = 15;
-    const float min_adc_limit = 50;
+    //const float min_adc_limit = 50;
 
 
     std::vector<bool> signalsBool;
@@ -839,8 +839,11 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     const float decon_limit = m_noisedb->coherent_nf_decon_limit(achannel);// 0.02;
     const float adc_limit = m_noisedb->coherent_nf_adc_limit(achannel);//15;
     const float decon_limit1 = m_noisedb->coherent_nf_decon_limit1(achannel);// 0.08; // loose filter
+
+    const float protection_factor = m_noisedb->coherent_nf_protection_factor(achannel);
+    const float min_adc_limit = m_noisedb->coherent_nf_min_adc_limit(achannel);
     
-    //std::cout << decon_limit << " " << adc_limit << std::endl;
+    // std::cout << decon_limit << " " << adc_limit << " " << protection_factor << " " << min_adc_limit << std::endl;
     
     // if (respec.size()) {
     // now, apply the response spectrum to deconvolve the median
@@ -849,7 +852,7 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     //}
 
     // do the signal protection and adaptive baseline
-    std::vector< std::vector<int> > rois = Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, adc_limit);
+    std::vector< std::vector<int> > rois = Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, adc_limit, protection_factor, min_adc_limit);
 
     // if (achannel == 3840){
     // 	std::cout << "Xin1: " << rois.size() << std::endl;

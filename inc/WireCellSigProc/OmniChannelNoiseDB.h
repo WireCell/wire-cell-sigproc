@@ -49,7 +49,9 @@ namespace WireCell {
 	    virtual float coherent_nf_decon_limit(int channel) const;
 	    virtual float coherent_nf_decon_limit1(int channel) const;
 	    virtual float coherent_nf_adc_limit(int channel) const;
-
+	    virtual float coherent_nf_protection_factor(int channel) const;
+	    virtual float coherent_nf_min_adc_limit(int channel) const;
+	    
 	    virtual const filter_t& rcrc(int channel) const;
 	    virtual const filter_t& config(int channel) const;
 	    virtual const filter_t& noise(int channel) const;
@@ -112,6 +114,8 @@ namespace WireCell {
 		float decon_limit;
 		float adc_limit;
 		float decon_limit1;
+		float protection_factor;
+		float min_adc_limit;
 		
                 // parameters
     

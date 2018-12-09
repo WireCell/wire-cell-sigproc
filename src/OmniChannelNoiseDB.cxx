@@ -37,6 +37,8 @@ OmniChannelNoiseDB::ChannelInfo::ChannelInfo()
     , decon_limit(0.02)
     , adc_limit(0.0)
     , decon_limit1(0.08)
+    , protection_factor(5.0)
+    , min_adc_limit(50)
     , rcrc(nullptr)
     , config(nullptr)
     , noise(nullptr)
@@ -476,6 +478,22 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
             get_ci(ch).adc_limit = val;
         }
     }
+     if (cfg.isMember("protection_factor")) {
+        float val = cfg["protection_factor"].asDouble();
+        dump_cfg("protectionfactor", chans, val);
+        for (int ch : chans) {
+            get_ci(ch).protection_factor = val;
+        }
+    }
+     if (cfg.isMember("min_adc_limit")) {
+        float val = cfg["min_adc_limit"].asDouble();
+        dump_cfg("minadclimit", chans, val);
+        for (int ch : chans) {
+            //m_db.at(ch).adc_limit = val;
+            //dbget(ch).adc_limit = val;
+            get_ci(ch).min_adc_limit = val;
+        }
+    }
     
     {
         auto jfilt = cfg["rcrc"];
@@ -643,6 +661,16 @@ float OmniChannelNoiseDB::coherent_nf_decon_limit1(int channel) const
 float OmniChannelNoiseDB::coherent_nf_adc_limit(int channel) const
 {
     return dbget(channel).adc_limit;
+}
+
+float OmniChannelNoiseDB::coherent_nf_protection_factor(int channel) const
+{
+    return dbget(channel).protection_factor;
+}
+
+float OmniChannelNoiseDB::coherent_nf_min_adc_limit(int channel) const
+{
+    return dbget(channel).min_adc_limit;
 }
        
 
