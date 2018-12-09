@@ -356,17 +356,22 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
       // How to access the sigtraces together ???
       if (map_ch_rois.find(trace->channel()) != map_ch_rois.end()){
 	std::vector<std::pair<int,int>>& rois_save = map_ch_rois[trace->channel()];
+	bool flag_shorted = false;
+	int prev_time_tick = -2000;
 	for (auto it = rois_save.begin(); it!=rois_save.end(); it++){
 
-	  L1_fit(newtrace, adctrace_ch_map[trace->channel()], it->first, it->second+1);
+	  if (it->first - prev_time_tick > 20)
+	    flag_shorted = false;
+	  
+	  flag_shorted = L1_fit(newtrace, adctrace_ch_map[trace->channel()], it->first, it->second+1, flag_shorted);
 	  
 	  for (int time_tick = it->first; time_tick!=it->second+1; time_tick++){
 	  // temporary hack to reset the data ...
 	    if (newtrace->charge().at(time_tick-trace->tbin())<0)
 	      newtrace->charge().at(time_tick-trace->tbin())=0;
 	  }
-
 	  
+	  prev_time_tick = it->second;
 	}
       }
 
@@ -397,7 +402,7 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
 }
 
 
-void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::shared_ptr<const WireCell::ITrace>& adctrace, int start_tick, int end_tick){
+bool L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::shared_ptr<const WireCell::ITrace>& adctrace, int start_tick, int end_tick, bool flag_shorted){
   
   double overall_time_offset = get(m_cfg,"overall_time_offset",overall_time_offset) * units::us;
   double collect_time_offset = get(m_cfg,"collect_time_offset",collect_time_offset) * units::us;
@@ -462,6 +467,9 @@ void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
   }else if (temp2_sum > 30 * nbin_fit && temp1_sum < 2.0*nbin_fit && max_val - min_val < 22){
     flag_l1 = 2;
   }
+
+  if (flag_l1==2 && flag_shorted == false)
+    flag_l1 = 0;
 
   // if (adctrace->channel() == 4079){
   //   std::cout << nbin_fit << " " << start_tick << " " << end_tick << " " << temp_sum << " " << temp1_sum << " " << temp2_sum << " " << max_val << " " << min_val << " " << flag_l1 << std::endl;
@@ -610,12 +618,16 @@ void L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
       for (int time_tick = start_tick; time_tick!= end_tick; time_tick++){
 	newtrace->charge().at(time_tick-newtrace->tbin())=l1_signal.at(time_tick-start_tick);
       }
-      
+      return true;
     }
   }else if (flag_l1==2){
     for (int time_tick = start_tick; time_tick!= end_tick; time_tick++){
       // temporary hack to reset the data ... 
       newtrace->charge().at(time_tick-newtrace->tbin())=0;
     }
+    return true;
   }
+
+  return false;
+  
 }
