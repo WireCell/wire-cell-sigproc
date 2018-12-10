@@ -349,35 +349,123 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
       // }
     }
     
-    
+
+    std::map<int, std::vector<int> > map_ch_flag_rois;
     // prepare for the output signal ...
     for (auto trace : sigtraces) {
       auto newtrace = std::make_shared<SimpleTrace>(trace->channel(), trace->tbin(), trace->charge());
       // How to access the sigtraces together ???
       if (map_ch_rois.find(trace->channel()) != map_ch_rois.end()){
 	std::vector<std::pair<int,int>>& rois_save = map_ch_rois[trace->channel()];
+	std::vector<int> flag_rois;
+	map_ch_flag_rois[trace->channel()] = flag_rois;
+	
 	bool flag_shorted = false;
-	int prev_time_tick = -2000;
-	for (auto it = rois_save.begin(); it!=rois_save.end(); it++){
-
-	  if (it->first - prev_time_tick > 20)
-	    flag_shorted = false;
+	for (size_t i1 = 0; i1!=rois_save.size(); i1++){
+	  //
+	 	  
+	  int temp_flag = L1_fit(newtrace, adctrace_ch_map[trace->channel()], rois_save.at(i1).first, rois_save.at(i1).second+1, flag_shorted);
+	  map_ch_flag_rois[trace->channel()].push_back(temp_flag);
 	  
-	  flag_shorted = L1_fit(newtrace, adctrace_ch_map[trace->channel()], it->first, it->second+1, flag_shorted);
-	  
-	  for (int time_tick = it->first; time_tick!=it->second+1; time_tick++){
+	  for (int time_tick = rois_save.at(i1).first; time_tick!=rois_save.at(i1).second+1; time_tick++){
 	  // temporary hack to reset the data ...
 	    if (newtrace->charge().at(time_tick-trace->tbin())<0)
 	      newtrace->charge().at(time_tick-trace->tbin())=0;
 	  }
-	  
-	  prev_time_tick = it->second;
 	}
+	
+	
+	flag_shorted = false;
+	int prev_time_tick = -2000;
+	for (size_t i1 = 0; i1!=rois_save.size(); i1++){
+	  if (rois_save.at(i1).first - prev_time_tick > 20) flag_shorted = false;
+	   
+	   if (map_ch_flag_rois[trace->channel()].at(i1)==1){
+	     flag_shorted = true;
+	   }else if (map_ch_flag_rois[trace->channel()].at(i1)==2){
+	     if (flag_shorted){
+	       L1_fit(newtrace, adctrace_ch_map[trace->channel()], rois_save.at(i1).first, rois_save.at(i1).second+1, flag_shorted);
+	       map_ch_flag_rois[trace->channel()].at(i1) = 0;
+	     }
+	   }else if (map_ch_flag_rois[trace->channel()].at(i1)==0){
+	     flag_shorted = false;
+	   }
+	   prev_time_tick = rois_save.at(i1).second;
+	}
+	
+	if (rois_save.size()>0){
+	  prev_time_tick = rois_save.back().second + 2000;
+
+	  for (size_t i1 = 0; i1!=rois_save.size(); i1++){
+	    if (prev_time_tick - rois_save.at(rois_save.size()-1-i1).second > 20) flag_shorted = false;
+	    
+	    if (map_ch_flag_rois[trace->channel()].at(i1)==1){
+	      flag_shorted = true;
+	    }else if (map_ch_flag_rois[trace->channel()].at(i1)==2){
+	      if (flag_shorted){
+		L1_fit(newtrace, adctrace_ch_map[trace->channel()], rois_save.at(i1).first, rois_save.at(i1).second+1, flag_shorted);
+		map_ch_flag_rois[trace->channel()].at(i1) = 0;
+	      }
+	    }else if (map_ch_flag_rois[trace->channel()].at(i1)==0){
+	      flag_shorted = false;
+	    }
+	    prev_time_tick = rois_save.at(i1).first;
+	  }
+	}
+	
+
+	
       }
 
       
       // std::cout << trace->channel() << std::endl;
       out_traces.push_back(newtrace);
+    }
+
+    for (size_t i2 = 0; i2!=out_traces.size(); i2++){
+      auto new_trace = std::make_shared<SimpleTrace>(out_traces.at(i2)->channel(),  out_traces.at(i2)->tbin(),  out_traces.at(i2)->charge());
+      int ch = out_traces.at(i2)->channel();
+      if (map_ch_rois.find(ch) != map_ch_rois.end()){
+	std::vector<std::pair<int,int>>& rois_save = map_ch_rois[ch];
+	std::vector<std::pair<int,int> > next_rois_save;
+	if (map_ch_rois.find(ch+1)!=map_ch_rois.end())
+	  next_rois_save = map_ch_rois[ch+1];
+	std::vector<std::pair<int,int> > prev_rois_save;
+	if (map_ch_rois.find(ch-1)!=map_ch_rois.end())
+	  prev_rois_save = map_ch_rois[ch-1];
+
+	for (size_t i1 = 0; i1!=rois_save.size(); i1++){
+	  if ( map_ch_flag_rois[ch].at(i1) == 2 ){
+	    bool flag_shorted = false;
+	    // need to check now ...
+	    for (size_t i3 = 0; i3 != next_rois_save.size(); i3++){
+	      if (map_ch_flag_rois[ch+1].at(i3)==1){
+		if (rois_save.at(i1).first - 3 <= next_rois_save.at(i3).second + 3 &&
+		    rois_save.at(i1).second + 3 >= next_rois_save.at(i3).first - 3){
+		  flag_shorted = true;
+		  break;
+		}
+	      }
+	    }
+	    if (!flag_shorted)
+	      for (size_t i3 = 0; i3 != prev_rois_save.size(); i3++){
+		if (map_ch_flag_rois[ch-1].at(i3)==1){
+		  if (rois_save.at(i1).first - 3 <= prev_rois_save.at(i3).second + 3 &&
+		      rois_save.at(i1).second + 3 >= prev_rois_save.at(i3).first - 3){
+		    flag_shorted = true;
+		    break;
+		  }
+		}
+	      }
+	    if(flag_shorted){
+	      for (int time_tick = rois_save.at(i1).first; time_tick!=rois_save.at(i1).second+1; time_tick++){
+		new_trace->charge().at(time_tick-out_traces.at(i2)->tbin())=0;
+	      }
+	    }
+	  }
+	}
+      }
+      out_traces.at(i2) = new_trace;
     }
 
 
@@ -402,7 +490,7 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
 }
 
 
-bool L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::shared_ptr<const WireCell::ITrace>& adctrace, int start_tick, int end_tick, bool flag_shorted){
+int L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::shared_ptr<const WireCell::ITrace>& adctrace, int start_tick, int end_tick, bool flag_shorted){
   
   double overall_time_offset = get(m_cfg,"overall_time_offset",overall_time_offset) * units::us;
   double collect_time_offset = get(m_cfg,"collect_time_offset",collect_time_offset) * units::us;
@@ -468,8 +556,7 @@ bool L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
     flag_l1 = 2;
   }
 
-  if (flag_l1==2 && flag_shorted == false)
-    flag_l1 = 0;
+ 
 
   // if (adctrace->channel() == 4079){
   //   std::cout << nbin_fit << " " << start_tick << " " << end_tick << " " << temp_sum << " " << temp1_sum << " " << temp2_sum << " " << max_val << " " << min_val << " " << flag_l1 << std::endl;
@@ -618,16 +705,16 @@ bool L1SPFilter::L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::s
       for (int time_tick = start_tick; time_tick!= end_tick; time_tick++){
 	newtrace->charge().at(time_tick-newtrace->tbin())=l1_signal.at(time_tick-start_tick);
       }
-      return true;
     }
   }else if (flag_l1==2){
-    for (int time_tick = start_tick; time_tick!= end_tick; time_tick++){
-      // temporary hack to reset the data ... 
-      newtrace->charge().at(time_tick-newtrace->tbin())=0;
+    if (flag_shorted){
+      for (int time_tick = start_tick; time_tick!= end_tick; time_tick++){
+	// temporary hack to reset the data ... 
+	newtrace->charge().at(time_tick-newtrace->tbin())=0;
+      }
     }
-    return true;
   }
 
-  return false;
+  return flag_l1;
   
 }

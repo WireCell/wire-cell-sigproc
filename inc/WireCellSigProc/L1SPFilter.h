@@ -36,7 +36,7 @@ namespace WireCell {
 
 	    void init_resp();
 
-	    bool L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::shared_ptr<const WireCell::ITrace>& adctrace, int start_tick, int end_tick, bool flag_shorted = false);
+	    int L1_fit(std::shared_ptr<WireCell::SimpleTrace>& newtrace, std::shared_ptr<const WireCell::ITrace>& adctrace, int start_tick, int end_tick, bool flag_shorted = false);
 	    
         private:
             Configuration m_cfg;
