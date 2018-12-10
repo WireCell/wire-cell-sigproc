@@ -30,18 +30,20 @@ WIRECELL_FACTORY(mbADCBitShift,
 
 using namespace WireCell::SigProc;
 
-double filter_time(double freq){
+double filter_low(double freq, double cut_off = 0.08);
+
+double filter_time(double freq){ 
     double a = 0.143555;
     double b = 4.95096;
     return (freq>0)*exp(-0.5*pow(freq/a,b));
 }
 
-double filter_low(double freq){
+double filter_low(double freq, double cut_off){
     if ( (freq>0.177 && freq<0.18) || (freq > 0.2143 && freq < 0.215) ||
 	 (freq >=0.106 && freq<=0.109) || (freq >0.25 && freq<0.251)){
     	return 0;
     }else{
-	return  1-exp(-pow(freq/0.08,8));
+	return  1-exp(-pow(freq/cut_off,8));
     }
 }
 
@@ -226,7 +228,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
     return true;
 }
 
-std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b, float upper_decon_limit, float upper_adc_limit, float protection_factor, float min_adc_limit)
+std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform::realseq_t& medians, const WireCell::Waveform::compseq_t& respec, int res_offset, int pad_f, int pad_b, float upper_decon_limit, float decon_lf_cutoff, float upper_adc_limit, float protection_factor, float min_adc_limit)
 {
    
   
@@ -272,7 +274,7 @@ std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform:
 	limit = min_adc_limit;
     }
 
-    // std::cout << "Xin " << mean << " " << rms *protection_factor << " " << upper_adc_limit << std::endl;
+    //std::cout << "Xin " << protection_factor << " " << mean << " " << rms *protection_factor << " " << upper_adc_limit << " " << decon_lf_cutoff << " " << upper_decon_limit << std::endl;
     
     for (int j=0;j!=nbin;j++) {
 	float content = medians.at(j);
@@ -311,7 +313,7 @@ std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform:
     	    }else{
     		freq = (medians_freq.size() - i)/(1.*medians_freq.size())*2.;
     	    }
-    	    std::complex<float> factor = filter_time(freq)*filter_low(freq);
+    	    std::complex<float> factor = filter_time(freq)*filter_low(freq, decon_lf_cutoff);
     	    medians_freq.at(i) = medians_freq.at(i) * factor;
     	}
     	WireCell::Waveform::realseq_t medians_decon = WireCell::Waveform::idft(medians_freq);
@@ -837,6 +839,7 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     // need to move these to data base, consult with Brett ...
     // also need to be time dependent ... 
     const float decon_limit = m_noisedb->coherent_nf_decon_limit(achannel);// 0.02;
+    const float decon_lf_cutoff = m_noisedb->coherent_nf_decon_lf_cutoff(achannel);
     const float adc_limit = m_noisedb->coherent_nf_adc_limit(achannel);//15;
     const float decon_limit1 = m_noisedb->coherent_nf_decon_limit1(achannel);// 0.08; // loose filter
 
@@ -852,7 +855,7 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     //}
 
     // do the signal protection and adaptive baseline
-    std::vector< std::vector<int> > rois = Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, adc_limit, protection_factor, min_adc_limit);
+    std::vector< std::vector<int> > rois = Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, decon_lf_cutoff, adc_limit, protection_factor, min_adc_limit);
 
     // if (achannel == 3840){
     // 	std::cout << "Xin1: " << rois.size() << std::endl;

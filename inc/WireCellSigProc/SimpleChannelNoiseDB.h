@@ -33,6 +33,7 @@ namespace WireCell {
 	    virtual int pad_window_back(int channel) const;
 	    
 	    virtual float coherent_nf_decon_limit(int channel) const;
+	    virtual float coherent_nf_decon_lf_cutoff(int channel) const;
 	    virtual float coherent_nf_decon_limit1(int channel) const;
 	    virtual float coherent_nf_adc_limit(int channel) const;
 	    virtual float coherent_nf_protection_factor(int channel) const;
@@ -82,6 +83,7 @@ namespace WireCell {
 	    void set_pad_window_back(const std::vector<int>& channels, int pad_b);
 
 	    void set_coherent_nf_decon_limit(const std::vector<int>& channels, float decon_limit);
+	    void set_coherent_nf_decon_lf_cutoff(const std::vector<int>& channels, float decon_lf_cutoff);
 	    void set_coherent_nf_decon_limit1(const std::vector<int>& channels, float decon_limit);
 	    void set_coherent_nf_adc_limit(const std::vector<int>& channels, float adc_limit);
 	    void set_coherent_nf_protection_factor(const std::vector<int>& channels, float protection_factor);
@@ -130,11 +132,11 @@ namespace WireCell {
 	    double m_default_baseline, m_default_gain, m_default_offset;
 	    double m_default_min_rms, m_default_max_rms;
 	    int m_default_pad_f, m_default_pad_b;
-	    float m_default_decon_limit, m_default_adc_limit, m_default_decon_limit1, m_default_protection_factor, m_default_min_adc_limit;
+	    float m_default_decon_limit, m_default_decon_lf_cutoff, m_default_adc_limit, m_default_decon_limit1, m_default_protection_factor, m_default_min_adc_limit;
 
 	    std::vector<double> m_baseline, m_gain, m_offset, m_min_rms, m_max_rms;
 	    std::vector<int> m_pad_f, m_pad_b;
-	    std::vector<float> m_decon_limit, m_adc_limit, m_decon_limit1, m_protection_factor, m_min_adc_limit;
+	    std::vector<float> m_decon_limit, m_decon_lf_cutoff, m_adc_limit, m_decon_limit1, m_protection_factor, m_min_adc_limit;
 
 
 	    typedef std::shared_ptr<filter_t> shared_filter_t;

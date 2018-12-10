@@ -23,6 +23,7 @@ SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
     , m_default_pad_f(0)
     , m_default_pad_b(0)
     , m_default_decon_limit(0.02)
+    , m_default_decon_lf_cutoff(0.08)
     , m_default_adc_limit(15.0)
     , m_default_decon_limit1(0.08)
     , m_default_protection_factor(5.0)
@@ -111,6 +112,15 @@ float SimpleChannelNoiseDB::coherent_nf_decon_limit(int channel) const
 	return m_decon_limit[ind];
     }
     return m_default_decon_limit;
+}
+
+float SimpleChannelNoiseDB::coherent_nf_decon_lf_cutoff(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < (int)m_decon_lf_cutoff.size()) {
+	return m_decon_lf_cutoff[ind];
+    }
+    return m_default_decon_lf_cutoff;
 }
 
 float SimpleChannelNoiseDB::coherent_nf_decon_limit1(int channel) const
@@ -390,6 +400,16 @@ void SimpleChannelNoiseDB::set_coherent_nf_decon_limit(const std::vector<int>& c
 	set_one(ind, decon_limit, m_decon_limit, m_default_decon_limit);
     }
 }
+
+void SimpleChannelNoiseDB::set_coherent_nf_decon_lf_cutoff(const std::vector<int>& channels, float decon_lf_cutoff)
+{
+    //std::cerr << "SimpleChannelNoiseDB: set pad window back on " << channels.size() << " channels: " << pad_b << std::endl;
+    for (auto ch : channels) {
+	int ind = chind(ch);
+	set_one(ind, decon_lf_cutoff, m_decon_lf_cutoff, m_default_decon_lf_cutoff);
+    }
+}
+
 
 void SimpleChannelNoiseDB::set_coherent_nf_decon_limit1(const std::vector<int>& channels, float decon_limit1)
 {
