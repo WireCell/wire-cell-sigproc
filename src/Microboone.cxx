@@ -274,7 +274,7 @@ std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform:
 	limit = min_adc_limit;
     }
 
-    //std::cout << "Xin " << protection_factor << " " << mean << " " << rms *protection_factor << " " << upper_adc_limit << " " << decon_lf_cutoff << " " << upper_decon_limit << std::endl;
+    // std::cout << "Xin " << protection_factor << " " << mean << " " << rms *protection_factor << " " << upper_adc_limit << " " << decon_lf_cutoff << " " << upper_decon_limit << std::endl;
     
     for (int j=0;j!=nbin;j++) {
 	float content = medians.at(j);
@@ -853,6 +853,8 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     // and apply the special protection or pass respec into
     // SignalProtection().
     //}
+
+    //std::cout << achannel << std::endl;
 
     // do the signal protection and adaptive baseline
     std::vector< std::vector<int> > rois = Microboone::SignalProtection(medians,respec,res_offset,pad_f,pad_b,decon_limit, decon_lf_cutoff, adc_limit, protection_factor, min_adc_limit);
