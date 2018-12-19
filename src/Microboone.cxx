@@ -353,6 +353,61 @@ std::vector< std::vector<int> > Microboone::SignalProtection(WireCell::Waveform:
     		}
     	    }
     	}
+
+
+	// // second-level decon ...
+	// medians_freq = WireCell::Waveform::dft(medians);
+	// WireCell::Waveform::realseq_t  respec_time = WireCell::Waveform::idft(respec);
+	// for (size_t i=0;i!=respec_time.size();i++){
+	//     if (respec_time.at(i)<0) respec_time.at(i) = 0;
+	// }
+	// WireCell::Waveform::compseq_t respec_freq = WireCell::Waveform::dft(respec_time);
+	// WireCell::Waveform::shrink(medians_freq,respec_freq);
+	// for (size_t i=0;i!=medians_freq.size();i++){
+    	//     double freq;
+    	//     // assuming 2 MHz digitization
+    	//     if (i <medians_freq.size()/2.){
+    	// 	freq = i/(1.*medians_freq.size())*2.;
+    	//     }else{
+    	// 	freq = (medians_freq.size() - i)/(1.*medians_freq.size())*2.;
+    	//     }
+    	//     std::complex<float> factor = filter_time(freq)*filter_low(freq, decon_lf_cutoff);
+    	//     medians_freq.at(i) = medians_freq.at(i) * factor;
+    	// }
+	// medians_decon = WireCell::Waveform::idft(medians_freq);
+	
+    	// temp = Derivations::CalcRMS(medians_decon);
+    	// mean = temp.first;
+    	// rms = temp.second;
+	
+	// //	if (protection_factor*rms > upper_decon_limit){
+	// limit = protection_factor*rms;
+    	// // }else{
+    	// //     limit = upper_decon_limit;
+    	// // }
+	
+    	// for (int j=0;j!=nbin;j++) {
+    	//     float content = medians_decon.at(j);
+    	//     if ((content-mean)>limit){
+    	// 	int time_bin = j + res_offset;
+	// 	if (time_bin >= nbin) time_bin -= nbin;
+	// 	//	medians.at(time_bin) = 0; 
+    	// 	signalsBool.at(time_bin) = true;
+    	// 	// add the front and back padding
+    	// 	for (int k=0;k!=pad_b;k++){
+    	// 	    int bin = time_bin+k+1;
+    	// 	    if (bin > nbin-1) bin = nbin-1;
+    	// 	    signalsBool.at(bin) = true;
+    	// 	}
+    	// 	for (int k=0;k!=pad_f;k++){
+    	// 	    int bin = time_bin-k-1;
+    	// 	    if (bin <0) { bin = 0; }
+    	// 	    signalsBool.at(bin) = true;
+    	// 	}
+    	//     }
+    	// }
+
+
     }
 
     // {
