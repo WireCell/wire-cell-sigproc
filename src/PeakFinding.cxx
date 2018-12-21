@@ -25,10 +25,13 @@ PeakFinding::~PeakFinding(){
 }
 
 void PeakFinding::Clear(){
-  delete source;
-  delete destVector;
-  delete fPositionX;
-  delete fPositionY;
+
+  
+  
+  delete [] source;
+  delete [] destVector;
+  delete [] fPositionX;
+  delete [] fPositionY;
 }
 
 int PeakFinding::find_peak(Waveform::realseq_t& signal){
