@@ -45,7 +45,7 @@ int PeakFinding::find_peak(Waveform::realseq_t& signal){
   fPositionX = new double[ssize];
   fPositionY = new double[ssize];
 
-  if (ssize >= 3 * sigma ){ // limit the size ... 
+  if (ssize >= 2 * sigma + 1){ // limit the size ... 
     npeaks = SearchHighRes(); 
   }else{
     npeaks = 0;
