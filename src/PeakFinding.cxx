@@ -44,8 +44,13 @@ int PeakFinding::find_peak(Waveform::realseq_t& signal){
   destVector = new double[ssize];
   fPositionX = new double[ssize];
   fPositionY = new double[ssize];
-  npeaks = SearchHighRes(); 
 
+  if (ssize >= 3 * sigma ){ // limit the size ... 
+    npeaks = SearchHighRes(); 
+  }else{
+    npeaks = 0;
+  }
+  
   //fill fPositionY
   for (int i=0; i<npeaks; i++){
       int peak_pos1 = std::round(fPositionX[i]);
