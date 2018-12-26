@@ -662,6 +662,7 @@ void ROI_refinement::CleanUpROIs(int plane){
       for (auto it = to_be_removed.begin(); it!= to_be_removed.end(); it++){
 	auto it1 = find(rois_u_loose.at(i).begin(), rois_u_loose.at(i).end(),*it);
 	rois_u_loose.at(i).erase(it1);
+	delete (*it);
       }
     }
   }else if (plane==1){
@@ -740,6 +741,7 @@ void ROI_refinement::CleanUpROIs(int plane){
       for (auto it = to_be_removed.begin(); it!= to_be_removed.end(); it++){
 	auto it1 = find(rois_v_loose.at(i).begin(), rois_v_loose.at(i).end(),*it);
 	rois_v_loose.at(i).erase(it1);
+	delete (*it);
       }
     }
   }
