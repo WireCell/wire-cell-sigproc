@@ -319,10 +319,12 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
 // Note, this MUST fill itraces in OSP channel/wire order
 void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane)
 {
+  // reuse this vector for each channel
+  ITrace::ChargeSequence charge(m_nticks, 0.0);
+
   double qtot = 0.0;
   for (auto och : m_channel_range[plane]) { // ordered by osp channel
     
-    ITrace::ChargeSequence charge(m_nticks);
     for (int itick=0;itick!=m_nticks;itick++){
       const float q = m_r_data(och.wire, itick);
       charge.at(itick) = q > 0.0 ? q : 0.0;
