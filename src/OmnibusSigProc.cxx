@@ -98,6 +98,8 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
   , m_wiener_tag(wiener_tag)
   , m_wiener_threshold_tag(wiener_threshold_tag)
   , m_gauss_tag(gauss_tag) 
+  , m_frame_tag("sigproc")
+  , m_sparse(false)
 {
   // get wires for each plane
 
@@ -120,6 +122,8 @@ std::string WireCell::SigProc::OmnibusSigProc::OspChan::str() const
 
 void OmnibusSigProc::configure(const WireCell::Configuration& config)
 {
+  m_sparse = get(config, "sparse", false);
+
   m_fine_time_offset = get(config,"ftoffset",m_fine_time_offset);
   m_coarse_time_offset = get(config,"ctoffset",m_coarse_time_offset);
   m_anode_tn = get(config, "anode", m_anode_tn);
@@ -166,6 +170,7 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_wiener_tag = get(config,"wiener_tag",m_wiener_tag);
   m_wiener_threshold_tag = get(config,"wiener_threshold_tag",m_wiener_threshold_tag);
   m_gauss_tag = get(config,"gauss_tag",m_gauss_tag);  
+  m_frame_tag = get(config,"frame_tag",m_frame_tag);  
 
 
   // this throws if not found
@@ -259,12 +264,16 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["r_sigma"] = m_r_sigma;
   cfg["r_th_precent"] = m_r_th_percent;
       
+  // fixme: unused?
   cfg["charge_ch_offset"] = m_charge_ch_offset;
 
-  cfg["m_wiener_tag"] = m_wiener_tag;
-  cfg["m_wiener_threshold_tag"] = m_wiener_threshold_tag;
-  cfg["m_gauss_tag"] = m_gauss_tag;
+  cfg["wiener_tag"] = m_wiener_tag;
+  cfg["wiener_threshold_tag"] = m_wiener_threshold_tag;
+  cfg["gauss_tag"] = m_gauss_tag;
+  cfg["frame_tag"] = m_frame_tag;
   
+  cfg["sparse"] = false;
+
   return cfg;
   
 }
@@ -315,22 +324,26 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
   
 }
 
+// used in sparsifying below.  Could use C++17 lambdas....
+static bool ispositive(float x) { return x > 0.0; }
+static bool iszero(float x) { return x == 0.0; }
 
-// Note, this MUST fill itraces in OSP channel/wire order
-void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane)
+void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane,
+                               const std::vector<float>& perwire_rmses,
+                               IFrame::trace_summary_t& threshold)
 {
-  // reuse this vector for each channel
+  // reuse this temporary vector to hold charge for a channel.
   ITrace::ChargeSequence charge(m_nticks, 0.0);
 
   double qtot = 0.0;
   for (auto och : m_channel_range[plane]) { // ordered by osp channel
     
+    // Post process: zero out any negative signal and that from "bad" channels.
+    // fixme: better if we move this outside of save_data().
     for (int itick=0;itick!=m_nticks;itick++){
       const float q = m_r_data(och.wire, itick);
       charge.at(itick) = q > 0.0 ? q : 0.0;
     }
-
-    // zero the bad channels ... 
     {
       auto& bad = m_cmm["bad"];
       auto badit = bad.find(och.channel);
@@ -348,16 +361,50 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& in
       qtot += charge.at(j);
     }
 
-    SimpleTrace *trace = new SimpleTrace(och.ident, 0, charge);
-    const size_t trace_index = itraces.size();
-    indices.push_back(trace_index);
-    itraces.push_back(ITrace::pointer(trace));
+    const float thresh = perwire_rmses[och.wire];
+
+    // actually save out
+    if (m_sparse) {
+      // Save waveform sparsely by finding contiguous, positive samples.
+      std::vector<float>::const_iterator beg=charge.begin(), end=charge.end();
+      auto i1 = std::find_if(beg, end, ispositive); // first start
+      while (i1 != end) {
+        // stop at next zero or end and make little temp vector
+        auto i2 = std::find_if(i1, end, iszero);
+        const std::vector<float> q(i1,i2);
+
+        // save out
+        const int tbin = i1 - beg;
+        SimpleTrace *trace = new SimpleTrace(och.ident, tbin, q);
+        const size_t trace_index = itraces.size();
+        indices.push_back(trace_index);
+        itraces.push_back(ITrace::pointer(trace));
+        threshold.push_back(thresh);
+
+        // find start for next loop
+        i1 = std::find_if(i2, end, ispositive);
+      }
+    }
+    else {
+      // Save the waveform densely, including zeros.
+      SimpleTrace *trace = new SimpleTrace(och.ident, 0, charge);
+      const size_t trace_index = itraces.size();
+      indices.push_back(trace_index);
+      itraces.push_back(ITrace::pointer(trace));
+      threshold.push_back(thresh);
+    }
   }
-  const int nadded = indices.back() - indices.front() + 1;
-  std::cerr << "OmnibusSigProc::save_data plane index: " << plane << " Qtot=" << qtot
-            << " added " << nadded << " traces to total " << indices.size()
-            << " indices:[" << indices.front() << "," << indices.back() << "]\n";
-  
+
+  // debug
+  if (indices.empty()) {
+    std::cerr << "OmnibusSigProc::save_data plane index: " << plane << " empty.\n";
+  }
+  else {
+    const int nadded = indices.back() - indices.front() + 1;
+    std::cerr << "OmnibusSigProc::save_data plane index: " << plane << " Qtot=" << qtot
+              << " added " << nadded << " traces to total " << indices.size()
+              << " indices:[" << indices.front() << "," << indices.back() << "]\n";
+  }  
 }
 
 
@@ -978,7 +1025,8 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     }
   }
 
-  ITrace::vector itraces;
+  ITrace::vector* itraces = new ITrace::vector; // will become shared_ptr.
+  IFrame::trace_summary_t thresholds;
   IFrame::trace_list_t wiener_traces, gauss_traces, perframe_traces[3];
 
   // initialize the overall response function ... 
@@ -989,7 +1037,16 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   ROI_refinement roi_refine(m_cmm, m_nwires[0], m_nwires[1], m_nwires[2],m_r_th_factor,m_r_fake_signal_low_th,m_r_fake_signal_high_th,m_r_fake_signal_low_th_ind_factor,m_r_fake_signal_high_th_ind_factor,m_r_pad,m_r_break_roi_loop,m_r_th_peak,m_r_sep_peak,m_r_low_peak_sep_threshold_pre,m_r_max_npeaks,m_r_sigma,m_r_th_percent);//
 
   
+  const std::vector<float>* perplane_thresholds[3] = {
+    &roi_form.get_uplane_rms(),
+    &roi_form.get_vplane_rms(),
+    &roi_form.get_wplane_rms()
+  };
+
+
   for (int iplane = 0; iplane != 3; ++iplane){
+    const std::vector<float>& perwire_rmses = *perplane_thresholds[iplane];
+
     // load data into EIGEN matrices ...
     load_data(in, iplane); // load into a large matrix
     // initial decon ... 
@@ -1025,45 +1082,41 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     // merge results ...
     decon_2D_hits(iplane);
     roi_refine.apply_roi(iplane, m_r_data);
-    save_data(itraces, perframe_traces[iplane], iplane);
+    save_data(*itraces, perframe_traces[iplane], iplane, perwire_rmses, thresholds);
     wiener_traces.insert(wiener_traces.end(), perframe_traces[iplane].begin(), perframe_traces[iplane].end());
 
     decon_2D_charge(iplane);
     roi_refine.apply_roi(iplane, m_r_data);
-    save_data(itraces, gauss_traces, iplane);
+    save_data(*itraces, gauss_traces, iplane, perwire_rmses, thresholds);
 
     m_c_data.resize(0,0); // clear memory
     m_r_data.resize(0,0); // clear memory
   }
 
-
-  SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(), itraces, in->tick(), m_cmm);
-  sframe->tag_frame("sigproc");
+  SimpleFrame* sframe = new SimpleFrame(in->ident(), in->time(),
+                                        ITrace::shared_vector(itraces),
+                                        in->tick(), m_cmm);
+  sframe->tag_frame(m_frame_tag);
 
   // this assumes save_data produces itraces in OSP channel order
-  std::vector<float> perplane_thresholds[3] = {
-    roi_form.get_uplane_rms(),
-    roi_form.get_vplane_rms(),
-    roi_form.get_wplane_rms()
-  };
+  // std::vector<float> perplane_thresholds[3] = {
+  //   roi_form.get_uplane_rms(),
+  //   roi_form.get_vplane_rms(),
+  //   roi_form.get_wplane_rms()
+  // };
 
-  IFrame::trace_summary_t threshold;
-  for (int iplane=0; iplane<3; ++iplane) {
-    for (float val : perplane_thresholds[iplane]) {
-      threshold.push_back((double)val);
-    }
-  }
+  // IFrame::trace_summary_t threshold;
+  // for (int iplane=0; iplane<3; ++iplane) {
+  //   for (float val : perplane_thresholds[iplane]) {
+  //     threshold.push_back((double)val);
+  //   }
+  // }
 
-  // sframe->tag_traces("wiener", wiener_traces);
-  // sframe->tag_traces("threshold", wiener_traces, threshold);
-  // sframe->tag_traces("gauss", gauss_traces);
   sframe->tag_traces(m_wiener_tag, wiener_traces);
-  sframe->tag_traces(m_wiener_threshold_tag, wiener_traces, threshold);
+  sframe->tag_traces(m_wiener_threshold_tag, wiener_traces, thresholds);
   sframe->tag_traces(m_gauss_tag, gauss_traces);
 
-  std::cerr << "OmnibusSigProc: produce " << itraces.size() << " traces\n"
-	    //<< "\t" << wiener_traces.size() << " wiener\n"
-	    //<< "\t" << gauss_traces.size() << " gauss\n";
+  std::cerr << "OmnibusSigProc: produce " << itraces->size() << " traces\n"
 	    << "\t" << wiener_traces.size() << " " << m_wiener_tag << " \n"
 	    << "\t" << gauss_traces.size() << " " << m_gauss_tag << " \n";
 

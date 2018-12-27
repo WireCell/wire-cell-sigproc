@@ -68,7 +68,9 @@ namespace WireCell {
       void decon_2D_charge(int plane);
       
       // save data into the out frame and collect the indices
-      void save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane);
+      void save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane,
+                     const std::vector<float>& perwire_rmses,
+                     IFrame::trace_summary_t& threshold);
 
       // initialize the overall response function ...
       void init_overall_response(IFrame::pointer frame);
@@ -142,6 +144,7 @@ namespace WireCell {
       double m_r_sigma;
       double m_r_th_percent;
 
+      // fixme: this is apparently not used:
       // channel offset
       int m_charge_ch_offset;
       
@@ -183,7 +186,12 @@ namespace WireCell {
       std::string m_wiener_tag;
       std::string m_wiener_threshold_tag;
       std::string m_gauss_tag;
+      std::string m_frame_tag;
 
+      // If true, safe output as a sparse frame.  Traces will only
+      // cover segments of waveforms which have non-zero signal
+      // samples.
+      bool m_sparse;
       
     };
   }
