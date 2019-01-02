@@ -1087,7 +1087,8 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 
     decon_2D_charge(iplane);
     roi_refine.apply_roi(iplane, m_r_data);
-    save_data(*itraces, gauss_traces, iplane, perwire_rmses, thresholds);
+    std::vector<double> dummy_thresholds;
+    save_data(*itraces, gauss_traces, iplane, perwire_rmses, dummy_thresholds);
 
     m_c_data.resize(0,0); // clear memory
     m_r_data.resize(0,0); // clear memory
