@@ -16,6 +16,9 @@
 WIRECELL_FACTORY(pdStickyCodeMitig,
                  WireCell::SigProc::Protodune::StickyCodeMitig,
                  WireCell::IChannelFilter, WireCell::IConfigurable)
+WIRECELL_FACTORY(pdFembClockReSmp,
+                 WireCell::SigProc::Protodune::FembClockReSmp,
+                 WireCell::IChannelFilter, WireCell::IConfigurable)
 
 using namespace WireCell::SigProc;
 
@@ -183,7 +186,23 @@ bool Protodune::FftShiftSticky(WireCell::Waveform::realseq_t& signal,
 	return true;
 }
 
+bool Protodune::FftScaling(WireCell::Waveform::realseq_t& signal, int nsamples){
+	const int nsiglen = signal.size();
+	auto tran = WireCell::Waveform::dft(signal);
+	tran.resize(nsamples);
+    if(nsiglen%2==0){ // ref test_zero_padding.cxx
+    	std::rotate(tran.begin()+nsiglen/2, tran.begin()+nsiglen, tran.end());
+    }
+    else{
+    	std::rotate(tran.begin()+(nsiglen+1)/2, tran.begin()+nsiglen, tran.end());
+    }
+    // inverse FFT
+    auto signal_fc = WireCell::Waveform::idft(tran);
+    WireCell::Waveform::scale(signal_fc, nsamples / nsiglen);
+    signal = signal_fc;
 
+	return true;
+}
 
 /* 
  * Classes
@@ -249,7 +268,32 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(channel_sig
 }
 
 
+Protodune::FembClockReSmp::FembClockReSmp(const std::string& anode, const std::string& noisedb)
+    : ConfigFilterBase(anode, noisedb)
+{
+}
+Protodune::FembClockReSmp::~FembClockReSmp()
+{
+}
 
+WireCell::Waveform::ChannelMaskMap Protodune::FembClockReSmp::apply(int ch, signal_t& signal) const
+{
+    WireCell::Waveform::ChannelMaskMap ret;
+
+    if(ch>=2128 && ch<=2175) { // W plane
+    	signal.resize(5996);
+    	FftScaling(signal, 6000);
+    }
+
+    return ret;
+}
+
+
+
+WireCell::Waveform::ChannelMaskMap Protodune::FembClockReSmp::apply(channel_signals_t& chansig) const
+{
+    return WireCell::Waveform::ChannelMaskMap();
+}
 
 // Local Variables:
 // mode: c++

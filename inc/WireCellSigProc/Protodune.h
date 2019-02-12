@@ -22,6 +22,7 @@ namespace WireCell {
 		bool LinearInterpSticky(WireCell::Waveform::realseq_t& signal, std::vector<std::pair<int,int> >& st_ranges);
 		bool FftInterpSticky(WireCell::Waveform::realseq_t& signal, std::vector<std::pair<int,int> >& st_ranges);
 		bool FftShiftSticky(WireCell::Waveform::realseq_t& signal, double toffset, std::vector<std::pair<int,int> >& st_ranges);
+		bool FftScaling(WireCell::Waveform::realseq_t& signal, int nsamples);
 
         // hold common config stuff
         class ConfigFilterBase : public WireCell::IConfigurable {
@@ -35,7 +36,7 @@ namespace WireCell {
 		virtual void configure(const WireCell::Configuration& config);
 		virtual WireCell::Configuration default_configuration() const;
 
-                // FIXME: this method needs to die.
+        // FIXME: this method needs to die.
 		void set_channel_noisedb(WireCell::IChannelNoiseDatabase::pointer ndb) {
 		    m_noisedb = ndb;
 		}
@@ -59,7 +60,7 @@ namespace WireCell {
 	    public:
 
 		StickyCodeMitig(const std::string& anode_tn = "AnodePlane",
-                                const std::string& noisedb = "OmniChannelNoiseDB");
+                        const std::string& noisedb = "OmniChannelNoiseDB");
 		virtual ~StickyCodeMitig();
 
 		//// IChannelFilter interface
@@ -76,6 +77,23 @@ namespace WireCell {
 		// Diagnostics::Chirp m_check_chirp; // fixme, these should be done via service interfaces
 		// Diagnostics::Partial m_check_partial; // at least need to expose them to configuration
                 
+	    };
+
+	    class FembClockReSmp : public WireCell::IChannelFilter, public ConfigFilterBase {
+	    public:
+
+		FembClockReSmp(const std::string& anode_tn = "AnodePlane",
+                       const std::string& noisedb = "OmniChannelNoiseDB");
+		virtual ~FembClockReSmp();
+
+		//// IChannelFilter interface
+
+		/** Filter in place the signal `sig` from given `channel`. */
+		virtual WireCell::Waveform::ChannelMaskMap apply(int channel, signal_t& sig) const;
+
+		/** Filter in place a group of signals together. */
+		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
+
 	    };
 
    
