@@ -71,11 +71,15 @@ bool ChannelSelector::operator()(const input_pointer& in, output_pointer& out)
     size_t ntags = m_tags.size();
     if (!ntags) {
         tracesvin.push_back(FrameTools::untagged_traces(in));
-        std::cerr << "ChannelSelector: see frame: "<<in->ident()<<" no tags, whole frame\n";
+        std::cerr << "ChannelSelector: see frame: "<<in->ident()
+                  <<" no tags, whole frame "
+                  << "(" << tracesvin.back().size() << " traces out of "
+                  << in->traces()->size() << ")\n";
     }
     else {
         tracesvin.resize(ntags);
-        std::cerr << "ChannelSelector: see frame: "<<in->ident()<<" with tags:\n";
+        std::cerr << "ChannelSelector: see frame: "<<in->ident()
+                  << "(" << tracesvin.size() << " traces), with tags:\n";
         for (size_t ind=0; ind<ntags; ++ind) {
             std::string tag = m_tags[ind];
             tracesvin[ind] = FrameTools::tagged_traces(in, tag);
@@ -114,6 +118,7 @@ bool ChannelSelector::operator()(const input_pointer& in, output_pointer& out)
     }
 
     out = IFrame::pointer(sf);
+    std::cerr << "ChannelSelector: producing " << out->traces()->size() << " traces\n";
     return true;
 }
 
