@@ -490,7 +490,7 @@ int  PeakFinding::SearchHighRes()
    for(i = 0; i < ssize; i++) destVector[i] = working_space[i + shift];
    delete [] working_space;
    // fNPeaks = peak_index;
-   if(peak_index == fMaxPeaks)
-     std::cout << "Warning: SearchHighRes" << " Peak buffer full" << std::endl;
+   //   if(peak_index == fMaxPeaks)
+   //std::cout << "Warning: SearchHighRes" << " Peak buffer full" << std::endl;
    return peak_index;
 }
