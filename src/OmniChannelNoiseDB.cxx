@@ -14,6 +14,7 @@ using namespace WireCell::SigProc;
 OmniChannelNoiseDB::OmniChannelNoiseDB()
     : m_tick(0.5*units::us)
     , m_nsamples(9600)
+    , m_rc_layers(2)
 {
 }
 OmniChannelNoiseDB::~OmniChannelNoiseDB()
@@ -167,7 +168,7 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_freqmasks(Json::Va
     return spectrum;
 }
 
-OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_rcrc(Json::Value jrcrc)
+OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_rcrc(Json::Value jrcrc, int nrc)
 {
     if (jrcrc.isNull()) {
         return default_filter();
@@ -186,7 +187,15 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_rcrc(Json::Value j
     Waveform::compseq_t spectrum = Waveform::dft(signal);
     // get the square of it because there are two RC filters
     Waveform::compseq_t spectrum2 = spectrum;
-    Waveform::scale(spectrum2,spectrum);
+    // Waveform::scale(spectrum2,spectrum);
+
+    // std::cerr << "[wgu] parse_rcrc nrc= " << nrc << std::endl;
+    nrc --;
+    while(nrc>0){
+        // std::cerr << "[wgu] more nrc= " << nrc << std::endl;
+        Waveform::scale(spectrum2,spectrum);
+        nrc --;
+    }
     
 
     // std::cerr << "OmniChannelNoiseDB:: get rcrc as: " << rcrc_val 
@@ -197,6 +206,8 @@ OmniChannelNoiseDB::shared_filter_t OmniChannelNoiseDB::parse_rcrc(Json::Value j
     m_rcrc_cache[key] = ret;
     return ret;
 }
+
+
 
 double OmniChannelNoiseDB::parse_gain(Json::Value jreconfig)
 {
@@ -510,7 +521,11 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
     {
         auto jfilt = cfg["rcrc"];
         if (!jfilt.isNull()) {
-            auto val = parse_rcrc(jfilt);
+            if (cfg.isMember("rc_layers")){
+                m_rc_layers = cfg["rc_layers"].asInt();
+            }
+            // std::cerr << "rc_layers = " << m_rc_layers << std::endl;
+            auto val = parse_rcrc(jfilt, m_rc_layers);
             dump_cfg("rcrc", chans, Waveform::sum(*val));
             for (int ch : chans) {
                 //m_db.at(ch).rcrc = val;

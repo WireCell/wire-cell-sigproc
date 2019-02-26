@@ -100,6 +100,7 @@ namespace WireCell {
             int m_nsamples;
             IAnodePlane::pointer m_anode;
             IFieldResponse::pointer m_fr;
+            int m_rc_layers;
 
 	    typedef std::shared_ptr<filter_t> shared_filter_t;
 	    typedef std::vector<shared_filter_t> filter_vector_t;
@@ -153,7 +154,7 @@ namespace WireCell {
             shared_filter_t make_filter(std::complex<float> defval = std::complex<float>(1,0));
             shared_filter_t default_filter();
             shared_filter_t parse_freqmasks(Json::Value jfm);
-            shared_filter_t parse_rcrc(Json::Value jrcrc);
+            shared_filter_t parse_rcrc(Json::Value jrcrc, int nrc);
             double parse_gain(Json::Value jreconfig);
             shared_filter_t parse_reconfig(Json::Value jreconfig);
 	    shared_filter_t get_reconfig(double from_gain, double from_shaping,
