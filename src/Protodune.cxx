@@ -2,7 +2,8 @@
  * usable for detectors other than MicroBooNE. 
  * Modified from Microboone.cxx
  */
- 
+
+#include "WireCellSigProc/Microboone.h" 
 #include "WireCellSigProc/Protodune.h"
 #include "WireCellSigProc/Derivations.h"
 
@@ -22,15 +23,63 @@ WIRECELL_FACTORY(pdFembClockReSmp,
 
 using namespace WireCell::SigProc;
 
+bool atLocalMinimum(WireCell::Waveform::realseq_t& signal,
+                    int ind, int sideband){
+    int nsiglen = signal.size();
+    int left_ind = ind - sideband;
+    int right_ind = ind + sideband;
+    if(left_ind<0) left_ind = 0;
+    if(right_ind>=nsiglen) right_ind = nsiglen-1;
+    for(int i=left_ind; i<=right_ind; i++){
+        if(signal.at(i) < signal.at(ind)) return false;
+    }
+    return true;
+}
+
+bool atLocalMaximum(WireCell::Waveform::realseq_t& signal,
+                    int ind, int sideband){
+    int nsiglen = signal.size();
+    int left_ind = ind - sideband;
+    int right_ind = ind + sideband;
+    if(left_ind<0) left_ind =0;
+    if(right_ind>=nsiglen) right_ind = nsiglen-1;
+    for(int i=left_ind; i<=right_ind; i++){
+        if(signal.at(i) > signal.at(ind)) return false;
+    }
+    return true;
+}
+
+int longestSequence(std::vector<float> arr, float fepsilon=1e-3)
+{
+  int n = arr.size();
+  if(n==0) return 0;
+  int longest = 0;
+  int length = 1;
+  for(int i = 1; i < n; i++){
+      if(std::fabs(arr[i] - arr[i-1]) < fepsilon)
+          length++;
+      else
+      {
+          if(length > longest)
+              longest = length;
+          if(longest > n-1-i) // longer than the remaining
+              return longest;
+          length = 1;
+      }
+  }
+  return (length > longest) ? length : longest;
+}
+
 bool Protodune::LinearInterpSticky(WireCell::Waveform::realseq_t& signal,
-								   std::vector<std::pair<int,int> >& st_ranges){
+								   std::vector<std::pair<int,int> >& st_ranges, int ch){
 	const int nsiglen = signal.size();
-    // identify ranges of sticky codes (st_ranges)
-    // std::vector<std::pair<int,int> > st_ranges;
+    // find ranges of sticky codes
     for(int i=0; i<nsiglen; i++){
       int val = signal.at(i);
       int mod = val % 64;
-      if(mod==0 || mod==1 || mod==63){
+      if(mod==0 || mod==1 || mod==63
+        || (ch==4 && mod==6) || (ch==159 && mod==6) || (ch==168 && mod==7) || (ch==323 && mod==24) 
+        || (ch==164 && mod==36) || (ch==451 && mod==25) ){
         if (st_ranges.size()==0){
           st_ranges.push_back(std::make_pair(i,i));
         }else if ( (st_ranges.back().second + 1) == i){
@@ -41,16 +90,130 @@ bool Protodune::LinearInterpSticky(WireCell::Waveform::realseq_t& signal,
       }
     }
 
-    // linear-interpolation correction first
-    for (size_t j = 0; j<st_ranges.size();j++){
-      int start = st_ranges.at(j).first -1 ;
-      int end = st_ranges.at(j).second + 1 ;
+    // protect the ticks close to local minima/maxima
+    // do not apply linear interpolation on them
+    // std::vector<int> min_protect;
+    // std::vector<int> max_protect;
+    // int protect_length = 5;
+    // for(auto const& rng: st_ranges){
+    //     int pstart = rng.first  - protect_length; // backward protection
+    //     int pend   = rng.second + protect_length;
+    //     if(pstart<0) pstart=0;
+    //     if(pend >= nsiglen) pend = nsiglen-1;
+    //     for(int pind=pstart; pind<=pend; pind++){
+    //         if(atLocalMinimum(signal, pind, protect_length)){
+    //             for(int n=pind-protect_length; n<=pind+protect_length; n++){
+    //                 if(min_protect.empty())
+    //                     min_protect.push_back(n);
+    //                 else if(n>min_protect.back()){
+    //                     min_protect.push_back(n);
+    //                 }
+    //             }
+    //         }
+    //         else if(atLocalMaximum(signal, pind, protect_length)){
+    //             for(int n=pind-protect_length; n<=pind+protect_length; n++){
+    //                 if(max_protect.empty())
+    //                     max_protect.push_back(n);
+    //                 else if(n>max_protect.back()){
+    //                     max_protect.push_back(n);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+    // if(ch==19){
+    //     std::cerr << " ch " << ch << " , local min protection: " << min_protect.size() << std::endl;
+    //     for(auto& p: min_protect){
+    //         if(p>980 && p<1000) std::cerr << p << " ";
+    //     }
+    //     std::cerr << std::endl;
+    // }
+
+    std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
+    // linear-interpolation correction
+    // int maxlen_equal_sticky = 5;
+    for(auto const& rng: st_ranges){
+      int start = rng.first -1;
+      int end = rng.second + 1;
+      // FIXME: do we need linear interp if rng.first==0?
       if (start >=0 && end <nsiglen){
+        std::vector<float> digits;
+        for(int i=start+1; i<end; i++){
+            digits.push_back(signal.at(i));
+        }
+        // int length_equal_sticky = longestSequence(digits);
+        auto min = std::max_element(digits.begin(), digits.end());
+        auto max = std::min_element(digits.begin(), digits.end());
+        double max_value = *max;
+        double min_value = *min;
+
         double start_content = signal.at(start);
         double end_content = signal.at(end);
         for (int i = start+1; i<end; i++){
-    	    double content = start_content + (end_content - start_content) /(end-start) *(i-start);
-    	    signal.at(i) = content;
+            bool fProtect = false; // if false, do linear interp
+            // auto it1= std::find(max_protect.begin(), max_protect.end(), i);
+            // auto it2= std::find(min_protect.begin(), min_protect.end(), i);
+            // if(it1 != max_protect.end() || it2 != min_protect.end()){ // found protection in either min/max
+            //     fProtect = true;
+            // }
+
+            // int length_sticky = rng.second - rng.first +1;
+            // if(length_sticky>5) fProtect = false;
+            // else if(std::fabs(signal.at(i) - temp.first)>40)
+            //     fProtect = true;
+            // else if(length_equal_sticky>=2)
+            //     fProtect = false;
+            // else
+            //     fProtect = true;
+            
+
+            // bool fSkip = true;
+            // if(signal.at(i) > temp.first){ // above baseline
+            //     auto it= std::find(max_protect.begin(), max_protect.end(), i);
+            //     if(it == max_protect.end()) fSkip = false; // no protection
+            // }
+            // else{
+            //     auto it = std::find(min_protect.begin(), min_protect.end(), i);
+            //     if(it == min_protect.end()) fSkip = false;
+            // }
+
+            if(rng.second == rng.first) fProtect = true; //single sticky, do FFT
+            else{
+
+                if(max_value - temp.first > 15){ // peak > 15, nearby > 2 rms
+                    if( (start_content - temp.first > 2*temp.second)
+                        && (end_content - temp.first > 2*temp.second) ){
+                        fProtect = true;
+                    }
+                }
+                else if(temp.first - min_value > 15){
+                    if( (temp.first - end_content > 2*temp.second)
+                        && (temp.first - end_content > 2*temp.second) ){
+                        fProtect = true;
+                    }
+
+                }
+
+            }
+
+
+            if(!fProtect){
+                double content = start_content + (end_content - start_content) /(end-start) *(i-start);
+                signal.at(i) = content;
+            }
+
+        }
+      }
+      else if(start<0 && end <nsiglen){// sticky at the first tick
+        for(int i=0; i<end; i++){
+            signal.at(i) = signal.at(end);
+        }
+
+      }
+      else if(start>=0 && end==nsiglen){// sticky at the last tick
+        for(int i=start+1; i<end; i++){
+            signal.at(i) = signal.at(start);
         }
       }
     }
@@ -251,7 +414,7 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(int ch, sig
 
     auto signal_lc = signal; // copy, need to keep original signal
     std::vector<std::pair<int,int> > st_ranges; // ranges of sticky codes
-    LinearInterpSticky(signal_lc, st_ranges);
+    LinearInterpSticky(signal_lc, st_ranges, ch);
     FftInterpSticky(signal_lc, st_ranges);
     // FftShiftSticky(signal_lc, 0.5, st_ranges); // shift by 0.5 tick
 
@@ -270,6 +433,7 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(channel_sig
 
 Protodune::FembClockReSmp::FembClockReSmp(const std::string& anode, const std::string& noisedb)
     : ConfigFilterBase(anode, noisedb)
+    , m_check_partial() // fixme, here too.
 {
 }
 Protodune::FembClockReSmp::~FembClockReSmp()
@@ -280,9 +444,56 @@ WireCell::Waveform::ChannelMaskMap Protodune::FembClockReSmp::apply(int ch, sign
 {
     WireCell::Waveform::ChannelMaskMap ret;
 
-    if(ch>=2128 && ch<=2175) { // W plane
+    if( (ch>=2128 && ch<=2175) // W plane
+    ||  (ch>=1520 && ch<=1559) // V plane
+    ||  (ch>=440  && ch<=479)  // U plane
+    ){
     	signal.resize(5996);
     	FftScaling(signal, 6000);
+    }
+
+    // correct rc undershoot
+    auto spectrum = WireCell::Waveform::dft(signal);
+    bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
+
+    if(!is_partial){
+        auto const& spec = m_noisedb->rcrc(ch);
+        WireCell::Waveform::shrink(spectrum, spec);
+    }
+
+    // remove the DC component 
+    spectrum.front() = 0;
+    signal = WireCell::Waveform::idft(spectrum);    
+
+    //Now calculate the baseline ...
+    std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
+    auto temp_signal = signal;
+    for (size_t i=0;i!=temp_signal.size();i++){
+    if (fabs(temp_signal.at(i)-temp.first)>6*temp.second){
+        temp_signal.at(i) = temp.first;
+    }
+    }
+    float baseline = WireCell::Waveform::median_binned(temp_signal);
+    //correct baseline
+    WireCell::Waveform::increase(signal, baseline *(-1));
+
+
+    // Now do the adaptive baseline for the bad RC channels
+    if (is_partial) {
+    // add something
+    WireCell::Waveform::BinRange temp_chirped_bins;
+    temp_chirped_bins.first = 0;
+    temp_chirped_bins.second = signal.size();
+
+    // auto wpid = m_anode->resolve(ch);
+    // const int iplane = wpid.index();
+    // if (iplane!=2) {        // not collection
+    //     ret["lf_noisy"][ch].push_back(temp_chirped_bins);
+    //     //std::cout << "Partial " << ch << std::endl;
+    // }
+    Microboone::SignalFilter(signal);
+    Microboone::RawAdapativeBaselineAlg(signal);
+    Microboone::RemoveFilterFlags(signal);
     }
 
     return ret;

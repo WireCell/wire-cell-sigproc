@@ -19,7 +19,7 @@ namespace WireCell {
     namespace SigProc {
 	namespace Protodune {
 
-		bool LinearInterpSticky(WireCell::Waveform::realseq_t& signal, std::vector<std::pair<int,int> >& st_ranges);
+		bool LinearInterpSticky(WireCell::Waveform::realseq_t& signal, std::vector<std::pair<int,int> >& st_ranges, int ch);
 		bool FftInterpSticky(WireCell::Waveform::realseq_t& signal, std::vector<std::pair<int,int> >& st_ranges);
 		bool FftShiftSticky(WireCell::Waveform::realseq_t& signal, double toffset, std::vector<std::pair<int,int> >& st_ranges);
 		bool FftScaling(WireCell::Waveform::realseq_t& signal, int nsamples);
@@ -93,6 +93,9 @@ namespace WireCell {
 
 		/** Filter in place a group of signals together. */
 		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
+
+		private:
+		Diagnostics::Partial m_check_partial; // at least need to expose them to configuration
 
 	    };
 
