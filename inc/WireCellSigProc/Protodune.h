@@ -79,12 +79,12 @@ namespace WireCell {
                 
 	    };
 
-	    class FembClockReSmp : public WireCell::IChannelFilter, public ConfigFilterBase {
+	    class OneChannelNoise : public WireCell::IChannelFilter, public ConfigFilterBase {
 	    public:
 
-		FembClockReSmp(const std::string& anode_tn = "AnodePlane",
+		OneChannelNoise(const std::string& anode_tn = "AnodePlane",
                        const std::string& noisedb = "OmniChannelNoiseDB");
-		virtual ~FembClockReSmp();
+		virtual ~OneChannelNoise();
 
 		//// IChannelFilter interface
 

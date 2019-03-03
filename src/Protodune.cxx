@@ -17,78 +17,245 @@
 WIRECELL_FACTORY(pdStickyCodeMitig,
                  WireCell::SigProc::Protodune::StickyCodeMitig,
                  WireCell::IChannelFilter, WireCell::IConfigurable)
-WIRECELL_FACTORY(pdFembClockReSmp,
-                 WireCell::SigProc::Protodune::FembClockReSmp,
+WIRECELL_FACTORY(pdOneChannelNoise,
+                 WireCell::SigProc::Protodune::OneChannelNoise,
                  WireCell::IChannelFilter, WireCell::IConfigurable)
 
 using namespace WireCell::SigProc;
 
-bool atLocalMinimum(WireCell::Waveform::realseq_t& signal,
-                    int ind, int sideband){
-    int nsiglen = signal.size();
-    int left_ind = ind - sideband;
-    int right_ind = ind + sideband;
-    if(left_ind<0) left_ind = 0;
-    if(right_ind>=nsiglen) right_ind = nsiglen-1;
-    for(int i=left_ind; i<=right_ind; i++){
-        if(signal.at(i) < signal.at(ind)) return false;
+// adapted from WCP
+// FIXME: some hardcoded 6000 ticks
+bool LedgeIdentify(WireCell::Waveform::realseq_t& signal/*TH1F* h2*/, double baseline, int & LedgeStart, int & LedgeEnd){
+    int ledge = false;
+        int UNIT = 5;    // rebin unit
+        int CONTIN = 20; // length of the continuous region
+        int JUMPS = 4;   // how many bins can accidental jump
+        std::vector<int> averaged; // store the rebinned waveform
+        int up = signal.size()/UNIT;// h2->GetNbinsX()/UNIT;
+    int nticks =  signal.size();// h2->GetNbinsX();
+    // rebin 
+    for(int i=0;i<up;i++){ 
+                int temp = 0;
+                for(int j=0;j<UNIT;j++){
+                   temp += signal.at(i*UNIT+j); //h2->GetBinContent(i*UNIT+1+j);
+                }
+                averaged.push_back(temp);
+        }
+    // refine the selection cuts if there is a large signal
+    auto imax = std::min_element(signal.begin(), signal.end());
+    double max_value = *imax;
+
+    // if(h2->GetMaximum()-baseline>1000) { CONTIN = 16; JUMPS = 5; }
+    if(max_value-baseline>1000) { CONTIN = 16; JUMPS = 5; }
+    // start judging
+    int decreaseD = 0, tolerence=0;
+        int start = 0;
+        // int end = 0; // never used?
+        for(int i=1;i<up-1;i++){
+                if(averaged.at(i)<averaged.at(i-1)) {
+                        if(decreaseD==0) start = i;
+                        decreaseD +=1;
+                }
+         else {
+                        if(averaged.at(i+1)<averaged.at(i-1)&&tolerence<JUMPS&&decreaseD>0){ // we can ignore several jumps in the decreasing region
+                                decreaseD+=2;
+                                tolerence++;
+                                i = i+1;
+                        }
+                        else{
+                                if(decreaseD>CONTIN){
+                                        ledge = true;
+                                        LedgeStart = start*UNIT;
+                                        break;
+                                }
+                                else{
+                                        decreaseD = 0;
+                                        tolerence=0;
+                                        start = 0;
+                                        // end = 0;// end never used?
+                                }
+                        }
+                }
+        }
+    // find the sharp start edge
+     if(ledge &&LedgeStart>30){ 
+                int edge = 0;
+                int i = LedgeStart/UNIT-1;
+                if(averaged.at(i)>averaged.at(i-1)&&averaged.at(i-1)>averaged.at(i-2)){ // find a edge
+                        edge = 1;
+                }
+                if(edge == 0) ledge = false; // if no edge, this is not ledge
+                if((averaged.at(i)-averaged.at(i-2)<10*UNIT)&&(averaged.at(i)-averaged.at(i-3)<10*UNIT)) // slope cut
+                        ledge = false;
+                if(averaged.at(LedgeStart/UNIT)-baseline*UNIT>200*UNIT) ledge = false; // ledge is close to the baseline
+        }
+    // test the decay time
+    if(ledge &&LedgeStart>20){
+                double height = 0;
+                if(LedgeStart<5750) { // calculate the height of edge
+                        // double tempHeight = h2 ->GetBinContent(LedgeStart+1+200) +  h2 ->GetBinContent(LedgeStart+1+220) +  h2 ->GetBinContent(LedgeStart+1+180) +  h2 ->GetBinContent(LedgeStart+1+240);
+                        // height = h2 ->GetBinContent(LedgeStart+1) - tempHeight/4;
+                        double tempHeight = signal.at(LedgeStart+200) +  signal.at(LedgeStart+220) +  signal.at(LedgeStart+180) +  signal.at(LedgeStart+240);
+                        height = signal.at(LedgeStart) - tempHeight/4;                        
+            height /= 0.7;
+                }
+                // else height =  h2 ->GetBinContent(LedgeStart+1) -  h2 ->GetBinContent(6000);
+                else height =  signal.at(LedgeStart) -  signal.back();
+                if(height<0) height = 80; // norminal value
+                if(height>30&&LedgeStart<5900){ // test the decay with a relatively large height
+                        double height50 = 0, height100 = 0;
+                        // height50 =  h2 ->GetBinContent(LedgeStart+51);
+                        // height100 =  h2 ->GetBinContent(LedgeStart+101);
+                        // double height50Pre =   h2 ->GetBinContent(LedgeStart+1)- height*(1-exp(-50/100.)); // minimum 100 ticks decay time
+                        // double height100Pre =   h2 ->GetBinContent(LedgeStart+1) - height*(1-exp(-100./100)); // minimum 100 ticks decay time
+
+                        height50 =  signal.at(LedgeStart+50);
+                        height100 =  signal.at(LedgeStart+100);
+                        double height50Pre =   signal.at(LedgeStart)- height*(1-std::exp(-50/100.)); // minimum 100 ticks decay time
+                        double height100Pre =   signal.at(LedgeStart) - height*(1-std::exp(-100./100)); // minimum 100 ticks decay time                        
+            // if the measured is much smaller than the predicted, this is not ledge
+                        if(height50-height50Pre<-8) ledge = false; 
+                        if(height100-height100Pre<-8)  ledge = false;
+                }
+        }
+
+    // determine the end of ledge
+    // case 1: find a jump of 10 ADC in the rebinned waveform
+    // case 2: a continuous 20 ticks has an average close to baseline, and a RMS larger than 3 ADC
+    // case 3: reaching the tick 6000 but neither 1 nor 2 occurs
+    if(ledge){
+        LedgeEnd = 0;
+        for(int i = LedgeStart/UNIT; i<up-1; i++){ // case 1
+            if(averaged.at(i+1)-averaged.at(i)>50) { 
+                LedgeEnd = i*UNIT+5;
+                break;
+            }
+        }
+        if(LedgeEnd == 0) { // not find a jump, case 2
+            // double tempA[20];
+            WireCell::Waveform::realseq_t tempA(20);
+            for(int i = LedgeStart+80;i<nticks-20;i+=20){
+                for(int j=i;j<20+i;j++){
+                    // tempA[j-i] = h2->GetBinContent(j+1);
+                    tempA.at(j-i) = signal.at(j);
+                }
+                auto wfinfo = WireCell::Waveform::mean_rms(tempA);
+                // if(TMath::Mean(20,tempA)-baseline<2&&TMath::RMS(20,tempA)>3){
+                if(wfinfo.first - baseline < 2 && wfinfo.second > 3){
+                    LedgeEnd = i;
+                    break;
+                }
+            }
+        }
+        if(LedgeEnd == 0) LedgeEnd = 6000;
     }
-    return true;
+    // done, release the memory
+    // vector<int>(averaged).swap(averaged); // is it necessary?
+    return ledge;
+
 }
 
-bool atLocalMaximum(WireCell::Waveform::realseq_t& signal,
-                    int ind, int sideband){
-    int nsiglen = signal.size();
-    int left_ind = ind - sideband;
-    int right_ind = ind + sideband;
-    if(left_ind<0) left_ind =0;
-    if(right_ind>=nsiglen) right_ind = nsiglen-1;
-    for(int i=left_ind; i<=right_ind; i++){
-        if(signal.at(i) > signal.at(ind)) return false;
-    }
-    return true;
-}
 
-int longestSequence(std::vector<float> arr, float fepsilon=1e-3)
-{
-  int n = arr.size();
-  if(n==0) return 0;
-  int longest = 0;
-  int length = 1;
-  for(int i = 1; i < n; i++){
-      if(std::fabs(arr[i] - arr[i-1]) < fepsilon)
-          length++;
-      else
-      {
-          if(length > longest)
-              longest = length;
-          if(longest > n-1-i) // longer than the remaining
-              return longest;
-          length = 1;
-      }
-  }
-  return (length > longest) ? length : longest;
-}
+
+// adapted from WCP
+// int judgePlateau(int channel, TH1F* h2,double baseline, double & PlateauStart, double & PlateauStartEnd){
+//         int continueN = 0;
+//         int threshold = 200;
+//         int maximumF  = 50;
+//         int maxBin = h2->GetMaximumBin();
+//         for(int i=maxBin+10;i<5880&&i<maxBin+500;i++){
+//                 int plateau = 1;
+//                 int max = 0, min = 10000;
+//                 for(int j=i;j<i+20;j++){
+//                         int binC = h2->GetBinContent(j+1);
+//                         if(binC<baseline+threshold||binC>h2->GetMaximum()-500) {
+//                                 plateau = 0;
+//                                 break;
+//                         }
+//                         if(binC>max) max = binC;
+//                         if(binC<min) min = binC;
+//                 }
+//                 if(plateau==1&&max-min<maximumF){ // plateau found
+//                         PlateauStart = i;
+//                         PlateauStartEnd = i+20;
+//                         for(int k = i+20; k<6000;k++){
+//                                 if( h2->GetBinContent(k+1)<baseline+threshold){
+//                                         PlateauStartEnd = k-1;
+//                                         break;
+//                                 }
+//                         }
+//                         return 1;
+//                 }
+//         }
+//         return 0;
+// }
+
+// bool atLocalMinimum(WireCell::Waveform::realseq_t& signal,
+//                     int ind, int sideband){
+//     int nsiglen = signal.size();
+//     int left_ind = ind - sideband;
+//     int right_ind = ind + sideband;
+//     if(left_ind<0) left_ind = 0;
+//     if(right_ind>=nsiglen) right_ind = nsiglen-1;
+//     for(int i=left_ind; i<=right_ind; i++){
+//         if(signal.at(i) < signal.at(ind)) return false;
+//     }
+//     return true;
+// }
+
+// bool atLocalMaximum(WireCell::Waveform::realseq_t& signal,
+//                     int ind, int sideband){
+//     int nsiglen = signal.size();
+//     int left_ind = ind - sideband;
+//     int right_ind = ind + sideband;
+//     if(left_ind<0) left_ind =0;
+//     if(right_ind>=nsiglen) right_ind = nsiglen-1;
+//     for(int i=left_ind; i<=right_ind; i++){
+//         if(signal.at(i) > signal.at(ind)) return false;
+//     }
+//     return true;
+// }
+
+// int longestSequence(std::vector<float> arr, float fepsilon=1e-3)
+// {
+//   int n = arr.size();
+//   if(n==0) return 0;
+//   int longest = 0;
+//   int length = 1;
+//   for(int i = 1; i < n; i++){
+//       if(std::fabs(arr[i] - arr[i-1]) < fepsilon)
+//           length++;
+//       else
+//       {
+//           if(length > longest)
+//               longest = length;
+//           if(longest > n-1-i) // longer than the remaining
+//               return longest;
+//           length = 1;
+//       }
+//   }
+//   return (length > longest) ? length : longest;
+// }
 
 bool Protodune::LinearInterpSticky(WireCell::Waveform::realseq_t& signal,
-								   std::vector<std::pair<int,int> >& st_ranges, int ch){
+								   WireCell::Waveform::BinRangeList& rng_list, int ch){
 	const int nsiglen = signal.size();
-    // find ranges of sticky codes
-    for(int i=0; i<nsiglen; i++){
-      int val = signal.at(i);
-      int mod = val % 64;
-      if(mod==0 || mod==1 || mod==63
-        || (ch==4 && mod==6) || (ch==159 && mod==6) || (ch==168 && mod==7) || (ch==323 && mod==24) 
-        || (ch==164 && mod==36) || (ch==451 && mod==25) ){
-        if (st_ranges.size()==0){
-          st_ranges.push_back(std::make_pair(i,i));
-        }else if ( (st_ranges.back().second + 1) == i){
-          st_ranges.back().second = i;
-        }else{
-          st_ranges.push_back(std::make_pair(i,i));
-        }
-      }
-    }
+    // // find ranges of sticky codes
+    // for(int i=0; i<nsiglen; i++){
+    //   int val = signal.at(i);
+    //   int mod = val % 64;
+    //   if(mod==0 || mod==1 || mod==63
+    //     || (ch==4 && mod==6) || (ch==159 && mod==6) || (ch==168 && mod==7) || (ch==323 && mod==24) 
+    //     || (ch==164 && mod==36) || (ch==451 && mod==25) ){
+    //     if (st_ranges.size()==0){
+    //       st_ranges.push_back(std::make_pair(i,i));
+    //     }else if ( (st_ranges.back().second + 1) == i){
+    //       st_ranges.back().second = i;
+    //     }else{
+    //       st_ranges.push_back(std::make_pair(i,i));
+    //     }
+    //   }
+    // }
 
     // protect the ticks close to local minima/maxima
     // do not apply linear interpolation on them
@@ -133,7 +300,7 @@ bool Protodune::LinearInterpSticky(WireCell::Waveform::realseq_t& signal,
     std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
     // linear-interpolation correction
     // int maxlen_equal_sticky = 5;
-    for(auto const& rng: st_ranges){
+    for(auto const& rng: rng_list){
       int start = rng.first -1;
       int end = rng.second + 1;
       // FIXME: do we need linear interp if rng.first==0?
@@ -221,7 +388,7 @@ bool Protodune::LinearInterpSticky(WireCell::Waveform::realseq_t& signal,
 }
 
 bool Protodune::FftInterpSticky(WireCell::Waveform::realseq_t& signal,
-	                 std::vector<std::pair<int,int> >& st_ranges){
+	                 WireCell::Waveform::BinRangeList& rng_list){
 	const int nsiglen = signal.size();
     // group into two subsamples ("even" & "odd")
     int nsublen = nsiglen/2;
@@ -261,9 +428,9 @@ bool Protodune::FftInterpSticky(WireCell::Waveform::realseq_t& signal,
 	WireCell::Waveform::scale(signal_odd_fc, scale2);
 
 	// replace the linear interpolation with dft interpolation
-    for (size_t j = 0; j<st_ranges.size();j++){
-      int start = st_ranges.at(j).first -1 ;
-      int end = st_ranges.at(j).second + 1 ;
+    for (size_t j = 0; j<rng_list.size();j++){
+      int start = rng_list.at(j).first -1 ;
+      int end = rng_list.at(j).second + 1 ;
       if (start >=0 && end <=nsiglen){
         for (int i = start+1; i<end; i++){
         	if(i%2==0){// predict "even" with "odd"
@@ -411,14 +578,38 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(int ch, sig
 {
     WireCell::Waveform::ChannelMaskMap ret;
 
+    const int nsiglen = signal.size();
+    // tag sticky bins
+    WireCell::Waveform::BinRange sticky_rng;
+    WireCell::Waveform::BinRangeList sticky_rng_list;
+    for(int i=0; i<nsiglen; i++){
+      int val = signal.at(i);
+      int mod = val % 64;
+      if(mod==0 || mod==1 || mod==63
+        || (ch==4 && mod==6) || (ch==159 && mod==6) || (ch==168 && mod==7) || (ch==323 && mod==24) 
+        || (ch==164 && mod==36) || (ch==451 && mod==25) ){
+        if (sticky_rng_list.empty()){
+          sticky_rng_list.push_back(std::make_pair(i,i));
+        }else if ( (sticky_rng_list.back().second + 1) == i){
+          sticky_rng_list.back().second = i;
+        }else{
+          sticky_rng_list.push_back(std::make_pair(i,i));
+        }
+      }
+    }
 
-    auto signal_lc = signal; // copy, need to keep original signal
-    std::vector<std::pair<int,int> > st_ranges; // ranges of sticky codes
-    LinearInterpSticky(signal_lc, st_ranges, ch);
-    FftInterpSticky(signal_lc, st_ranges);
-    // FftShiftSticky(signal_lc, 0.5, st_ranges); // shift by 0.5 tick
 
-    signal = signal_lc;
+    // auto signal_lc = signal; // copy, need to keep original signal
+    LinearInterpSticky(signal, sticky_rng_list, ch);
+    FftInterpSticky(signal, sticky_rng_list);
+    // FftShiftSticky(signal_lc, 0.5, st_ranges); // alternative approach, shift by 0.5 tick
+    // signal = signal_lc;
+
+    for(auto rng: sticky_rng_list){
+        if(rng.second-rng.first>5){
+            ret["sticky"][ch].push_back(rng);
+        }
+    }
 
     return ret;
 }
@@ -431,19 +622,23 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(channel_sig
 }
 
 
-Protodune::FembClockReSmp::FembClockReSmp(const std::string& anode, const std::string& noisedb)
+Protodune::OneChannelNoise::OneChannelNoise(const std::string& anode, const std::string& noisedb)
     : ConfigFilterBase(anode, noisedb)
     , m_check_partial() // fixme, here too.
 {
 }
-Protodune::FembClockReSmp::~FembClockReSmp()
+Protodune::OneChannelNoise::~OneChannelNoise()
 {
 }
 
-WireCell::Waveform::ChannelMaskMap Protodune::FembClockReSmp::apply(int ch, signal_t& signal) const
+WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, signal_t& signal) const
 {
     WireCell::Waveform::ChannelMaskMap ret;
 
+    // do we need a nominal baseline correction?
+    // float baseline = m_noisedb->nominal_baseline(ch);
+
+    // correct the FEMB 302 clock issue
     if( (ch>=2128 && ch<=2175) // W plane
     ||  (ch>=1520 && ch<=1559) // V plane
     ||  (ch>=440  && ch<=479)  // U plane
@@ -457,9 +652,51 @@ WireCell::Waveform::ChannelMaskMap Protodune::FembClockReSmp::apply(int ch, sign
     bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
 
     if(!is_partial){
-        auto const& spec = m_noisedb->rcrc(ch);
+        auto const& spec = m_noisedb->rcrc(ch); // rc_layers set to 1 in nf.jsonnet
         WireCell::Waveform::shrink(spectrum, spec);
     }
+
+    // remove the "50kHz" noise in some collection channels
+    // FIXME: do we need a channel list input?
+    auto wpid = m_anode->resolve(ch);      
+    const int iplane = wpid.index();
+    if(iplane==2){
+    auto mag = WireCell::Waveform::magnitude(spectrum);
+    Microboone::RawAdapativeBaselineAlg(mag); // subtract "linear" background in spectrum
+
+    for(int i=0; i<57; i++){ // 150 - 3000th freq bin
+        int nslice = 50;
+        int istart = 150 + nslice*i;
+        int iend = istart + nslice;
+        // std::cerr << istart << " " << iend << std::endl;
+        WireCell::Waveform::realseq_t mag_slice(nslice); // slice of magnitude spectrum
+        std::copy(mag.begin() + istart, mag.begin() + iend, mag_slice.begin());
+        std::pair<double,double> stat = WireCell::Waveform::mean_rms(mag_slice);
+        // std::cerr << "[wgu] mean/rms: " << stat.first << " " << stat.second << std::endl;
+        for(int j=0; j<nslice; j++){
+            float content = mag_slice.at(j) - stat.first;
+             
+            if(iend<1000){
+                if(content>2000 && content>5.*stat.second){
+                int tbin = istart + j;
+                spectrum.at(tbin).real(0);
+                spectrum.at(tbin).imag(0);
+                spectrum.at(6000+1-tbin).real(0); // FIXME: assuming 6000 ticks
+                spectrum.at(6000+1-tbin).imag(0);
+                // std::cerr << "[wgu] chan: " << ch << " , freq tick: " << tbin << " , amp: " << content << std::endl;
+                }
+            }
+            else if(content>250 && content>10.*stat.second){
+                spectrum.at(j).real(0);
+                spectrum.at(j).imag(0);
+                spectrum.at(6000+1-j).real(0); // FIXME: assuming 6000 ticks
+                spectrum.at(6000+1-j).imag(0); 
+            }
+        }
+    }
+
+    }
+
 
     // remove the DC component 
     spectrum.front() = 0;
@@ -485,15 +722,23 @@ WireCell::Waveform::ChannelMaskMap Protodune::FembClockReSmp::apply(int ch, sign
     temp_chirped_bins.first = 0;
     temp_chirped_bins.second = signal.size();
 
-    // auto wpid = m_anode->resolve(ch);
-    // const int iplane = wpid.index();
-    // if (iplane!=2) {        // not collection
-    //     ret["lf_noisy"][ch].push_back(temp_chirped_bins);
-    //     //std::cout << "Partial " << ch << std::endl;
-    // }
+    if (iplane!=2) {        // not collection
+        ret["lf_noisy"][ch].push_back(temp_chirped_bins);
+        //std::cout << "Partial " << ch << std::endl;
+    }
     Microboone::SignalFilter(signal);
     Microboone::RawAdapativeBaselineAlg(signal);
     Microboone::RemoveFilterFlags(signal);
+    }
+
+
+    // ledge identification
+    WireCell::Waveform::BinRange ledge_bins;
+    bool is_ledge = LedgeIdentify(signal, 0., ledge_bins.first, ledge_bins.second);
+    if(is_ledge){
+        // FIXME: do we need collection plane only?
+        ret["ledge"][ch].push_back(ledge_bins);
+        // std::cerr << "[wgu] ledge found in ch "<< ch << " , bins= [" << ledge_bins.first << " , " << ledge_bins.second << " ]"<< std::endl;
     }
 
     return ret;
@@ -501,7 +746,7 @@ WireCell::Waveform::ChannelMaskMap Protodune::FembClockReSmp::apply(int ch, sign
 
 
 
-WireCell::Waveform::ChannelMaskMap Protodune::FembClockReSmp::apply(channel_signals_t& chansig) const
+WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(channel_signals_t& chansig) const
 {
     return WireCell::Waveform::ChannelMaskMap();
 }

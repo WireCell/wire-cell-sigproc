@@ -20,8 +20,9 @@ int main(){
 
   std::cout << " tran = " << std::endl;
   std::cout << tran.size() << std::endl;
-  for(auto x: tran){
-    std::cout << x.real() << "  ";
+  auto mag = WireCell::Waveform::magnitude(tran);
+  for(auto x: mag){
+    std::cout <<  x << "  ";
   }
   std::cout << std::endl;
 
