@@ -44,19 +44,21 @@ namespace WireCell {
 		std::string m_anode_tn, m_noisedb_tn;
 		IAnodePlane::pointer m_anode;
 		IChannelNoiseDatabase::pointer m_noisedb;
+
         };
 
-	    /** Microboone style single channel noise subtraction.
+	    /** Microboone/ProtoDUNE style noise subtraction.
 	     *
 	     * Fixme: in principle, this class could be general purpose
 	     * for other detectors.  However, it uses the functions above
 	     * which hard code microboone-isms.  If those
-	     * microboone-specific parameters can be pulled out to a
+	     * microboone/protodune-specific parameters can be pulled out to a
 	     * higher layer then this class can become generic and move
 	     * outside of this file.
 	     */
 
-	    class StickyCodeMitig : public WireCell::IChannelFilter, public ConfigFilterBase {
+
+	    class StickyCodeMitig : public WireCell::IChannelFilter, public WireCell::IConfigurable {
 	    public:
 
 		StickyCodeMitig(const std::string& anode_tn = "AnodePlane",
@@ -71,8 +73,16 @@ namespace WireCell {
 		/** Filter in place a group of signals together. */
 		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
 
+		virtual void configure(const WireCell::Configuration& config);
+		virtual WireCell::Configuration default_configuration() const;
 		
 	    private:
+
+	    std::string m_anode_tn, m_noisedb_tn;
+	    IAnodePlane::pointer m_anode;
+	    IChannelNoiseDatabase::pointer m_noisedb;
+
+	    std::map<int, std::vector<short int> > m_extra_stky; // ch to extra sticky codes
 
 		// Diagnostics::Chirp m_check_chirp; // fixme, these should be done via service interfaces
 		// Diagnostics::Partial m_check_partial; // at least need to expose them to configuration

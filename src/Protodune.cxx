@@ -565,13 +565,47 @@ WireCell::Configuration Protodune::ConfigFilterBase::default_configuration() con
 
 
 Protodune::StickyCodeMitig::StickyCodeMitig(const std::string& anode, const std::string& noisedb)
-    : ConfigFilterBase(anode, noisedb)
+    : m_anode_tn(anode)
+    , m_noisedb_tn(noisedb)
 //    , m_check_chirp() // fixme, there are magic numbers hidden here
 //    , m_check_partial() // fixme, here too.
 {
 }
 Protodune::StickyCodeMitig::~StickyCodeMitig()
 {
+}
+
+void Protodune::StickyCodeMitig::configure(const WireCell::Configuration& cfg)
+{
+    m_anode_tn = get(cfg, "anode", m_anode_tn);
+    m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
+    if (!m_anode) {
+        THROW(KeyError() << errmsg{"failed to get IAnodePlane: " + m_anode_tn});
+    }
+
+    m_noisedb_tn = get(cfg, "noisedb", m_noisedb_tn);
+    m_noisedb = Factory::find_tn<IChannelNoiseDatabase>(m_noisedb_tn);
+
+    m_extra_stky.clear();
+    auto jext = cfg["extra_stky"];
+    if(!jext.isNull()){
+        for(auto jone: jext) {
+            int channel = jone["channel"].asInt();
+            // std::cerr << "[wgu] ch# " << channel << " has " << jone["bits"].size() << " extra stky bits:" << std::endl;
+            for(auto bit: jone["bits"]){
+                // std::cerr << "[wgu] " << bit.asInt() << std::endl;
+                m_extra_stky[channel].push_back((short int)bit.asInt());
+            }
+        }
+    }
+
+}
+WireCell::Configuration Protodune::StickyCodeMitig::default_configuration() const
+{
+    Configuration cfg;
+    cfg["anode"] = m_anode_tn;
+    cfg["noisedb"] = m_noisedb_tn;    
+    return cfg;
 }
 
 WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(int ch, signal_t& signal) const
@@ -582,12 +616,17 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(int ch, sig
     // tag sticky bins
     WireCell::Waveform::BinRange sticky_rng;
     WireCell::Waveform::BinRangeList sticky_rng_list;
+    std::vector<short int> extra;
+    if (m_extra_stky.find(ch) != m_extra_stky.end()){
+        extra = m_extra_stky.at(ch);
+    }
+
     for(int i=0; i<nsiglen; i++){
       int val = signal.at(i);
       int mod = val % 64;
-      if(mod==0 || mod==1 || mod==63
-        || (ch==4 && mod==6) || (ch==159 && mod==6) || (ch==168 && mod==7) || (ch==323 && mod==24) 
-        || (ch==164 && mod==36) || (ch==451 && mod==25) ){
+      auto it = std::find(extra.begin(), extra.end(), mod);
+      bool is_stky = (mod==0 || mod==1 || mod==63 || it!=extra.end());
+      if(is_stky){
         if (sticky_rng_list.empty()){
           sticky_rng_list.push_back(std::make_pair(i,i));
         }else if ( (sticky_rng_list.back().second + 1) == i){
