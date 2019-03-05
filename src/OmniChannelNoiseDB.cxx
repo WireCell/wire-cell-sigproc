@@ -704,7 +704,7 @@ float OmniChannelNoiseDB::coherent_nf_min_adc_limit(int channel) const
 {
     return dbget(channel).min_adc_limit;
 }
-       
+
 
 const IChannelNoiseDatabase::filter_t& OmniChannelNoiseDB::rcrc(int channel) const
 {

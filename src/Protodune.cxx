@@ -644,11 +644,11 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(int ch, sig
     // FftShiftSticky(signal_lc, 0.5, st_ranges); // alternative approach, shift by 0.5 tick
     // signal = signal_lc;
 
-    for(auto rng: sticky_rng_list){
-        if(rng.second-rng.first>5){
-            ret["sticky"][ch].push_back(rng);
-        }
-    }
+    // for(auto rng: sticky_rng_list){
+    //     if(rng.second-rng.first>5){
+    //         ret["sticky"][ch].push_back(rng);
+    //     }
+    // }
 
     return ret;
 }
@@ -777,7 +777,7 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
     if(is_ledge){
         // FIXME: do we need collection plane only?
         ret["ledge"][ch].push_back(ledge_bins);
-        // std::cerr << "[wgu] ledge found in ch "<< ch << " , bins= [" << ledge_bins.first << " , " << ledge_bins.second << " ]"<< std::endl;
+        std::cerr << "[wgu] ledge found in ch "<< ch << " , bins= [" << ledge_bins.first << " , " << ledge_bins.second << " ]"<< std::endl;
     }
 
     return ret;
