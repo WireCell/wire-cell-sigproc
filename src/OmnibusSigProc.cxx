@@ -326,7 +326,7 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
 
 // used in sparsifying below.  Could use C++17 lambdas....
 static bool ispositive(float x) { return x > 0.0; }
-static bool iszero(float x) { return x == 0.0; }
+static bool isZero(float x) { return x == 0.0; }
 
 void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane,
                                const std::vector<float>& perwire_rmses,
@@ -370,7 +370,7 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& in
       auto i1 = std::find_if(beg, end, ispositive); // first start
       while (i1 != end) {
         // stop at next zero or end and make little temp vector
-        auto i2 = std::find_if(i1, end, iszero);
+        auto i2 = std::find_if(i1, end, isZero);
         const std::vector<float> q(i1,i2);
 
         // save out
