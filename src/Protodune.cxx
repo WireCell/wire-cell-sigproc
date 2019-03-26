@@ -1,7 +1,13 @@
-/** FIXME: this file is full of magic numbers and likely totally not
- * usable for detectors other than MicroBooNE. 
- * Modified from Microboone.cxx
- */
+
+/***************************************************************************/
+/*             Noise filter (NF) module for protoDUNE-SP                   */
+/***************************************************************************/
+/* features:                                                               */
+/* - frequency-domain resampling (sticky code and FEMB time clock)         */
+/* - undershoot correction                                                 */
+/* - partial undershoot correction                                         */
+/* - 50 kHz collection plane noise filter                                  */
+/* - ledge waveform identification (multiple ledges)                       */
 
 #include "WireCellSigProc/Microboone.h" 
 #include "WireCellSigProc/Protodune.h"
@@ -23,13 +29,173 @@ WIRECELL_FACTORY(pdOneChannelNoise,
 
 using namespace WireCell::SigProc;
 
+int LedgeIdentify1(WireCell::Waveform::realseq_t& signal, double baseline, int LedgeStart[3], int LedgeEnd[3]){
+    // find a maximum of 3 ledges in one waveform
+    // the number of ledges is returned
+    // the start and end of ledge is stored in the array
+    int UNIT = 10;//5;    // rebin unit
+    int CONTIN = 10;//20; // length of the continuous region
+    int JUMPS = 2;//4;   // how many bins can accidental jump
+    // We recommend UNIT*CONTIN = 100, UNIT*JUMPS = 20
+    std::vector<int> averaged; // store the rebinned waveform
+    int up = signal.size()/UNIT;
+    int nticks =  signal.size();
+    // rebin 
+    for(int i=0;i<up;i++){ 
+        int temp = 0;
+        for(int j=0;j<UNIT;j++){
+           temp += signal.at(i*UNIT+j);
+        }
+        averaged.push_back(temp);
+    }
+    // relax the selection cuts if there is a large signal
+    auto imax = std::min_element(signal.begin(), signal.end());
+    double max_value = *imax;
+    if(max_value-baseline>1000) { CONTIN /=1.25; JUMPS *= 1.2; } 
+    // start judging
+    int NumberOfLedge = 0 ; // to be returned
+    int StartOfLastLedgeCandidate = 0; // store the last ledge candidate
+    for(int LE = 0; LE < 3; LE++){ // find three ledges
+        if(LE>0 && StartOfLastLedgeCandidate == 0  ) break; // no ledge candidate in the last round search
+        if(StartOfLastLedgeCandidate>nticks-200) break;// the last candidate is too late in the window
+        if(NumberOfLedge>0 && (LedgeEnd[NumberOfLedge-1]+200)>nticks) break; // the end last ledge reaches the end of readout window
+        int ledge = 0;
+        int decreaseD = 0, tolerence=0;
+        int start = 0;// end = 0; // temporary start and end
+        int StartWindow = 0; // where to start
+        if(StartOfLastLedgeCandidate==0) {
+            StartWindow = 0;
+        }
+        else{
+            if(NumberOfLedge == 0)    // no ledge found. start from 200 ticks after the last candidate
+                StartWindow = (StartOfLastLedgeCandidate+200)/UNIT;
+            else{
+                if(StartOfLastLedgeCandidate>LedgeEnd[NumberOfLedge-1]) // the last candidate is not a real ledge
+                    // StartWindow = (StartOfLastLedgeCandidate+200)/UNIT;
+                    StartWindow = (StartOfLastLedgeCandidate+50)/UNIT;
+                else // the last candidate is a real ledge
+                    StartWindow = (LedgeEnd[NumberOfLedge-1]+30)/UNIT;
+            }
+        }
+        for(int i=StartWindow+1;i<up-1;i++){
+        if(averaged.at(i)<averaged.at(i-1)) {
+          if(decreaseD==0) start = i;
+          decreaseD +=1;
+        }
+        else {
+          if(averaged.at(i+1)<averaged.at(i-1)&&tolerence<JUMPS&&decreaseD>0){ // we can ignore several jumps in the decreasing region
+            decreaseD+=2;
+            tolerence++;
+            i = i+1;
+          }
+          else{
+            if(decreaseD>CONTIN){
+              ledge = 1;
+              StartOfLastLedgeCandidate = start*UNIT;
+              break;
+            }
+            else{
+              decreaseD = 0;
+              tolerence=0;
+              start = 0;
+              // end = 0;
+            }
+          }
+        }
+        }
+        // find the sharp start edge
+        // if(ledge == 1&&LedgeStart>30){ 
+        //   int edge = 0;
+        //   int i = LedgeStart/UNIT-1;
+        //   if(averaged.at(i)>averaged.at(i-1)&&averaged.at(i-1)>averaged.at(i-2)){ // find a edge
+        //           edge = 1;
+        //   }
+        //   if(edge == 0) ledge = 0; // if no edge, this is not ledge
+        //   if((averaged.at(i)-averaged.at(i-2)<10*UNIT)&&(averaged.at(i)-averaged.at(i-3)<10*UNIT)) // slope cut
+        //           ledge = 0;
+        //   if(averaged.at(LedgeStart/UNIT)-baseline*UNIT>300*UNIT) ledge = 0; // ledge is close to the baseline
+        // }
+        // determine the end of ledge
+        // case 1: find a jump of 5 ADC in the rebinned waveform
+        // case 2: a continuous 20 ticks has an average close to baseline, and a RMS larger than 3 ADC
+        // case 3: reaching the tick 6000 but neither 1 nor 2 occurs
+        int tempLedgeEnd = 0;
+        if(ledge ==1){
+            for(int i = StartOfLastLedgeCandidate/UNIT; i<up-1; i++){ // case 1
+                if(averaged.at(i+1)-averaged.at(i)>5*UNIT) { 
+                    tempLedgeEnd = i*UNIT+5;
+                    if(tempLedgeEnd>nticks) tempLedgeEnd = nticks-1;
+                    break;
+                }
+            }
+
+            if(tempLedgeEnd == 0) { // not find a jump, case 2
+                WireCell::Waveform::realseq_t tempA(20);
+                for(int i = StartOfLastLedgeCandidate+80;i<nticks-20;i+=20){
+                    for(int j=i;j<20+i;j++){
+                        tempA.at(j-i) = signal.at(j);
+                    }
+                    auto stat = WireCell::Waveform::mean_rms(tempA);
+                    if(stat.first-baseline<2&&stat.second>3){
+                        tempLedgeEnd = i;
+                        break;
+                    }
+                }
+            }
+            if(tempLedgeEnd == 0) tempLedgeEnd = nticks-1;
+        }
+        // test the decay time
+        // if(ledge == 1&&StartOfLastLedgeCandidate>20){
+        if(ledge==1){
+        double height = signal.at(StartOfLastLedgeCandidate+1)- signal.at(tempLedgeEnd);
+        if(height<0) ledge = 0; // not a ledge
+        if((tempLedgeEnd-StartOfLastLedgeCandidate) > 80){ // test the decay if the ledge length is longenough
+          double height50 = 0;
+          height50 =  signal.at(StartOfLastLedgeCandidate+51);
+          double height50Pre =   signal.at(StartOfLastLedgeCandidate+1)- height*(1-exp(-50/100.)); // minimum 100 ticks decay time
+          // if the measured is much smaller than the predicted, this is not ledge
+          if(height50-height50Pre<-12/*-8*/) ledge = 0;
+          // cout << "height50-height50Pre: " << height50-height50Pre << endl;
+        }
+        }
+
+        // // find the sharp start edge
+        if(ledge == 1&&StartOfLastLedgeCandidate>30){ 
+        //   int edge = 0;
+        //   int i = StartOfLastLedgeCandidate/UNIT-1;
+        //   if(averaged.at(i)>averaged.at(i-1)&&averaged.at(i-1)>averaged.at(i-2)){ // find a edge
+        //           edge = 1;
+        //   }
+        // if(edge == 0) ledge = 0; // if no edge, this is not ledge
+        // if((averaged.at(i)-averaged.at(i-2)<10*UNIT)&&(averaged.at(i)-averaged.at(i-3)<10*UNIT)) // slope cut
+        //         ledge = 0;
+        // if(averaged.at(StartOfLastLedgeCandidate/UNIT)-baseline*UNIT>150*UNIT) ledge = 0; // ledge is close to the baseline
+
+        // if(signal.at(tempLedgeEnd) - baseline > 100) ledge=0; // [wgu] ledge end is close to the baseline
+            if(averaged.at(tempLedgeEnd/UNIT)-baseline*UNIT>30*UNIT) ledge = 0;
+        // cout << "averaged.at(StartOfLastLedgeCandidate/UNIT) - baseline*UNIT = " <<  averaged.at(StartOfLastLedgeCandidate/UNIT)-baseline*UNIT << std::endl;
+        }
+
+
+        if(ledge == 1){
+            LedgeStart[NumberOfLedge] = std::max(StartOfLastLedgeCandidate-20, 0);
+            LedgeEnd[NumberOfLedge] = std::min(tempLedgeEnd+10, (int)signal.size());
+            NumberOfLedge++;    
+        }
+    } // LE
+
+    return NumberOfLedge;
+
+}
+
+
 // adapted from WCP
 // FIXME: some hardcoded 6000 ticks
 bool LedgeIdentify(WireCell::Waveform::realseq_t& signal/*TH1F* h2*/, double baseline, int & LedgeStart, int & LedgeEnd){
     int ledge = false;
-        int UNIT = 5;    // rebin unit
-        int CONTIN = 20; // length of the continuous region
-        int JUMPS = 4;   // how many bins can accidental jump
+        int UNIT = 10;//5;    // rebin unit
+        int CONTIN = 10;//20; // length of the continuous region
+        int JUMPS = 2;//4;   // how many bins can accidental jump
         std::vector<int> averaged; // store the rebinned waveform
         int up = signal.size()/UNIT;// h2->GetNbinsX()/UNIT;
     int nticks =  signal.size();// h2->GetNbinsX();
@@ -79,16 +245,16 @@ bool LedgeIdentify(WireCell::Waveform::realseq_t& signal/*TH1F* h2*/, double bas
         }
     // find the sharp start edge
      if(ledge &&LedgeStart>30){ 
-                int edge = 0;
-                int i = LedgeStart/UNIT-1;
-                if(averaged.at(i)>averaged.at(i-1)&&averaged.at(i-1)>averaged.at(i-2)){ // find a edge
-                        edge = 1;
-                }
-                if(edge == 0) ledge = false; // if no edge, this is not ledge
-                if((averaged.at(i)-averaged.at(i-2)<10*UNIT)&&(averaged.at(i)-averaged.at(i-3)<10*UNIT)) // slope cut
-                        ledge = false;
-                if(averaged.at(LedgeStart/UNIT)-baseline*UNIT>200*UNIT) ledge = false; // ledge is close to the baseline
-        }
+                // int edge = 0;
+                // int i = LedgeStart/UNIT-1;
+                // if(averaged.at(i)>averaged.at(i-1)&&averaged.at(i-1)>averaged.at(i-2)){ // find a edge
+                //         edge = 1;
+                // }
+                // if(edge == 0) ledge = false; // if no edge, this is not ledge
+                // if((averaged.at(i)-averaged.at(i-2)<10*UNIT)&&(averaged.at(i)-averaged.at(i-3)<10*UNIT)) // slope cut
+                //         ledge = false;
+                if(averaged.at(LedgeStart/UNIT)-baseline*UNIT>150*UNIT) ledge = false; // ledge is close to the baseline
+    }
     // test the decay time
     if(ledge &&LedgeStart>20){
                 double height = 0;
@@ -190,52 +356,6 @@ bool LedgeIdentify(WireCell::Waveform::realseq_t& signal/*TH1F* h2*/, double bas
 //         return 0;
 // }
 
-// bool atLocalMinimum(WireCell::Waveform::realseq_t& signal,
-//                     int ind, int sideband){
-//     int nsiglen = signal.size();
-//     int left_ind = ind - sideband;
-//     int right_ind = ind + sideband;
-//     if(left_ind<0) left_ind = 0;
-//     if(right_ind>=nsiglen) right_ind = nsiglen-1;
-//     for(int i=left_ind; i<=right_ind; i++){
-//         if(signal.at(i) < signal.at(ind)) return false;
-//     }
-//     return true;
-// }
-
-// bool atLocalMaximum(WireCell::Waveform::realseq_t& signal,
-//                     int ind, int sideband){
-//     int nsiglen = signal.size();
-//     int left_ind = ind - sideband;
-//     int right_ind = ind + sideband;
-//     if(left_ind<0) left_ind =0;
-//     if(right_ind>=nsiglen) right_ind = nsiglen-1;
-//     for(int i=left_ind; i<=right_ind; i++){
-//         if(signal.at(i) > signal.at(ind)) return false;
-//     }
-//     return true;
-// }
-
-// int longestSequence(std::vector<float> arr, float fepsilon=1e-3)
-// {
-//   int n = arr.size();
-//   if(n==0) return 0;
-//   int longest = 0;
-//   int length = 1;
-//   for(int i = 1; i < n; i++){
-//       if(std::fabs(arr[i] - arr[i-1]) < fepsilon)
-//           length++;
-//       else
-//       {
-//           if(length > longest)
-//               longest = length;
-//           if(longest > n-1-i) // longer than the remaining
-//               return longest;
-//           length = 1;
-//       }
-//   }
-//   return (length > longest) ? length : longest;
-// }
 
 bool Protodune::LinearInterpSticky(WireCell::Waveform::realseq_t& signal,
 								   WireCell::Waveform::BinRangeList& rng_list, int ch){
@@ -643,12 +763,45 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(int ch, sig
     FftInterpSticky(signal, sticky_rng_list);
     // FftShiftSticky(signal_lc, 0.5, st_ranges); // alternative approach, shift by 0.5 tick
     // signal = signal_lc;
+    int ent_stkylen =0; 
+    for(auto rng: sticky_rng_list){
+        int stkylen= rng.second-rng.first;
+        if(stkylen>5){
+            ret["sticky"][ch].push_back(rng);
+            ent_stkylen += stkylen;
+        }
+    }
+    // std::cerr << "[wgu] ch: " << ch << " long_stkylen: " << long_stkylen << std::endl;
 
-    // for(auto rng: sticky_rng_list){
-    //     if(rng.second-rng.first>5){
-    //         ret["sticky"][ch].push_back(rng);
-    //     }
-    // }
+    //Now calculate the baseline ...
+    std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
+    auto temp_signal = signal;
+    for (size_t i=0;i!=temp_signal.size();i++){
+    if (fabs(temp_signal.at(i)-temp.first)>6*temp.second){
+        temp_signal.at(i) = temp.first;
+    }
+    }
+    float baseline = WireCell::Waveform::median_binned(temp_signal);
+
+    // Ledge
+    int ledge_start[3], ledge_end[3];
+    int nledge = LedgeIdentify1(signal, baseline, ledge_start, ledge_end);
+    for(int LE=0; LE<nledge; LE++){
+        // check overlap of sticky in a ledge
+        float overlap=0;
+        for(auto rng: sticky_rng_list){
+            int redge = std::min(rng.second, ledge_end[LE]);
+            int ledge = std::max(rng.first,  ledge_start[LE]);
+            if(redge>=ledge) overlap += (redge-ledge+1);
+        }
+        if( overlap/(ledge_end[LE]-ledge_start[LE])<0.5 ){
+            WireCell::Waveform::BinRange ledge_bins;
+            ledge_bins.first  = ledge_start[LE];
+            ledge_bins.second = ledge_end[LE];
+            ret["ledge"][ch].push_back(ledge_bins); // FIXME: maybe collection plane only?
+            // std::cerr << "[wgu] ledge found, ch "<< ch << " , bins= [" << ledge_bins.first << " , " << ledge_bins.second << " ], sticky overlap: " << overlap/(ledge_end[LE]-ledge_start[LE]) << std::endl;            
+        }
+    }
 
     return ret;
 }
@@ -688,12 +841,12 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
 
     // correct rc undershoot
     auto spectrum = WireCell::Waveform::dft(signal);
-    bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
+    // bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
 
-    if(!is_partial){
-        auto const& spec = m_noisedb->rcrc(ch); // rc_layers set to 1 in nf.jsonnet
-        WireCell::Waveform::shrink(spectrum, spec);
-    }
+    // if(!is_partial){
+    //     auto const& spec = m_noisedb->rcrc(ch); // rc_layers set to 1 in nf.jsonnet
+    //     WireCell::Waveform::shrink(spectrum, spec);
+    // }
 
     // remove the "50kHz" noise in some collection channels
     // FIXME: do we need a channel list input?
@@ -755,30 +908,20 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
 
 
     // Now do the adaptive baseline for the bad RC channels
-    if (is_partial) {
-    // add something
-    WireCell::Waveform::BinRange temp_chirped_bins;
-    temp_chirped_bins.first = 0;
-    temp_chirped_bins.second = signal.size();
+    // if (is_partial) {
+    // // add something
+    // WireCell::Waveform::BinRange temp_chirped_bins;
+    // temp_chirped_bins.first = 0;
+    // temp_chirped_bins.second = signal.size();
 
-    if (iplane!=2) {        // not collection
-        ret["lf_noisy"][ch].push_back(temp_chirped_bins);
-        //std::cout << "Partial " << ch << std::endl;
-    }
-    Microboone::SignalFilter(signal);
-    Microboone::RawAdapativeBaselineAlg(signal);
-    Microboone::RemoveFilterFlags(signal);
-    }
-
-
-    // ledge identification
-    WireCell::Waveform::BinRange ledge_bins;
-    bool is_ledge = LedgeIdentify(signal, 0., ledge_bins.first, ledge_bins.second);
-    if(is_ledge){
-        // FIXME: do we need collection plane only?
-        ret["ledge"][ch].push_back(ledge_bins);
-        std::cerr << "[wgu] ledge found in ch "<< ch << " , bins= [" << ledge_bins.first << " , " << ledge_bins.second << " ]"<< std::endl;
-    }
+    // if (iplane!=2) {        // not collection
+    //     ret["lf_noisy"][ch].push_back(temp_chirped_bins);
+    //     //std::cout << "Partial " << ch << std::endl;
+    // }
+    // Microboone::SignalFilter(signal);
+    // Microboone::RawAdapativeBaselineAlg(signal);
+    // Microboone::RemoveFilterFlags(signal);
+    // }
 
     return ret;
 }
