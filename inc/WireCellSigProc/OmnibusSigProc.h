@@ -6,6 +6,7 @@
 #include "WireCellIface/IAnodePlane.h"
 #include "WireCellUtil/Waveform.h"
 #include "WireCellUtil/Array.h"
+#include "WireCellUtil/Logging.h"
 
 namespace WireCell {
   namespace SigProc {
@@ -193,6 +194,8 @@ namespace WireCell {
       // samples.
       bool m_sparse;
       
+      Log::logptr_t log;
+
     };
   }
 }
