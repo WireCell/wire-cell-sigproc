@@ -159,27 +159,41 @@ int LedgeIdentify1(WireCell::Waveform::realseq_t& signal, double baseline, int L
         }
         }
 
-        // // find the sharp start edge
-        if(ledge == 1&&StartOfLastLedgeCandidate>30){ 
-        //   int edge = 0;
-        //   int i = StartOfLastLedgeCandidate/UNIT-1;
-        //   if(averaged.at(i)>averaged.at(i-1)&&averaged.at(i-1)>averaged.at(i-2)){ // find a edge
-        //           edge = 1;
-        //   }
-        // if(edge == 0) ledge = 0; // if no edge, this is not ledge
-        // if((averaged.at(i)-averaged.at(i-2)<10*UNIT)&&(averaged.at(i)-averaged.at(i-3)<10*UNIT)) // slope cut
-        //         ledge = 0;
-        // if(averaged.at(StartOfLastLedgeCandidate/UNIT)-baseline*UNIT>150*UNIT) ledge = 0; // ledge is close to the baseline
+        // // // find the sharp start edge
+        // if(ledge == 1&&StartOfLastLedgeCandidate>30){ 
+        // //   int edge = 0;
+        // //   int i = StartOfLastLedgeCandidate/UNIT-1;
+        // //   if(averaged.at(i)>averaged.at(i-1)&&averaged.at(i-1)>averaged.at(i-2)){ // find a edge
+        // //           edge = 1;
+        // //   }
+        // // if(edge == 0) ledge = 0; // if no edge, this is not ledge
+        // // if((averaged.at(i)-averaged.at(i-2)<10*UNIT)&&(averaged.at(i)-averaged.at(i-3)<10*UNIT)) // slope cut
+        // //         ledge = 0;
+        // // if(averaged.at(StartOfLastLedgeCandidate/UNIT)-baseline*UNIT>150*UNIT) ledge = 0; // ledge is close to the baseline
 
-        // if(signal.at(tempLedgeEnd) - baseline > 100) ledge=0; // [wgu] ledge end is close to the baseline
-            if(averaged.at(tempLedgeEnd/UNIT)-baseline*UNIT>30*UNIT) ledge = 0;
-        // cout << "averaged.at(StartOfLastLedgeCandidate/UNIT) - baseline*UNIT = " <<  averaged.at(StartOfLastLedgeCandidate/UNIT)-baseline*UNIT << std::endl;
+        // // if(signal.at(tempLedgeEnd) - baseline > 100) ledge=0; // [wgu] ledge end is close to the baseline
+        //     if(averaged.at(tempLedgeEnd/UNIT)-baseline*UNIT>5.*UNIT) ledge = 0;
+        // // cout << "averaged.at(StartOfLastLedgeCandidate/UNIT) - baseline*UNIT = " <<  averaged.at(StartOfLastLedgeCandidate/UNIT)-baseline*UNIT << std::endl;
+        // }
+
+        if(ledge==1){ // ledge is close to the baseline
+            if(averaged.at(tempLedgeEnd/UNIT)-baseline*UNIT>5.*UNIT) ledge = 0;
+        }
+
+        if(ledge==1 && StartOfLastLedgeCandidate>1000){ // ledge always follows a pulse
+            // std::cerr << "[wgu] ch: " << m_ch << " StartOfLastLedgeCandidate: " << StartOfLastLedgeCandidate << std::endl;
+            float hmax=0;
+            for(int i=StartOfLastLedgeCandidate-1000; i<StartOfLastLedgeCandidate-100; i++){
+                if(signal.at(i)>hmax) hmax= signal.at(i);
+            }
+            if(hmax-baseline<200) ledge=0; // no large pre-signal
+            // std::cerr << "[wgu] hmax: " << hmax << std::endl;     
         }
 
 
         if(ledge == 1){
             LedgeStart[NumberOfLedge] = std::max(StartOfLastLedgeCandidate-20, 0);
-            LedgeEnd[NumberOfLedge] = std::min(tempLedgeEnd+10, (int)signal.size());
+            LedgeEnd[NumberOfLedge] = std::min(tempLedgeEnd+10, (int)signal.size()); // FIXME: ends at a threshold
             NumberOfLedge++;    
         }
     } // LE
@@ -784,22 +798,26 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(int ch, sig
     float baseline = WireCell::Waveform::median_binned(temp_signal);
 
     // Ledge
-    int ledge_start[3], ledge_end[3];
-    int nledge = LedgeIdentify1(signal, baseline, ledge_start, ledge_end);
-    for(int LE=0; LE<nledge; LE++){
-        // check overlap of sticky in a ledge
-        float overlap=0;
-        for(auto rng: sticky_rng_list){
-            int redge = std::min(rng.second, ledge_end[LE]);
-            int ledge = std::max(rng.first,  ledge_start[LE]);
-            if(redge>=ledge) overlap += (redge-ledge+1);
-        }
-        if( overlap/(ledge_end[LE]-ledge_start[LE])<0.5 ){
-            WireCell::Waveform::BinRange ledge_bins;
-            ledge_bins.first  = ledge_start[LE];
-            ledge_bins.second = ledge_end[LE];
-            ret["ledge"][ch].push_back(ledge_bins); // FIXME: maybe collection plane only?
-            // std::cerr << "[wgu] ledge found, ch "<< ch << " , bins= [" << ledge_bins.first << " , " << ledge_bins.second << " ], sticky overlap: " << overlap/(ledge_end[LE]-ledge_start[LE]) << std::endl;            
+    auto wpid = m_anode->resolve(ch);      
+    const int iplane = wpid.index();
+    if (iplane==2){
+        int ledge_start[3], ledge_end[3];
+        int nledge = LedgeIdentify1(signal, baseline, ledge_start, ledge_end);
+        for(int LE=0; LE<nledge; LE++){
+            // check overlap of sticky in a ledge
+            float overlap=0;
+            for(auto rng: sticky_rng_list){
+                int redge = std::min(rng.second, ledge_end[LE]);
+                int ledge = std::max(rng.first,  ledge_start[LE]);
+                if(redge>=ledge) overlap += (redge-ledge+1);
+            }
+            if( overlap/(ledge_end[LE]-ledge_start[LE])<0.5 ){
+                WireCell::Waveform::BinRange ledge_bins;
+                ledge_bins.first  = ledge_start[LE];
+                ledge_bins.second = ledge_end[LE];
+                ret["ledge"][ch].push_back(ledge_bins); // FIXME: maybe collection plane only?
+                // std::cerr << "[wgu] ledge found, ch "<< ch << " , bins= [" << ledge_bins.first << " , " << ledge_bins.second << " ], sticky overlap: " << overlap/(ledge_end[LE]-ledge_start[LE]) << std::endl;            
+            }
         }
     }
 
@@ -841,12 +859,12 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
 
     // correct rc undershoot
     auto spectrum = WireCell::Waveform::dft(signal);
-    // bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
+    bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
 
-    // if(!is_partial){
-    //     auto const& spec = m_noisedb->rcrc(ch); // rc_layers set to 1 in nf.jsonnet
-    //     WireCell::Waveform::shrink(spectrum, spec);
-    // }
+    if(!is_partial){
+        auto const& spec = m_noisedb->rcrc(ch); // rc_layers set to 1 in nf.jsonnet
+        WireCell::Waveform::shrink(spectrum, spec);
+    }
 
     // remove the "50kHz" noise in some collection channels
     // FIXME: do we need a channel list input?
@@ -854,6 +872,7 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
     const int iplane = wpid.index();
     if(iplane==2){
     auto mag = WireCell::Waveform::magnitude(spectrum);
+    mag.at(0)=0;
     Microboone::RawAdapativeBaselineAlg(mag); // subtract "linear" background in spectrum
 
     for(int i=0; i<57; i++){ // 150 - 3000th freq bin
@@ -865,26 +884,43 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
         std::copy(mag.begin() + istart, mag.begin() + iend, mag_slice.begin());
         std::pair<double,double> stat = WireCell::Waveform::mean_rms(mag_slice);
         // std::cerr << "[wgu] mean/rms: " << stat.first << " " << stat.second << std::endl;
-        for(int j=0; j<nslice; j++){
-            float content = mag_slice.at(j) - stat.first;
-             
-            if(iend<1000){
-                if(content>2000 && content>5.*stat.second){
-                int tbin = istart + j;
-                spectrum.at(tbin).real(0);
-                spectrum.at(tbin).imag(0);
-                spectrum.at(6000+1-tbin).real(0); // FIXME: assuming 6000 ticks
-                spectrum.at(6000+1-tbin).imag(0);
-                // std::cerr << "[wgu] chan: " << ch << " , freq tick: " << tbin << " , amp: " << content << std::endl;
-                }
-            }
-            else if(content>250 && content>10.*stat.second){
-                spectrum.at(j).real(0);
-                spectrum.at(j).imag(0);
-                spectrum.at(6000+1-j).real(0); // FIXME: assuming 6000 ticks
-                spectrum.at(6000+1-j).imag(0); 
+        double cut = stat.first + 2.7*stat.second;
+        if(i>17){
+            cut = stat.first + 3*stat.second;
+        }
+        // if(stat.second>1300){
+        //     cut = stat.first + stat.second;
+        // }
+        for(int j=istart; j<=iend; j++){
+            float content = mag.at(j);
+            if(content > cut){
+               spectrum.at(j).real(0);
+               spectrum.at(j).imag(0);
+               spectrum.at(mag.size()+1-j).real(0); 
+               spectrum.at(mag.size()+1-j).imag(0);
             }
         }
+
+        // for(int j=0; j<nslice; j++){
+        //     float content = mag_slice.at(j) - stat.first;
+             
+        //     if(iend<1000){
+        //         if(content>2000 && content>5.*stat.second){
+        //         int tbin = istart + j;
+        //         spectrum.at(tbin).real(0);
+        //         spectrum.at(tbin).imag(0);
+        //         spectrum.at(6000+1-tbin).real(0); // FIXME: assuming 6000 ticks
+        //         spectrum.at(6000+1-tbin).imag(0);
+        //         // std::cerr << "[wgu] chan: " << ch << " , freq tick: " << tbin << " , amp: " << content << std::endl;
+        //         }
+        //     }
+        //     else if(content>250 && content>10.*stat.second){
+        //         spectrum.at(j).real(0);
+        //         spectrum.at(j).imag(0);
+        //         spectrum.at(6000+1-j).real(0); // FIXME: assuming 6000 ticks
+        //         spectrum.at(6000+1-j).imag(0); 
+        //     }
+        // }
     }
 
     }
@@ -908,20 +944,30 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
 
 
     // Now do the adaptive baseline for the bad RC channels
-    // if (is_partial) {
-    // // add something
-    // WireCell::Waveform::BinRange temp_chirped_bins;
-    // temp_chirped_bins.first = 0;
-    // temp_chirped_bins.second = signal.size();
+    if (is_partial) {
+    // add something
+    WireCell::Waveform::BinRange temp_chirped_bins;
+    temp_chirped_bins.first = 0;
+    temp_chirped_bins.second = signal.size();
 
-    // if (iplane!=2) {        // not collection
-    //     ret["lf_noisy"][ch].push_back(temp_chirped_bins);
-    //     //std::cout << "Partial " << ch << std::endl;
-    // }
-    // Microboone::SignalFilter(signal);
-    // Microboone::RawAdapativeBaselineAlg(signal);
-    // Microboone::RemoveFilterFlags(signal);
-    // }
+    if (iplane!=2) {        // not collection
+        ret["lf_noisy"][ch].push_back(temp_chirped_bins);
+        //std::cout << "Partial " << ch << std::endl;
+    }
+    Microboone::SignalFilter(signal);
+    Microboone::RawAdapativeBaselineAlg(signal);
+    Microboone::RemoveFilterFlags(signal);
+    }
+
+    const float min_rms = 1;
+    const float max_rms = 15;
+    temp = Derivations::CalcRMS(signal);
+    if(temp.second<min_rms || temp.second>max_rms){
+        WireCell::Waveform::BinRange temp_chirped_bins;
+        temp_chirped_bins.first = 0;
+        temp_chirped_bins.second = signal.size();
+        ret["noisy"][ch].push_back(temp_chirped_bins);
+    }
 
     return ret;
 }
