@@ -1077,13 +1077,13 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     // merge results ...
     decon_2D_hits(iplane);
     roi_refine.apply_roi(iplane, m_r_data);
-    //roi_form.apply_roi(iplane, m_r_data,2);
+    //roi_form.apply_roi(iplane, m_r_data,1);
     save_data(*itraces, perframe_traces[iplane], iplane, perwire_rmses, thresholds);
     wiener_traces.insert(wiener_traces.end(), perframe_traces[iplane].begin(), perframe_traces[iplane].end());
 
     decon_2D_charge(iplane);
     roi_refine.apply_roi(iplane, m_r_data);
-    //roi_form.apply_roi(iplane, m_r_data,2);
+    //roi_form.apply_roi(iplane, m_r_data,1);
     std::vector<double> dummy_thresholds;
     save_data(*itraces, gauss_traces, iplane, perwire_rmses, dummy_thresholds);
 
