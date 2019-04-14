@@ -6,7 +6,7 @@
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
-ROI_formation::ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, int nbins, float th_factor_ind, float th_factor_col, int pad, float asy, int rebin , double l_factor, double l_max_th, double l_factor1, int l_short_length)
+ROI_formation::ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, int nbins, float th_factor_ind, float th_factor_col, int pad, float asy, int rebin , double l_factor, double l_max_th, double l_factor1, int l_short_length, int l_jump_one_bin)
   : nwire_u(nwire_u)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
@@ -20,6 +20,7 @@ ROI_formation::ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwir
   , l_max_th(l_max_th)
   , l_factor1(l_factor1)
   , l_short_length(l_short_length)
+  , l_jump_one_bin(l_jump_one_bin)
 {
   self_rois_u.resize(nwire_u);
   self_rois_v.resize(nwire_v);
@@ -45,6 +46,96 @@ ROI_formation::ROI_formation(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwir
   //std::cout << bad_ch_map.size() << std::endl;
   
 }
+
+void ROI_formation::apply_roi(int plane, Array::array_xxf& r_data, int flag){
+
+  if (plane==0){
+    for (int irow = 0 ; irow != r_data.rows(); irow++){
+      //refresh ... 
+      Waveform::realseq_t signal(r_data.cols(),0);
+      // loop ROIs and assign data
+
+      std::vector<std::pair<int,int> > rois;
+      if (flag==1){ // self ROI
+	rois = self_rois_u.at(irow);
+      }else if (flag==2){ //loose ROI
+	rois = loose_rois_u.at(irow);
+      }
+      
+      for (auto it = rois.begin(); it!= rois.end(); it++){
+	int start_bin = it->first;
+	int end_bin = it->second;
+	
+	float start_content = r_data(irow,start_bin);
+	float end_content = r_data(irow,end_bin);
+	for (int i=start_bin; i<end_bin+1; i++){
+	  int content = r_data(irow,i) - ((end_content - start_content)*(i-start_bin)/(end_bin-start_bin) + start_content);
+	  signal.at(i) = content;
+	}
+      }
+      // load data back ..
+      for (int icol = 0; icol!=r_data.cols();icol++){
+	r_data(irow,icol) = signal.at(icol);
+      }
+    }
+  }else if (plane==1){
+    for (int irow = 0 ; irow != r_data.rows(); irow++){
+      //refresh ... 
+      Waveform::realseq_t signal(r_data.cols(),0);
+      // loop ROIs and assign data
+      std::vector<std::pair<int,int> > rois;
+      if (flag==1){ // self ROI
+	rois = self_rois_v.at(irow);
+      }else if (flag==2){ //loose ROI
+	rois = loose_rois_v.at(irow);
+      }
+
+      
+      for (auto it = rois.begin(); it!= rois.end(); it++){
+	int start_bin = it->first;
+	int end_bin = it->second;
+	
+	float start_content = r_data(irow,start_bin);
+	float end_content = r_data(irow,end_bin);
+	for (int i=start_bin; i<end_bin+1; i++){
+	  int content = r_data(irow,i) - ((end_content - start_content)*(i-start_bin)/(end_bin-start_bin) + start_content);
+	  signal.at(i) = content;
+	}
+      }
+      // load data back ..
+      for (int icol = 0; icol!=r_data.cols();icol++){
+	r_data(irow,icol) = signal.at(icol);
+      }
+    }
+  }else{
+    for (int irow = 0 ; irow != r_data.rows(); irow++){
+      //refresh ... 
+      Waveform::realseq_t signal(r_data.cols(),0);
+      std::vector<std::pair<int,int> > rois;
+      if (flag==1){ // self ROI
+	rois = self_rois_w.at(irow);
+      }else if (flag==2){ //loose ROI
+	rois = loose_rois_w.at(irow);
+      }
+      
+      // loop ROIs and assign data
+      for (auto it = rois.begin(); it!= rois.end(); it++){
+	int start_bin = it->first;
+	int end_bin = it->second;
+	
+	for (int i=start_bin; i<end_bin+1; i++){
+	  int content = r_data(irow,i);// - ((end_content - start_content)*(i-start_bin)/(end_bin-start_bin) + start_content);
+	  signal.at(i) = content;
+	}
+      }
+      // load data back ..
+      for (int icol = 0; icol!=r_data.cols();icol++){
+	r_data(irow,icol) = signal.at(icol);
+      }
+    }
+  }
+}
+
 
 ROI_formation::~ROI_formation(){
   
@@ -509,7 +600,7 @@ double ROI_formation::local_ave(Waveform::realseq_t& signal, int bin, int width)
 }
 
 
-int ROI_formation::find_ROI_end(Waveform::realseq_t& signal, int bin, double th ){
+int ROI_formation::find_ROI_end(Waveform::realseq_t& signal, int bin, double th , int jump_one_bin ){
   int end = bin;
   double content = signal.at(end);
   while(content>th){
@@ -525,7 +616,9 @@ int ROI_formation::find_ROI_end(Waveform::realseq_t& signal, int bin, double th 
     }
   }
 
-  while(local_ave(signal,end+1,1) < local_ave(signal,end,1)+25){// ||
+  while(local_ave(signal,end+1,1) < local_ave(signal,end,1)+25 ||
+	(jump_one_bin && local_ave(signal,end+2,1) < local_ave(signal,end,1)+25 )
+	){// ||
     //	(local_ave(signal,end+1,1) + local_ave(signal,end+2,1))*0.5 < local_ave(signal,end,1) ){
     end++;
     if (end >= int(signal.size())-1) {
@@ -536,7 +629,7 @@ int ROI_formation::find_ROI_end(Waveform::realseq_t& signal, int bin, double th 
   return end;
 
 }
-int ROI_formation::find_ROI_begin(Waveform::realseq_t& signal, int bin, double th ){
+int ROI_formation::find_ROI_begin(Waveform::realseq_t& signal, int bin, double th, int jump_one_bin ){
   // find the first one before bin and is below threshold ... 
   int begin = bin;
   double content = signal.at(begin);
@@ -555,7 +648,9 @@ int ROI_formation::find_ROI_begin(Waveform::realseq_t& signal, int bin, double t
   
   // calculate the local average
   // keep going and find the minimum
-  while( local_ave(signal,begin-1,1) < local_ave(signal,begin,1)+25){// ||
+  while( local_ave(signal,begin-1,1) < local_ave(signal,begin,1)+25 ||
+	 (jump_one_bin && local_ave(signal,begin-2,1) < local_ave(signal,begin,1)+25)
+	 ){// ||
     // (local_ave(signal,begin-2,1) + local_ave(signal,begin-1,1))*0.5 < local_ave(signal,begin,1) ){
     begin --;
     if (begin <= 0) {
@@ -653,8 +748,8 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
       int  end=0;
       int max_bin=0;
       if (content > th){
-	begin = find_ROI_begin(signal2,j, th*l_factor1) ;
-	end = find_ROI_end(signal2,j, th*l_factor1) ;
+	begin = find_ROI_begin(signal2,j, th*l_factor1, l_jump_one_bin) ;
+	end = find_ROI_end(signal2,j, th*l_factor1, l_jump_one_bin) ;
 	max_bin = begin;
 	//	if (irow==1240) std::cout << "a: " << begin << " " << end << " " << j << std::endl;
 	for (int k=begin;k<=end;k++){
@@ -666,8 +761,8 @@ void ROI_formation::find_ROI_loose(int plane, const Array::array_xxf& r_data){
 	flag_ROI = 1;
       }else{
 	if (content > prev_content && content > next_content){
-	  begin = find_ROI_begin(signal2,j, prev_content);
-	  end = find_ROI_end(signal2,j, next_content );
+	  begin = find_ROI_begin(signal2,j, prev_content, l_jump_one_bin);
+	  end = find_ROI_end(signal2,j, next_content , l_jump_one_bin);
 	  max_bin = begin;
 	  for (int k=begin;k<=end;k++){
 	    if (signal2.at(k) > signal2.at(max_bin)){

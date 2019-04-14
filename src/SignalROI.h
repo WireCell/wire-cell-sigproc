@@ -30,6 +30,7 @@ namespace WireCell{
       std::vector<float>& get_contents(){return contents;}
       std::vector<std::pair<int,int>> get_above_threshold(float th);
       double get_average_heights();
+      double get_max_height();
       
       bool overlap(SignalROI *roi);
       bool overlap(SignalROI *roi1, float th, float th1);

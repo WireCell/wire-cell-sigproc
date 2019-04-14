@@ -43,6 +43,7 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
                                double l_max_th,
                                double l_factor1,
                                int l_short_length,
+			       int l_jump_one_bin,
                                double r_th_factor ,
                                double r_fake_signal_low_th ,
                                double r_fake_signal_high_th,
@@ -81,6 +82,7 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
   , m_l_max_th(l_max_th)
   , m_l_factor1(l_factor1)
   , m_l_short_length(l_short_length)
+  , m_l_jump_one_bin(l_jump_one_bin)
   , m_r_th_factor(r_th_factor)
   , m_r_fake_signal_low_th(r_fake_signal_low_th)
   , m_r_fake_signal_high_th(r_fake_signal_high_th)
@@ -148,9 +150,9 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_rebin = get(config,"lroi_rebin",m_rebin);
   m_l_factor = get(config,"lroi_th_factor",m_l_factor);
   m_l_max_th = get(config,"lroi_max_th",m_l_max_th);
-  m_l_factor1 = get(config,"lori_th_factor1",m_l_factor1);
+  m_l_factor1 = get(config,"lroi_th_factor1",m_l_factor1);
   m_l_short_length = get(config,"lroi_short_length",m_l_short_length);
-
+  m_l_jump_one_bin = get(config,"lroi_jump_one_bin",m_l_jump_one_bin);
 
   m_r_th_factor = get(config,"r_th_factor",m_r_th_factor);
   m_r_fake_signal_low_th = get(config,"r_fake_signal_low_th",m_r_fake_signal_low_th);
@@ -247,9 +249,10 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["lroi_rebin"] = m_rebin; 
   cfg["lroi_th_factor"] = m_l_factor;
   cfg["lroi_max_th"] = m_l_max_th;
-  cfg["lori_th_factor1"] = m_l_factor1;
+  cfg["lroi_th_factor1"] = m_l_factor1;
   cfg["lroi_short_length"] = m_l_short_length; 
-
+  cfg["lroi_jump_one_bin"] = m_l_jump_one_bin;
+  
   cfg["r_th_factor"] = m_r_th_factor;
   cfg["r_fake_signal_low_th"] = m_r_fake_signal_low_th;
   cfg["r_fake_signal_high_th"] = m_r_fake_signal_high_th;
@@ -341,6 +344,7 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& in
     for (int itick=0;itick!=m_nticks;itick++){
       const float q = m_r_data(och.wire, itick);
       charge.at(itick) = q > 0.0 ? q : 0.0;
+      //charge.at(itick) = q ;
     }
     {
       auto& bad = m_cmm["bad"];
@@ -353,6 +357,7 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& in
         }
       }
     }
+    
 
     // debug
     for (int j=0;j!=m_nticks;j++){
@@ -1026,7 +1031,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   init_overall_response(in);
 
   // create a class for ROIs ... 
-  ROI_formation roi_form(m_cmm, m_nwires[0], m_nwires[1], m_nwires[2], m_nticks, m_th_factor_ind, m_th_factor_col, m_pad, m_asy, m_rebin, m_l_factor, m_l_max_th, m_l_factor1, m_l_short_length);
+  ROI_formation roi_form(m_cmm, m_nwires[0], m_nwires[1], m_nwires[2], m_nticks, m_th_factor_ind, m_th_factor_col, m_pad, m_asy, m_rebin, m_l_factor, m_l_max_th, m_l_factor1, m_l_short_length, m_l_jump_one_bin);
   ROI_refinement roi_refine(m_cmm, m_nwires[0], m_nwires[1], m_nwires[2],m_r_th_factor,m_r_fake_signal_low_th,m_r_fake_signal_high_th,m_r_fake_signal_low_th_ind_factor,m_r_fake_signal_high_th_ind_factor,m_r_pad,m_r_break_roi_loop,m_r_th_peak,m_r_sep_peak,m_r_low_peak_sep_threshold_pre,m_r_max_npeaks,m_r_sigma,m_r_th_percent);//
 
   
@@ -1072,11 +1077,13 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     // merge results ...
     decon_2D_hits(iplane);
     roi_refine.apply_roi(iplane, m_r_data);
+    //roi_form.apply_roi(iplane, m_r_data,2);
     save_data(*itraces, perframe_traces[iplane], iplane, perwire_rmses, thresholds);
     wiener_traces.insert(wiener_traces.end(), perframe_traces[iplane].begin(), perframe_traces[iplane].end());
 
     decon_2D_charge(iplane);
     roi_refine.apply_roi(iplane, m_r_data);
+    //roi_form.apply_roi(iplane, m_r_data,2);
     std::vector<double> dummy_thresholds;
     save_data(*itraces, gauss_traces, iplane, perwire_rmses, dummy_thresholds);
 

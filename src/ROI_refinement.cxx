@@ -1059,6 +1059,7 @@ void ROI_refinement::CleanUpCollectionROIs(){
   for (int i=0;i!=nwire_w;i++){
     for (auto it = rois_w_tight.at(i).begin();it!=rois_w_tight.at(i).end();it++){
       SignalROI* roi = *it;
+      //std::cout << "Xin: " << roi->get_max_height() << " " << roi->get_average_heights() << std::endl;
       if (roi->get_above_threshold(threshold).size()!=0 || roi->get_average_heights() > mean_threshold)
 	Good_ROIs.insert(roi);
     }
@@ -1145,6 +1146,7 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
     for (int i=0;i!=nwire_u;i++){
       for (auto it = rois_u_loose.at(i).begin();it!=rois_u_loose.at(i).end();it++){
 	SignalROI* roi = *it;
+	//std::cout << "Xin: " << roi->get_max_height() << " " << roi->get_average_heights() << std::endl;
 	if (front_rois.find(roi)==front_rois.end() && back_rois.find(roi)==back_rois.end()){
 	  if (roi->get_above_threshold(threshold).size()==0 && roi->get_average_heights() < mean_threshold)
 	    Bad_ROIs.push_back(roi);
@@ -1183,6 +1185,7 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
     for (int i=0;i!=nwire_v;i++){
       for (auto it = rois_v_loose.at(i).begin();it!=rois_v_loose.at(i).end();it++){
 	SignalROI* roi = *it;
+	//	std::cout << "Xin: " << roi->get_max_height() << " " << roi->get_average_heights() << std::endl;
 	if (front_rois.find(roi)==front_rois.end() && back_rois.find(roi)==back_rois.end()){
 	  if (roi->get_above_threshold(threshold).size()==0 && roi->get_average_heights() < mean_threshold)
 	    Bad_ROIs.push_back(roi);

@@ -30,6 +30,7 @@ namespace WireCell {
                      double l_max_th=10000,
                      double l_factor1=0.7,
                      int l_short_length = 3,
+		     int l_jump_one_bin = 0,
                      double r_th_factor = 3.0,
                      double r_fake_signal_low_th = 500,
                      double r_fake_signal_high_th = 1000,
@@ -128,6 +129,7 @@ namespace WireCell {
       double m_l_max_th;
       double m_l_factor1;
       int m_l_short_length;
+      int m_l_jump_one_bin;
 
 
        // ROI_refinement
