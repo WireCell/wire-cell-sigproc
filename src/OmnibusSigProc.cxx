@@ -999,11 +999,9 @@ void OmnibusSigProc::decon_2D_charge(int plane){
 
 bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 {
+  out = nullptr;
   if (!in) {
-    // A null input indicates end of stream and is to let us flush
-    // any data we may have buffered.  Since we do not buffer,
-    // just return.
-    out = nullptr;
+    log->debug("OmnibusSigProc: see EOS");
     return true;
   }
 
@@ -1114,10 +1112,10 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   sframe->tag_traces(m_wiener_threshold_tag, wiener_traces, thresholds);
   sframe->tag_traces(m_gauss_tag, gauss_traces);
 
-  log->debug("OmnibusSigProc: produce {} traces: {} {}, {} {}",
+  log->debug("OmnibusSigProc: produce {} traces: {} {}, {} {}, frame tag: {}",
              itraces->size(),
              wiener_traces.size(), m_wiener_tag,
-             gauss_traces.size(), m_gauss_tag);
+             gauss_traces.size(), m_gauss_tag, m_frame_tag);
 
   out = IFrame::pointer(sframe);
   

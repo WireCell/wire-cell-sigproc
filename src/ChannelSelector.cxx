@@ -66,29 +66,37 @@ bool ChannelSelector::operator()(const input_pointer& in, output_pointer& out)
 {
     out = nullptr;
     if (!in) {
+        log->debug("ChannelSelector: sees EOS");
         return true;            // eos
     }
 
     std::vector<ITrace::vector> tracesvin;
+
+    size_t ntraces = 0;
 
     size_t ntags = m_tags.size();
     if (!ntags) {
         tracesvin.push_back(FrameTools::untagged_traces(in));
         log->debug("ChannelSelector: see frame: {} no tags, whole frame ({} traces out of {})",
                    in->ident(), tracesvin.back().size(), in->traces()->size());
+        ntraces += tracesvin[0].size();
     }
     else {
         tracesvin.resize(ntags);
         std::stringstream ss;
-        ss << "ChannelSelector: see frame: "<<in->ident()
-           << "(" << tracesvin.size() << " traces), with tags:";
+        ss << "ChannelSelector: see frame: "<<in->ident() << " looking for " << ntags << " tags:";
         for (size_t ind=0; ind<ntags; ++ind) {
             std::string tag = m_tags[ind];
             tracesvin[ind] = FrameTools::tagged_traces(in, tag);
-            ss << " " << tag << "[" << tracesvin[ind].size() << "]";
+            ss << " " << tag << ":[" << tracesvin[ind].size() << " traces]";
+            ntraces += tracesvin[ind].size();
         }
         log->debug(ss.str());
     }
+    if (!ntraces) {
+        log->warn("ChannelSelector: see no traces from frame {}", in->ident());
+    }
+
         
     ITrace::vector out_traces;
     std::vector<IFrame::trace_list_t> tagged_trace_indices;
@@ -108,20 +116,25 @@ bool ChannelSelector::operator()(const input_pointer& in, output_pointer& out)
         tagged_trace_indices.push_back(tl);
     }
 
+    std::stringstream taginfo;
+
     auto sf = new SimpleFrame(in->ident(), in->time(), out_traces, in->tick());
     if (ntags) {
         for (size_t ind=0; ind<ntags; ++ind) {
             std::string tag = m_tags[ind];
             sf->tag_traces(tag, tagged_trace_indices[ind]);
+            taginfo << tag << " ";
         }
     }
     for(auto ftag: in->frame_tags()){
         sf->tag_frame(ftag);
-        //std::cerr << "ChannelSelector: copy inframe tag " << ftag << std::endl;
+        taginfo << "frame tag: " << ftag;
     }
 
     out = IFrame::pointer(sf);
-    log->debug("ChannelSelector: producing {} traces", out->traces()->size());
+    log->debug("ChannelSelector: producing {} traces, tags: {}",
+               out->traces()->size(), taginfo.str());
+
     return true;
 }
 
