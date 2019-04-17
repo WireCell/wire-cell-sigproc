@@ -8,6 +8,7 @@
 
 #include "WireCellIface/IFrameFilter.h"
 #include "WireCellIface/IConfigurable.h"
+#include "WireCellUtil/Logging.h"
 
 #include <string>
 #include <vector>
@@ -35,6 +36,8 @@ namespace WireCell {
         private:
             std::vector<std::string> m_tags;
             std::unordered_set<int> m_channels;
+
+            Log::logptr_t log;
         };
     }
 }

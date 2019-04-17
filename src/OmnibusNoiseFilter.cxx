@@ -25,6 +25,7 @@ OmnibusNoiseFilter::OmnibusNoiseFilter(std::string intag, std::string outtag)
     : m_nsamples(0)
     , m_intag(intag)            // orig
     , m_outtag(outtag)          // raw
+    , log(Log::logger("sigproc"))
 {
 }
 OmnibusNoiseFilter::~OmnibusNoiseFilter()
@@ -44,28 +45,28 @@ void OmnibusNoiseFilter::configure(const WireCell::Configuration& cfg)
 
     for (auto jf : cfg["channel_filters"]) {
         auto filt = Factory::find_tn<IChannelFilter>(jf.asString());
-        std::cerr << "OmnibusNoiseFilter: adding channel filter: " << m_perchan.size()
-                  << " \"" << jf.asString() << "\"\n";
+        log->debug("OmnibusNoiseFilter: adding channel filter: {} \"{}\"",
+                   m_perchan.size(), jf.asString());
         m_perchan.push_back(filt);
     }
     for (auto jf : cfg["channel_status_filters"]) {
         auto filt = Factory::find_tn<IChannelFilter>(jf.asString());
-        std::cerr << "OmnibusNoiseFilter: adding channel status filter: " << m_perchan_status.size()
-                  << " \"" << jf.asString() << "\"\n";
+        log->debug("OmnibusNoiseFilter: adding channel status filter: {} \"{}\"",
+                   m_perchan_status.size(), jf.asString());
         m_perchan_status.push_back(filt);
     }
     for (auto jf : cfg["grouped_filters"]) {
         auto filt = Factory::find_tn<IChannelFilter>(jf.asString());
-        std::cerr << "OmnibusNoiseFilter: adding grouped filter: " << m_grouped.size()
-                  << " \"" << jf.asString() << "\"\n";
+        log->debug("OmnibusNoiseFilter: adding grouped filter: {} \"{}\"",
+                   m_grouped.size(), jf.asString());
         m_grouped.push_back(filt);
     }
 
 
     auto jcndb = cfg["noisedb"];
     m_noisedb = Factory::find_tn<IChannelNoiseDatabase>(jcndb.asString());
-    std::cerr << "OmnibusNoiseFilter: using channel noise DB object: " 
-                  << " \"" << jcndb.asString() << "\"\n";
+    log->debug("OmnibusNoiseFilter: using channel noise DB object: \"{}\"",
+               jcndb.asString());
 
     m_intag = get(cfg, "intraces", m_intag);
     m_outtag = get(cfg, "outtraces", m_outtag);
@@ -100,19 +101,15 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
         return true;
     }
 
-    // ExecMon em("starting NoiseFilter");
-
     auto traces = wct::sigproc::tagged_traces(inframe, m_intag);
     if (traces.empty()) {
-        std::cerr << "OmnibusNoiseFilter: warning: no traces for tag \"" << m_intag << "\"\n";
+        log->warn("OmnibusNoiseFilter: warning: no traces for tag \"{}\"", m_intag);
 	return true;
     }
-    // em("got tagged traces");
 
     if (m_nsamples) {
-        std::cerr << "OmnibusNoiseFilter: will resize working waveforms from "
-                  << traces.at(0)->charge().size()
-                  << " to " << m_nsamples << std::endl;
+        log->debug("OmnibusNoiseFilter: will resize working waveforms from {} to {}",
+                   traces.at(0)->charge().size(), m_nsamples);
     }
     else {
         // Warning: this implicitly assumes a dense frame (ie, all tbin=0 and all waveforms same size).
@@ -141,7 +138,6 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 	Waveform::merge(cmm,temp_map,m_maskmap);
     }
 
-    // em("Starting loop on traces");
 
     int nchanged_samples = 0;
 
@@ -182,10 +178,8 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
     traces.clear();		// done with our copy of vector of shared pointers
 
     if (nchanged_samples) {
-        std::cerr << "OmnibusNoiseFilter: warning, truncated or extended " << nchanged_samples << " samples\n";
+        log->warn("OmnibusNoiseFilter: warning, truncated or extended {} samples", nchanged_samples);
     }
-
-    // em("starting coherent loop");
 
     int group_counter = 0;
     for (auto group : m_noisedb->coherent_channels()) {
@@ -197,7 +191,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
         for (auto ch : group) {	    // fix me: check if we don't actually have this channel
 	    // std::cout << group_counter << " " << ch << " " << std::endl;
             if (bychan.find(ch)==bychan.end()) {
-                std::cerr << "OmnibusNoiseFilter: warning: unknown channel " << ch << "\n";
+                log->warn("OmnibusNoiseFilter: warning: unknown channel {}", ch);
                 flag = 0;
             }
             else{
@@ -219,8 +213,6 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
         }
     }
 
-    // em("starting run status");
-
     // run status
     for (auto& it : bychan) {
 	const int ch = it.first;
@@ -232,16 +224,12 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 	}
     }
     
-    // em("starting packing output");
-
     ITrace::vector itraces;
     for (auto& cs : bychan) {    // fixme: that tbin though
         itraces.push_back(ITrace::pointer(cs.second));
     }
 
-    // em("made ouput");
     bychan.clear();
-    // em("cleared map");
 
     auto sframe = new SimpleFrame(inframe->ident(), inframe->time(), itraces, inframe->tick(), cmm);
     IFrame::trace_list_t indices(itraces.size());
@@ -252,8 +240,6 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
     sframe->tag_frame("noisefilter");
     outframe = IFrame::pointer(sframe);
 
-    // em("finished NoiseFilter");
-    // std::cerr << em.summary() << std::endl;
     return true;
 }
 

@@ -4,6 +4,8 @@
 
 #include "WireCellUtil/NamedFactory.h"
 
+#include <sstream>
+
 WIRECELL_FACTORY(ChannelSelector, WireCell::SigProc::ChannelSelector,
                  WireCell::IFrameFilter, WireCell::IConfigurable)
 
@@ -11,6 +13,7 @@ using namespace WireCell;
 using namespace WireCell::SigProc;
 
 ChannelSelector::ChannelSelector()
+    : log(Log::logger("glue"))
 {
 }
 
@@ -71,20 +74,20 @@ bool ChannelSelector::operator()(const input_pointer& in, output_pointer& out)
     size_t ntags = m_tags.size();
     if (!ntags) {
         tracesvin.push_back(FrameTools::untagged_traces(in));
-        std::cerr << "ChannelSelector: see frame: "<<in->ident()
-                  <<" no tags, whole frame "
-                  << "(" << tracesvin.back().size() << " traces out of "
-                  << in->traces()->size() << ")\n";
+        log->debug("ChannelSelector: see frame: {} no tags, whole frame ({} traces out of {})",
+                   in->ident(), tracesvin.back().size(), in->traces()->size());
     }
     else {
         tracesvin.resize(ntags);
-        std::cerr << "ChannelSelector: see frame: "<<in->ident()
-                  << "(" << tracesvin.size() << " traces), with tags:\n";
+        std::stringstream ss;
+        ss << "ChannelSelector: see frame: "<<in->ident()
+           << "(" << tracesvin.size() << " traces), with tags:";
         for (size_t ind=0; ind<ntags; ++ind) {
             std::string tag = m_tags[ind];
             tracesvin[ind] = FrameTools::tagged_traces(in, tag);
-            std::cerr << "\t" << tag << "[" << tracesvin[ind].size() << "]\n";
+            ss << " " << tag << "[" << tracesvin[ind].size() << "]";
         }
+        log->debug(ss.str());
     }
         
     ITrace::vector out_traces;
@@ -118,7 +121,7 @@ bool ChannelSelector::operator()(const input_pointer& in, output_pointer& out)
     }
 
     out = IFrame::pointer(sf);
-    std::cerr << "ChannelSelector: producing " << out->traces()->size() << " traces\n";
+    log->debug("ChannelSelector: producing {} traces", out->traces()->size());
     return true;
 }
 

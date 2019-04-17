@@ -13,6 +13,7 @@
 #include "WireCellIface/IChannelFilter.h"
 
 #include "WireCellUtil/Waveform.h"
+#include "WireCellUtil/Logging.h"
 
 
 #include <vector>
@@ -69,6 +70,7 @@ namespace WireCell {
 
 	    std::map<std::string, std::string> m_maskmap;
 
+            Log::logptr_t log;
 	};
 
     }

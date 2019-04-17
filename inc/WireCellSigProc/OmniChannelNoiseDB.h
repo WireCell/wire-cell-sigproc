@@ -11,6 +11,7 @@
 #include "WireCellUtil/Units.h"
 #include "WireCellUtil/String.h"
 #include "WireCellUtil/Exceptions.h"
+#include "WireCellUtil/Logging.h"
 
 #include <vector>
 #include <tuple>
@@ -176,6 +177,7 @@ namespace WireCell {
             // lookup by WirePlaneId::ident()
             std::unordered_map<int, shared_filter_t> m_response_cache;
 
+            Log::logptr_t log;
 	};
     }
 

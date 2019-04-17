@@ -15,6 +15,7 @@ OmniChannelNoiseDB::OmniChannelNoiseDB()
     : m_tick(0.5*units::us)
     , m_nsamples(9600)
     , m_rc_layers(2)
+    , log(Log::logger("sigproc"))
 {
 }
 OmniChannelNoiseDB::~OmniChannelNoiseDB()
@@ -617,9 +618,8 @@ void OmniChannelNoiseDB::configure(const WireCell::Configuration& cfg)
     }
     std::sort(m_bad_channels.begin(), m_bad_channels.end());
     if (m_bad_channels.size()) {
-	std::cerr << "OmniChannelNoiseDB: setting "<<m_bad_channels.size()
-		  << ":[" << m_bad_channels.front() << "," << m_bad_channels.back() << "]"
-		  <<" bad channels\n";
+        log->debug("OmniChannelNoiseDB: setting {}:[{},{}] bad channels",
+                   m_bad_channels.size(), m_bad_channels.front(), m_bad_channels.back());
     }
 
     
