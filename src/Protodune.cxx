@@ -26,6 +26,9 @@ WIRECELL_FACTORY(pdStickyCodeMitig,
 WIRECELL_FACTORY(pdOneChannelNoise,
                  WireCell::SigProc::Protodune::OneChannelNoise,
                  WireCell::IChannelFilter, WireCell::IConfigurable)
+WIRECELL_FACTORY(pdRelGainCalib,
+                 WireCell::SigProc::Protodune::RelGainCalib,
+                 WireCell::IChannelFilter, WireCell::IConfigurable)
 
 using namespace WireCell::SigProc;
 
@@ -975,6 +978,102 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
 
 
 WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(channel_signals_t& chansig) const
+{
+    return WireCell::Waveform::ChannelMaskMap();
+}
+
+
+Protodune::RelGainCalib::RelGainCalib(const std::string& anode, const std::string& noisedb, 
+    float gain_def, float gain_min_cut, float gain_max_cut, int adc_underflow, int adc_overflow)
+    : m_anode_tn(anode)
+    , m_noisedb_tn(noisedb)
+    , m_gain_def(gain_def)
+    , m_gain_min_cut(gain_min_cut)
+    , m_gain_max_cut(gain_max_cut)
+    , m_adc_underflow(adc_underflow)
+    , m_adc_overflow(adc_overflow)
+{
+}
+Protodune::RelGainCalib::~RelGainCalib()
+{
+}
+
+void Protodune::RelGainCalib::configure(const WireCell::Configuration& cfg)
+{
+    m_anode_tn = get(cfg, "anode", m_anode_tn);
+    m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
+    if (!m_anode) {
+        THROW(KeyError() << errmsg{"failed to get IAnodePlane: " + m_anode_tn});
+    }
+
+    m_noisedb_tn = get(cfg, "noisedb", m_noisedb_tn);
+    m_noisedb = Factory::find_tn<IChannelNoiseDatabase>(m_noisedb_tn);
+
+    if (cfg.isMember("gain_def")) {
+        m_gain_def = get(cfg, "gain_def", m_gain_def);
+    }
+
+    if (cfg.isMember("gain_min_cut")){
+        m_gain_min_cut = get(cfg, "gain_min_cut", m_gain_min_cut);
+    }
+
+    if (cfg.isMember("gain_max_cut")){
+        m_gain_max_cut = get(cfg, "gain_max_cut", m_gain_max_cut);
+    }
+    
+    m_rel_gain.clear();
+    for (auto jch : cfg["rel_gain"]) {
+        m_rel_gain.push_back(jch.asDouble());
+    }
+
+}
+WireCell::Configuration Protodune::RelGainCalib::default_configuration() const
+{
+    Configuration cfg;
+    cfg["anode"] = m_anode_tn;
+    cfg["noisedb"] = m_noisedb_tn;
+    cfg["gain_def"] = m_gain_def;
+    cfg["gain_min_cut"] = m_gain_min_cut;
+    cfg["gain_max_cut"] = m_gain_max_cut;   
+    return cfg;
+}
+
+WireCell::Waveform::ChannelMaskMap Protodune::RelGainCalib::apply(int ch, signal_t& signal) const
+{
+    WireCell::Waveform::ChannelMaskMap ret;
+
+    size_t nsiglen = signal.size();
+    // FIXME: already subtracted in OneChannelNoise::apply(). Need to calculate again? 
+    // std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
+    // auto temp_signal = signal;
+    // for (size_t i=0;i!=temp_signal.size();i++){
+    // if (fabs(temp_signal.at(i)-temp.first)>6*temp.second){
+    //     temp_signal.at(i) = temp.first;
+    // }
+    // }
+    // float baseline = WireCell::Waveform::median_binned(temp_signal);
+    float baseline = 0.;
+
+    float gain_fac = m_rel_gain.at(ch);
+
+    if ( !(gain_fac < m_gain_max_cut && gain_fac > m_gain_min_cut)){
+        // std::cerr << "[wgu] gain_max_cut: " << m_gain_max_cut << " gain_min_cut: " << m_gain_min_cut << std::endl;
+        // std::cerr << "[wgu] ch: " << ch << " relative gain: " << gain_fac << std::endl;
+        gain_fac = m_gain_def;
+    }
+
+    for (size_t ind=0; ind<nsiglen; ind++) {
+        float sigout = gain_fac * (signal.at(ind) - baseline);
+        sigout += baseline;
+        signal.at(ind) = sigout;
+    }
+
+    return ret;
+}
+
+
+
+WireCell::Waveform::ChannelMaskMap Protodune::RelGainCalib::apply(channel_signals_t& chansig) const
 {
     return WireCell::Waveform::ChannelMaskMap();
 }

@@ -32,7 +32,7 @@ namespace WireCell {
                          const std::string& noisedb = "OmniChannelNoiseDB");
         virtual ~ConfigFilterBase();
 
-		/// IConfigurable configuration interface
+		// IConfigurable configuration interface
 		virtual void configure(const WireCell::Configuration& config);
 		virtual WireCell::Configuration default_configuration() const;
 
@@ -65,7 +65,7 @@ namespace WireCell {
                         const std::string& noisedb = "OmniChannelNoiseDB");
 		virtual ~StickyCodeMitig();
 
-		//// IChannelFilter interface
+		// IChannelFilter interface
 
 		/** Filter in place the signal `sig` from given `channel`. */
 		virtual WireCell::Waveform::ChannelMaskMap apply(int channel, signal_t& sig) const;
@@ -96,7 +96,7 @@ namespace WireCell {
                        const std::string& noisedb = "OmniChannelNoiseDB");
 		virtual ~OneChannelNoise();
 
-		//// IChannelFilter interface
+		// IChannelFilter interface
 
 		/** Filter in place the signal `sig` from given `channel`. */
 		virtual WireCell::Waveform::ChannelMaskMap apply(int channel, signal_t& sig) const;
@@ -109,6 +109,45 @@ namespace WireCell {
 
 	    };
 
+	    // A relative gain correction based on David Adam's pulse area calibration
+	    class RelGainCalib : public WireCell::IChannelFilter, public WireCell::IConfigurable {
+	    public:
+
+		RelGainCalib(const std::string& anode_tn = "AnodePlane",
+                      const std::string& noisedb = "OmniChannelNoiseDB",
+                      float gain_def = 1.0,
+                      float gain_min_cut = 0.8,
+                      float gain_max_cut = 1.25,
+                      int adc_underflow = 0,
+                      int adc_overflow = 4095);
+		virtual ~RelGainCalib();
+
+		// IChannelFilter interface
+
+		/** Filter in place the signal `sig` from given `channel`. */
+		virtual WireCell::Waveform::ChannelMaskMap apply(int channel, signal_t& sig) const;
+
+		/** Filter in place a group of signals together. */
+		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
+
+		virtual void configure(const WireCell::Configuration& config);
+		virtual WireCell::Configuration default_configuration() const;
+		
+	    private:
+
+	    std::string m_anode_tn, m_noisedb_tn;
+	    IAnodePlane::pointer m_anode;
+	    IChannelNoiseDatabase::pointer m_noisedb;
+
+	    float m_gain_def;
+	    float m_gain_min_cut;
+	    float m_gain_max_cut;
+	    int   m_adc_underflow;
+	    int   m_adc_overflow;
+
+	    std::vector<float> m_rel_gain; // relative gain map
+                
+	    };
    
 	}
 
