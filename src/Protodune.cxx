@@ -984,14 +984,12 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(channel_sig
 
 
 Protodune::RelGainCalib::RelGainCalib(const std::string& anode, const std::string& noisedb, 
-    float gain_def, float gain_min_cut, float gain_max_cut, int adc_underflow, int adc_overflow)
+    float gain_def, float gain_min_cut, float gain_max_cut)
     : m_anode_tn(anode)
     , m_noisedb_tn(noisedb)
     , m_gain_def(gain_def)
     , m_gain_min_cut(gain_min_cut)
     , m_gain_max_cut(gain_max_cut)
-    , m_adc_underflow(adc_underflow)
-    , m_adc_overflow(adc_overflow)
 {
 }
 Protodune::RelGainCalib::~RelGainCalib()

@@ -117,9 +117,7 @@ namespace WireCell {
                       const std::string& noisedb = "OmniChannelNoiseDB",
                       float gain_def = 1.0,
                       float gain_min_cut = 0.8,
-                      float gain_max_cut = 1.25,
-                      int adc_underflow = 0,
-                      int adc_overflow = 4095);
+                      float gain_max_cut = 1.25);
 		virtual ~RelGainCalib();
 
 		// IChannelFilter interface
@@ -142,8 +140,6 @@ namespace WireCell {
 	    float m_gain_def;
 	    float m_gain_min_cut;
 	    float m_gain_max_cut;
-	    int   m_adc_underflow;
-	    int   m_adc_overflow;
 
 	    std::vector<float> m_rel_gain; // relative gain map
                 
