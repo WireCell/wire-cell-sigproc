@@ -962,14 +962,26 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
     Microboone::RemoveFilterFlags(signal);
     }
 
-    const float min_rms = 1;
-    const float max_rms = 15;
-    temp = Derivations::CalcRMS(signal);
-    if(temp.second<min_rms || temp.second>max_rms){
+    const float min_rms = m_noisedb->min_rms_cut(ch);
+    const float max_rms = m_noisedb->max_rms_cut(ch);
+    //  
+    // temp = Derivations::CalcRMS(signal);
+    // if(ch==14431) std::cerr << "[wgu] channel: " << ch << " rms: " << temp.second << std::endl;
+    // if(temp.second<min_rms || temp.second>max_rms){
+    //     WireCell::Waveform::BinRange temp_chirped_bins;
+    //     temp_chirped_bins.first = 0;
+    //     temp_chirped_bins.second = signal.size();
+    //     ret["noisy"][ch].push_back(temp_chirped_bins);
+    // }
+    // alternative RMS tagging
+    Microboone::SignalFilter(signal);
+    bool is_noisy = Microboone::NoisyFilterAlg(signal,min_rms,max_rms);
+    Microboone::RemoveFilterFlags(signal);
+    if(is_noisy){
         WireCell::Waveform::BinRange temp_chirped_bins;
         temp_chirped_bins.first = 0;
         temp_chirped_bins.second = signal.size();
-        ret["noisy"][ch].push_back(temp_chirped_bins);
+        ret["noisy"][ch].push_back(temp_chirped_bins);        
     }
 
     return ret;
