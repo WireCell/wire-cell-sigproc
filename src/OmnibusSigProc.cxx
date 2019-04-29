@@ -1001,7 +1001,11 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 {
   out = nullptr;
   if (!in) {
-    log->debug("OmnibusSigProc: see EOS");
+    log->debug("OmnibusSigProc: see EOS on frame {}", in->ident());
+    return true;
+  }
+  if (in->traces()->empty()) {
+    log->debug("OmnibusSigProc: passing through empty frame {}", in->ident());
     return true;
   }
 
