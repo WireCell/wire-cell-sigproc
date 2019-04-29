@@ -104,8 +104,12 @@ namespace WireCell {
 		/** Filter in place a group of signals together. */
 		virtual WireCell::Waveform::ChannelMaskMap apply(channel_signals_t& chansig) const;
 
+		void configure(const WireCell::Configuration& config);
+		WireCell::Configuration default_configuration() const;
+
 		private:
 		Diagnostics::Partial m_check_partial; // at least need to expose them to configuration
+		std::map<int, int> m_resmp; // ch => orignal smp input
 
 	    };
 

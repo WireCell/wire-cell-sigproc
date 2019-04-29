@@ -838,10 +838,43 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(channel_sig
 Protodune::OneChannelNoise::OneChannelNoise(const std::string& anode, const std::string& noisedb)
     : ConfigFilterBase(anode, noisedb)
     , m_check_partial() // fixme, here too.
+    , m_resmp()
 {
 }
 Protodune::OneChannelNoise::~OneChannelNoise()
 {
+}
+
+void Protodune::OneChannelNoise::configure(const WireCell::Configuration& cfg)
+{
+    m_anode_tn = get(cfg, "anode", m_anode_tn);
+    m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
+    if (!m_anode) {
+        THROW(KeyError() << errmsg{"failed to get IAnodePlane: " + m_anode_tn});
+    }
+
+    m_noisedb_tn = get(cfg, "noisedb", m_noisedb_tn);
+    m_noisedb = Factory::find_tn<IChannelNoiseDatabase>(m_noisedb_tn);
+
+    m_resmp.clear();
+    auto jext = cfg["resmp"];
+    if(!jext.isNull()){
+        for(auto jone: jext) {
+            int smpin = jone["sample_from"].asInt();
+            for(auto jch: jone["channels"]){
+                int channel = jch.asInt();
+                m_resmp[channel] = smpin;
+            }
+        }
+    }
+
+}
+WireCell::Configuration Protodune::OneChannelNoise::default_configuration() const
+{
+    Configuration cfg;
+    cfg["anode"] = m_anode_tn;
+    cfg["noisedb"] = m_noisedb_tn;    
+    return cfg;
 }
 
 WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, signal_t& signal) const
@@ -852,13 +885,21 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
     // float baseline = m_noisedb->nominal_baseline(ch);
 
     // correct the FEMB 302 clock issue
-    if( (ch>=2128 && ch<=2175) // W plane
-    ||  (ch>=1520 && ch<=1559) // V plane
-    ||  (ch>=440  && ch<=479)  // U plane
-    ){
-    	signal.resize(5996);
-    	FftScaling(signal, 6000);
+    auto it = m_resmp.find(ch);
+    if (it != m_resmp.end()) {
+        int smpin = m_resmp.at(ch);
+        int smpout = signal.size();
+        signal.resize(smpin);
+        FftScaling(signal, smpout);
+        // std::cerr << "[wgu] ch: " << ch << " smpin: " << smpin << " smpout: " << smpout << std::endl;
     }
+    // if( (ch>=2128 && ch<=2175) // W plane
+    // ||  (ch>=1520 && ch<=1559) // V plane
+    // ||  (ch>=440  && ch<=479)  // U plane
+    // ){
+    // 	signal.resize(5996);
+    // 	FftScaling(signal, 6000);
+    // }
 
     // correct rc undershoot
     auto spectrum = WireCell::Waveform::dft(signal);
