@@ -1005,6 +1005,7 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     return true;
   }
   if (in->traces()->empty()) {
+    out = in;
     log->debug("OmnibusSigProc: passing through empty frame {}", in->ident());
     return true;
   }
