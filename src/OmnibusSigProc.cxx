@@ -1004,9 +1004,16 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
     log->debug("OmnibusSigProc: see EOS");
     return true;
   }
-  if (in->traces()->empty()) {
-    out = in;
-    log->debug("OmnibusSigProc: passing through empty frame {}", in->ident());
+  const size_t ntraces = in->traces()->size();
+  if (ntraces) {
+    log->debug("OmnibusSigProc: receive frame {} with {} traces",
+               in->ident(), ntraces);
+  }
+  else{
+    out = std::make_shared<SimpleFrame>(in->ident(), in->time(),
+                                        std::make_shared<ITrace::vector>(),
+                                        in->tick());
+    log->debug("OmnibusSigProc: got and sending empty frame {}", out->ident());
     return true;
   }
 

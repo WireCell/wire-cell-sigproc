@@ -103,7 +103,11 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 
     auto traces = wct::sigproc::tagged_traces(inframe, m_intag);
     if (traces.empty()) {
-        log->warn("OmnibusNoiseFilter: warning: no traces for tag \"{}\"", m_intag);
+        log->warn("OmnibusNoiseFilter: no traces for tag \"{}\", sending empty frame", m_intag);
+        outframe = std::make_shared<SimpleFrame>(inframe->ident(), inframe->time(),
+                                                 std::make_shared<ITrace::vector>(),
+                                                 inframe->tick());
+
 	return true;
     }
 
@@ -182,6 +186,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
     }
 
     int group_counter = 0;
+    int nunknownchans=0;
     for (auto group : m_noisedb->coherent_channels()) {
         ++group_counter;
 
@@ -191,7 +196,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
         for (auto ch : group) {	    // fix me: check if we don't actually have this channel
 	    // std::cout << group_counter << " " << ch << " " << std::endl;
             if (bychan.find(ch)==bychan.end()) {
-                log->debug("OmnibusNoiseFilter: warning: unknown channel {}", ch);
+                ++nunknownchans;
                 flag = 0;
             }
             else{
@@ -211,6 +216,10 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 	    // cs.second; // copy
             bychan[cs.first]->charge().assign(cs.second.begin(), cs.second.end());
         }
+    }
+
+    if (nunknownchans) {
+        log->debug("OmnibusNoiseFilter: {} unknown channels (probably the channel selector is in use)", nunknownchans);
     }
 
     // run status
