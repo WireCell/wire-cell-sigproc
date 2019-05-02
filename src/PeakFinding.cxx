@@ -17,6 +17,7 @@ PeakFinding::PeakFinding(int fMaxPeaks,
   , deconIterations(deconIterations)
   , markov(markov)
   , averWindow(averWindow)
+  , log(Log::logger("sigproc"))
 {
 }
 
@@ -65,44 +66,45 @@ int PeakFinding::find_peak(Waveform::realseq_t& signal){
 
 int  PeakFinding::SearchHighRes()
 {
-    const int PEAK_WINDOW = 1024;
+  const int PEAK_WINDOW = 1024;
 
-   int i, j, numberIterations = (int)(7 * sigma + 0.5);
-   double a, b, c;
-   int k, lindex, posit, imin, imax, jmin, jmax, lh_gold, priz;
-   double lda, ldb, ldc, area, maximum, maximum_decon;
-   int xmin, xmax, l, peak_index = 0, size_ext = ssize + 2 * numberIterations, shift = numberIterations, bw = 2, w;
-   double maxch;
-   double nom, nip, nim, sp, sm, plocha = 0;
-   double m0low=0,m1low=0,m2low=0,l0low=0,l1low=0,detlow,av,men;
-   if (sigma < 1) {
-      cerr << "SearchHighRes" << " Invalid sigma, must be greater than or equal to 1" << endl;
-      return 0;
-   }
+  int i=0, j=0, numberIterations = (int)(7 * sigma + 0.5);
+  double a=0, b=0, c=0;
+  int k=0, lindex=0, posit=0, imin=0, imax=0, jmin=0, jmax=0, lh_gold=0, priz=0;
+  double lda=0, ldb=0, ldc=0, area=0, maximum=0, maximum_decon=0;
+  int xmin=0, xmax=0, l=0, peak_index = 0, w=0;
+  int size_ext = ssize + 2 * numberIterations, shift = numberIterations, bw = 2;
+  double maxch=0;
+  double nom=0, nip=0, nim=0, sp=0, sm=0, plocha = 0;
+  double m0low=0,m1low=0,m2low=0,l0low=0,l1low=0,detlow=0,av=0,men=0;
+  if (sigma < 1) {
+    log->error("SearchHighRes: invalid sigma {}, must be greater than or equal to 1", sigma);
+    return 0;
+  }
 
-   if(threshold<=0 || threshold>=100){
-      cerr << "SearchHighRes" << " Invalid threshold, must be positive and less than 100" << endl;
-      return 0;
-   }
+  if(threshold<=0 || threshold>=100){
+    log->error("SearchHighRes: invalid threshold {}, must be positive and less than 100", threshold);
+    return 0;
+  }
 
    j = (int) (5.0 * sigma + 0.5);
    if (j >= PEAK_WINDOW / 2) {
-      cerr << "SearchHighRes" <<  " Too large sigma" << endl;
-      return 0;
+     log->error("SearchHighRes: too large sigma: j={}",j);
+     return 0;
    }
 
    if (markov == true) {
       if (averWindow <= 0) {
-         cerr << "SearchHighRes" <<  " Averaging window must be positive" << endl;
-         return 0;
+        log->error("SearchHighRes: averaging window must be positive, got {}", averWindow);
+        return 0;
       }
    }
 
    if(backgroundRemove == true){
-      if(ssize < 2 * numberIterations + 1){
-         cerr << "SearchHighRes" << " Too large clipping window" << endl;
-         return 0;
-      }
+     if(ssize < 2 * numberIterations + 1){
+       log->error("SearchHighRes: too large clipping window: {}", ssize);
+       return 0;
+     }
    }
 
    k = int(2 * sigma+0.5);
@@ -491,7 +493,14 @@ int  PeakFinding::SearchHighRes()
    delete [] working_space;
    // fNPeaks = peak_index;
    if(peak_index == fMaxPeaks){
-     std::cout << "Warning: SearchHighRes: Peak buffer full with " << fMaxPeaks << "peaks. Signal size is " << ssize << ". Please check threshold for Signal Processing: " << threshold << "!" << std::endl;
+     log->debug("SearchHighRes: peak buffer full with {} peaks, nticks: {}, theshold: {}",
+                fMaxPeaks, ssize, threshold);
+
    }
    return peak_index;
 }
+
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:

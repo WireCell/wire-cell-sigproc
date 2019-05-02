@@ -2,6 +2,7 @@
 #define WIRECELLSIGPROC_PEAKFINDING
 
 #include "WireCellUtil/Waveform.h"
+#include "WireCellUtil/Logging.h"
 
 namespace WireCell{
   namespace SigProc{
@@ -44,7 +45,14 @@ namespace WireCell{
       
       // actual search function ... 
       int SearchHighRes();
+
+      Log::logptr_t log;
     };
   } 
 }
 #endif
+
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:
