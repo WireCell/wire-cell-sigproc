@@ -130,8 +130,15 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_fine_time_offset = get(config,"ftoffset",m_fine_time_offset);
   m_coarse_time_offset = get(config,"ctoffset",m_coarse_time_offset);
   m_anode_tn = get(config, "anode", m_anode_tn);
-  m_nticks = get(config,"nticks",m_nticks);
-  m_period = get(config,"period",m_period);
+
+  //m_nticks = get(config,"nticks",m_nticks);
+  if (! config["nticks"].isNull() ) {
+    log->warn("OmnibusSigProc has not setting \"nticks\", ignoring value {}", config["nticks"].asInt());
+  }
+  //m_period = get(config,"period",m_period);
+  if (! config["period"].isNull() ) {
+    log->warn("OmnibusSigProc has not setting \"period\", ignoring value {}", config["period"].asDouble());
+  }
 
   m_fft_flag = get(config,"fft_flag",m_fft_flag);
   
@@ -229,8 +236,8 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["anode"] = m_anode_tn;
   cfg["ftoffset"] = m_fine_time_offset;
   cfg["ctoffset"] = m_coarse_time_offset;
-  cfg["nticks"] = m_nticks;
-  cfg["period"] = m_period;
+  //cfg["nticks"] = m_nticks;
+  //cfg["period"] = m_period;
 
   cfg["fft_flag"] = m_fft_flag;
   
