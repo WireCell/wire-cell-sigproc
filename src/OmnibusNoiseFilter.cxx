@@ -22,7 +22,7 @@ using namespace WireCell;
 using namespace WireCell::SigProc;
 
 OmnibusNoiseFilter::OmnibusNoiseFilter(std::string intag, std::string outtag)
-    : m_nsamples(0)
+    : m_nticks(0)
     , m_intag(intag)            // orig
     , m_outtag(outtag)          // raw
     , log(Log::logger("sigproc"))
@@ -35,7 +35,10 @@ OmnibusNoiseFilter::~OmnibusNoiseFilter()
 void OmnibusNoiseFilter::configure(const WireCell::Configuration& cfg)
 {
     //std::cerr << "OmnibusNoiseFilter: configuring with:\n" << cfg << std::endl;
-    m_nsamples = (size_t)get(cfg, "nsamples", (int)m_nsamples);
+    m_nticks = (size_t)get(cfg, "nticks", (int)m_nticks);
+    if (! cfg["nsamples"].isNull()) {
+        log->warn("OmnibusNoiseFilter: \"nsamples\" is an obsolete parameter, use \"nticks\"");
+    }
 
     auto jmm = cfg["maskmap"];
     for (auto name : jmm.getMemberNames()) {
@@ -75,7 +78,7 @@ void OmnibusNoiseFilter::configure(const WireCell::Configuration& cfg)
 WireCell::Configuration OmnibusNoiseFilter::default_configuration() const
 {
     Configuration cfg;
-    cfg["nsamples"] = (int)m_nsamples;
+    cfg["nticks"] = (int)m_nticks;
     cfg["maskmap"]["chirp"] = "bad";
     cfg["maskmap"]["noisy"] = "bad";
     
@@ -111,14 +114,15 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 	return true;
     }
 
-    if (m_nsamples) {
+    if (m_nticks) {
         log->debug("OmnibusNoiseFilter: will resize working waveforms from {} to {}",
-                   traces.at(0)->charge().size(), m_nsamples);
+                   traces.at(0)->charge().size(), m_nticks);
     }
     else {
         // Warning: this implicitly assumes a dense frame (ie, all tbin=0 and all waveforms same size).
         // It also won't stop triggering a warning inside OneChannelNoise if there is a mismatch.
-        m_nsamples = traces.at(0)->charge().size();
+        m_nticks = traces.at(0)->charge().size();
+        log->debug("OmnibusNoiseFilter: nticks based on first waveform: {}", m_nticks);
     }
 
     // For now, just collect any and all masks and interpret them as "bad".
@@ -131,7 +135,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
     {
 	Waveform::BinRange bad_bins;
 	bad_bins.first = 0;
-	bad_bins.second = (int) m_nsamples;
+	bad_bins.second = (int) m_nticks;
 	Waveform::ChannelMasks temp;
 	for (size_t i = 0; i< bad_channels.size();i++){
 	    temp[bad_channels.at(i)].push_back(bad_bins);
@@ -151,7 +155,7 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
     	int ch = trace->channel();
 
 	// make working area directly in simple trace to avoid memory fragmentation
-	SimpleTrace* signal = new SimpleTrace(ch, 0, m_nsamples);
+	SimpleTrace* signal = new SimpleTrace(ch, 0, m_nticks);
 	bychan[ch] = signal;
 
 	// if good
@@ -160,11 +164,11 @@ bool OmnibusNoiseFilter::operator()(const input_pointer& inframe, output_pointer
 	    auto const& charge = trace->charge();
 	    const size_t ncharges = charge.size();	    
 
-            signal->charge().assign(charge.begin(), charge.begin() + std::min(m_nsamples, ncharges));
-	    signal->charge().resize(m_nsamples, 0.0);
+            signal->charge().assign(charge.begin(), charge.begin() + std::min(m_nticks, ncharges));
+	    signal->charge().resize(m_nticks, 0.0);
             
-            if (ncharges != m_nsamples) {
-                nchanged_samples += std::abs((int)m_nsamples - (int)ncharges);
+            if (ncharges != m_nticks) {
+                nchanged_samples += std::abs((int)m_nticks - (int)ncharges);
             }
 
 	}
