@@ -19,7 +19,7 @@ namespace WireCell {
     namespace SigProc {
 	namespace Protodune {
 
-		bool LinearInterpSticky(WireCell::Waveform::realseq_t& signal, std::vector<std::pair<int,int> >& st_ranges, int ch);
+		bool LinearInterpSticky(WireCell::Waveform::realseq_t& signal, std::vector<std::pair<int,int> >& st_ranges, float stky_sig_like_val, float stky_sig_like_rms);
 		bool FftInterpSticky(WireCell::Waveform::realseq_t& signal, std::vector<std::pair<int,int> >& st_ranges);
 		bool FftShiftSticky(WireCell::Waveform::realseq_t& signal, double toffset, std::vector<std::pair<int,int> >& st_ranges);
 		bool FftScaling(WireCell::Waveform::realseq_t& signal, int nsamples);
@@ -62,7 +62,10 @@ namespace WireCell {
 	    public:
 
 		StickyCodeMitig(const std::string& anode_tn = "AnodePlane",
-                        const std::string& noisedb = "OmniChannelNoiseDB");
+                        const std::string& noisedb = "OmniChannelNoiseDB",
+                        float stky_sig_like_val = 15.0,
+                        float stky_sig_like_rms = 2.0,
+                        int   stky_max_len = 5);
 		virtual ~StickyCodeMitig();
 
 		// IChannelFilter interface
@@ -83,9 +86,9 @@ namespace WireCell {
 	    IChannelNoiseDatabase::pointer m_noisedb;
 
 	    std::map<int, std::vector<short int> > m_extra_stky; // ch to extra sticky codes
-
-		// Diagnostics::Chirp m_check_chirp; // fixme, these should be done via service interfaces
-		// Diagnostics::Partial m_check_partial; // at least need to expose them to configuration
+	    float m_stky_sig_like_val;
+	    float m_stky_sig_like_rms;
+	    int m_stky_max_len;
                 
 	    };
 

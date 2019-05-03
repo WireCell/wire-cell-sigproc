@@ -375,78 +375,21 @@ bool LedgeIdentify(WireCell::Waveform::realseq_t& signal/*TH1F* h2*/, double bas
 
 
 bool Protodune::LinearInterpSticky(WireCell::Waveform::realseq_t& signal,
-								   WireCell::Waveform::BinRangeList& rng_list, int ch){
+								   WireCell::Waveform::BinRangeList& rng_list,
+                                   float stky_sig_like_val,
+                                   float stky_sig_like_rms){
+
 	const int nsiglen = signal.size();
-    // // find ranges of sticky codes
-    // for(int i=0; i<nsiglen; i++){
-    //   int val = signal.at(i);
-    //   int mod = val % 64;
-    //   if(mod==0 || mod==1 || mod==63
-    //     || (ch==4 && mod==6) || (ch==159 && mod==6) || (ch==168 && mod==7) || (ch==323 && mod==24) 
-    //     || (ch==164 && mod==36) || (ch==451 && mod==25) ){
-    //     if (st_ranges.size()==0){
-    //       st_ranges.push_back(std::make_pair(i,i));
-    //     }else if ( (st_ranges.back().second + 1) == i){
-    //       st_ranges.back().second = i;
-    //     }else{
-    //       st_ranges.push_back(std::make_pair(i,i));
-    //     }
-    //   }
-    // }
-
-    // protect the ticks close to local minima/maxima
-    // do not apply linear interpolation on them
-    // std::vector<int> min_protect;
-    // std::vector<int> max_protect;
-    // int protect_length = 5;
-    // for(auto const& rng: st_ranges){
-    //     int pstart = rng.first  - protect_length; // backward protection
-    //     int pend   = rng.second + protect_length;
-    //     if(pstart<0) pstart=0;
-    //     if(pend >= nsiglen) pend = nsiglen-1;
-    //     for(int pind=pstart; pind<=pend; pind++){
-    //         if(atLocalMinimum(signal, pind, protect_length)){
-    //             for(int n=pind-protect_length; n<=pind+protect_length; n++){
-    //                 if(min_protect.empty())
-    //                     min_protect.push_back(n);
-    //                 else if(n>min_protect.back()){
-    //                     min_protect.push_back(n);
-    //                 }
-    //             }
-    //         }
-    //         else if(atLocalMaximum(signal, pind, protect_length)){
-    //             for(int n=pind-protect_length; n<=pind+protect_length; n++){
-    //                 if(max_protect.empty())
-    //                     max_protect.push_back(n);
-    //                 else if(n>max_protect.back()){
-    //                     max_protect.push_back(n);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
-    // if(ch==19){
-    //     std::cerr << " ch " << ch << " , local min protection: " << min_protect.size() << std::endl;
-    //     for(auto& p: min_protect){
-    //         if(p>980 && p<1000) std::cerr << p << " ";
-    //     }
-    //     std::cerr << std::endl;
-    // }
-
     std::pair<double,double> temp = WireCell::Waveform::mean_rms(signal);
-    // linear-interpolation correction
-    // int maxlen_equal_sticky = 5;
     for(auto const& rng: rng_list){
       int start = rng.first -1;
       int end = rng.second + 1;
-      // FIXME: do we need linear interp if rng.first==0?
       if (start >=0 && end <nsiglen){
         std::vector<float> digits;
         for(int i=start+1; i<end; i++){
             digits.push_back(signal.at(i));
         }
-        // int length_equal_sticky = longestSequence(digits);
+
         auto min = std::max_element(digits.begin(), digits.end());
         auto max = std::min_element(digits.begin(), digits.end());
         double max_value = *max;
@@ -454,59 +397,31 @@ bool Protodune::LinearInterpSticky(WireCell::Waveform::realseq_t& signal,
 
         double start_content = signal.at(start);
         double end_content = signal.at(end);
-        for (int i = start+1; i<end; i++){
-            bool fProtect = false; // if false, do linear interp
-            // auto it1= std::find(max_protect.begin(), max_protect.end(), i);
-            // auto it2= std::find(min_protect.begin(), min_protect.end(), i);
-            // if(it1 != max_protect.end() || it2 != min_protect.end()){ // found protection in either min/max
-            //     fProtect = true;
-            // }
-
-            // int length_sticky = rng.second - rng.first +1;
-            // if(length_sticky>5) fProtect = false;
-            // else if(std::fabs(signal.at(i) - temp.first)>40)
-            //     fProtect = true;
-            // else if(length_equal_sticky>=2)
-            //     fProtect = false;
-            // else
-            //     fProtect = true;
-            
-
-            // bool fSkip = true;
-            // if(signal.at(i) > temp.first){ // above baseline
-            //     auto it= std::find(max_protect.begin(), max_protect.end(), i);
-            //     if(it == max_protect.end()) fSkip = false; // no protection
-            // }
-            // else{
-            //     auto it = std::find(min_protect.begin(), min_protect.end(), i);
-            //     if(it == min_protect.end()) fSkip = false;
-            // }
-
-            if(rng.second == rng.first) fProtect = true; //single sticky, do FFT
-            else{
-
-                if(max_value - temp.first > 15){ // peak > 15, nearby > 2 rms
-                    if( (start_content - temp.first > 2*temp.second)
-                        && (end_content - temp.first > 2*temp.second) ){
-                        fProtect = true;
-                    }
+        bool isSignalLike = false;
+        if(rng.second == rng.first) isSignalLike = true; //single sticky, do FFT interp later
+        else{
+            // peak > stky_sig_like_val [unit in adc]
+            // two ends > stky_sig_like_rms [unit in rms]
+            if(max_value - temp.first > stky_sig_like_val){
+                if( (start_content - temp.first > stky_sig_like_rms*temp.second)
+                    && (end_content - temp.first > stky_sig_like_rms*temp.second) ){
+                    isSignalLike = true;
                 }
-                else if(temp.first - min_value > 15){
-                    if( (temp.first - end_content > 2*temp.second)
-                        && (temp.first - end_content > 2*temp.second) ){
-                        fProtect = true;
-                    }
-
+            }
+            else if(temp.first - min_value > stky_sig_like_val){
+                if( (temp.first - start_content > stky_sig_like_rms*temp.second)
+                    && (temp.first - end_content > stky_sig_like_rms*temp.second) ){
+                    isSignalLike = true;
                 }
 
             }
+        }
 
-
-            if(!fProtect){
+        if (! isSignalLike) { // only apply linear interpolation on non-signal-like region
+            for (int i = start+1; i<end; i++){
                 double content = start_content + (end_content - start_content) /(end-start) *(i-start);
                 signal.at(i) = content;
             }
-
         }
       }
       else if(start<0 && end <nsiglen){// sticky at the first tick
@@ -701,11 +616,14 @@ WireCell::Configuration Protodune::ConfigFilterBase::default_configuration() con
 
 
 
-Protodune::StickyCodeMitig::StickyCodeMitig(const std::string& anode, const std::string& noisedb)
+Protodune::StickyCodeMitig::StickyCodeMitig(const std::string& anode, const std::string& noisedb,
+    float stky_sig_like_val, float stky_sig_like_rms, int stky_max_len)
     : m_anode_tn(anode)
     , m_noisedb_tn(noisedb)
-//    , m_check_chirp() // fixme, there are magic numbers hidden here
-//    , m_check_partial() // fixme, here too.
+    , m_stky_sig_like_val(stky_sig_like_val)
+    , m_stky_sig_like_rms(stky_sig_like_rms)
+    , m_stky_max_len(stky_max_len)
+
 {
 }
 Protodune::StickyCodeMitig::~StickyCodeMitig()
@@ -727,21 +645,39 @@ void Protodune::StickyCodeMitig::configure(const WireCell::Configuration& cfg)
     auto jext = cfg["extra_stky"];
     if(!jext.isNull()){
         for(auto jone: jext) {
-            int channel = jone["channel"].asInt();
-            // std::cerr << "[wgu] ch# " << channel << " has " << jone["bits"].size() << " extra stky bits:" << std::endl;
-            for(auto bit: jone["bits"]){
-                // std::cerr << "[wgu] " << bit.asInt() << std::endl;
-                m_extra_stky[channel].push_back((short int)bit.asInt());
+            auto jchans = jone["channels"];
+            for (auto jchan: jchans){
+                int channel = jchan.asInt();
+                // std::cerr << "[wgu] ch# " << channel << " has " << jone["bits"].size() << " extra stky bits:" << std::endl;
+                for(auto bit: jone["bits"]){
+                    // std::cerr << "[wgu] " << bit.asInt() << std::endl;
+                    m_extra_stky[channel].push_back((short int)bit.asInt());
+                }                
             }
+
         }
     }
 
+    if (cfg.isMember("stky_sig_like_val")){
+        m_stky_sig_like_val = get(cfg, "stky_sig_like_val", m_stky_sig_like_val);
+    }
+
+    if (cfg.isMember("stky_sig_like_rms")){
+        m_stky_sig_like_rms = get(cfg, "stky_sig_like_rms", m_stky_sig_like_rms);
+    }    
+
+    if (cfg.isMember("stky_max_len")){
+        m_stky_max_len = get(cfg, "stky_max_len", m_stky_max_len);
+    }
 }
 WireCell::Configuration Protodune::StickyCodeMitig::default_configuration() const
 {
     Configuration cfg;
     cfg["anode"] = m_anode_tn;
-    cfg["noisedb"] = m_noisedb_tn;    
+    cfg["noisedb"] = m_noisedb_tn;
+    cfg["stky_sig_like_val"] = m_stky_sig_like_val;
+    cfg["stky_sig_like_rms"] = m_stky_sig_like_rms;
+    cfg["stky_max_len"] = m_stky_max_len;    
     return cfg;
 }
 
@@ -762,8 +698,8 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(int ch, sig
       int val = signal.at(i);
       int mod = val % 64;
       auto it = std::find(extra.begin(), extra.end(), mod);
-      bool is_stky = (mod==0 || mod==1 || mod==63 || it!=extra.end());
-      if(is_stky){
+      // bool is_stky = (mod==0 || mod==1 || mod==63 || it!=extra.end());
+      if( it != extra.end()) {
         if (sticky_rng_list.empty()){
           sticky_rng_list.push_back(std::make_pair(i,i));
         }else if ( (sticky_rng_list.back().second + 1) == i){
@@ -776,14 +712,14 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(int ch, sig
 
 
     // auto signal_lc = signal; // copy, need to keep original signal
-    LinearInterpSticky(signal, sticky_rng_list, ch);
+    LinearInterpSticky(signal, sticky_rng_list, m_stky_sig_like_val, m_stky_sig_like_rms);
     FftInterpSticky(signal, sticky_rng_list);
     // FftShiftSticky(signal_lc, 0.5, st_ranges); // alternative approach, shift by 0.5 tick
     // signal = signal_lc;
     int ent_stkylen =0; 
     for(auto rng: sticky_rng_list){
         int stkylen= rng.second-rng.first;
-        if(stkylen>5){
+        if(stkylen> m_stky_max_len){
             ret["sticky"][ch].push_back(rng);
             ent_stkylen += stkylen;
         }
@@ -814,7 +750,7 @@ WireCell::Waveform::ChannelMaskMap Protodune::StickyCodeMitig::apply(int ch, sig
                 int ledge = std::max(rng.first,  ledge_start[LE]);
                 if(redge>=ledge) overlap += (redge-ledge+1);
             }
-            if( overlap/(ledge_end[LE]-ledge_start[LE])<0.5 ){
+            if( overlap < 0.5 * (ledge_end[LE]-ledge_start[LE]) ){
                 WireCell::Waveform::BinRange ledge_bins;
                 ledge_bins.first  = ledge_start[LE];
                 ledge_bins.second = ledge_end[LE];
@@ -1107,16 +1043,20 @@ WireCell::Waveform::ChannelMaskMap Protodune::RelGainCalib::apply(int ch, signal
 
     float gain_fac = m_rel_gain.at(ch);
 
-    if ( !(gain_fac < m_gain_max_cut && gain_fac > m_gain_min_cut)){
+    bool isDefVal = false;
+    if ( gain_fac > m_gain_max_cut || gain_fac < m_gain_min_cut ) {
         // std::cerr << "[wgu] gain_max_cut: " << m_gain_max_cut << " gain_min_cut: " << m_gain_min_cut << std::endl;
         // std::cerr << "[wgu] ch: " << ch << " relative gain: " << gain_fac << std::endl;
         gain_fac = m_gain_def;
+        isDefVal = true;
     }
 
+    if ( !isDefVal) {
     for (size_t ind=0; ind<nsiglen; ind++) {
         float sigout = gain_fac * (signal.at(ind) - baseline);
         sigout += baseline;
         signal.at(ind) = sigout;
+    }
     }
 
     return ret;
