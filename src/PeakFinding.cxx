@@ -492,11 +492,11 @@ int  PeakFinding::SearchHighRes()
    for(i = 0; i < ssize; i++) destVector[i] = working_space[i + shift];
    delete [] working_space;
    // fNPeaks = peak_index;
-   if(peak_index == fMaxPeaks){
-     log->debug("SearchHighRes: peak buffer full with {} peaks, nticks: {}, theshold: {}",
-                fMaxPeaks, ssize, threshold);
+   // if(peak_index == fMaxPeaks){
+   //   log->debug("SearchHighRes: peak buffer full with {} peaks, nticks: {}, theshold: {}",
+   //              fMaxPeaks, ssize, threshold);
 
-   }
+   // }
    return peak_index;
 }
 

@@ -5,6 +5,7 @@
 #include "ROI_formation.h"
 #include "WireCellUtil/Array.h"
 #include "WireCellUtil/Waveform.h"
+#include "WireCellUtil/Logging.h"
 
 #include <vector>
 #include <map>
@@ -86,6 +87,7 @@ namespace WireCell{
       SignalROIMap back_rois;
       SignalROIMap contained_rois;
       
+      Log::logptr_t log;
     };
   }
 }

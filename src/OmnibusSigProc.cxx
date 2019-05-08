@@ -191,7 +191,8 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   // but we have plane-major order so make a temporary collection.
   IChannel::vector plane_channels[3];
   std::stringstream ss;
-  ss << "OmnibusSigproc config:\n";
+  ss << "OmnibusSigproc: internal channel map for tags: gauss:\""
+     << m_gauss_tag << "\", wiener:\"" << m_wiener_tag << "\", frame:\"" << m_frame_tag << "\"\n";
 
   for (auto face : m_anode->faces()) {
     if (!face) { // A null face means one sided AnodePlane.  
@@ -205,11 +206,13 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
       // Append
       pchans.reserve(pchans.size() + ichans.size());
       pchans.insert(pchans.end(), ichans.begin(), ichans.end());
-      ss << "\ta" << m_anode->ident() << " "
-         << "f" << face->ident() << " "
-         << "p" << plane->ident() << " "
-         << "c" << ichans.front()->ident() << " -> c" << ichans.back()->ident() << ", "
-         << "i" << ichans.front()->index() << " -> i" << ichans.back()->index() << "\n";
+      ss << "\tpind" << plane_index << " "
+         << "aid" << m_anode->ident() << " "
+         << "fid" << face->ident() << " "
+         << "pid" << plane->ident() << " "
+         << "cid" << ichans.front()->ident() << " -> cid" << ichans.back()->ident() << ", "
+         << "cind" << ichans.front()->index() << " -> cind" << ichans.back()->index() << ", "
+         << "(n="<<pchans.size()<<")\n";
     }
   }
   log->debug(ss.str());
@@ -327,7 +330,7 @@ void OmnibusSigProc::load_data(const input_pointer& in, int plane){
     }
 
   }
-  log->debug("OmnibusSigProc: plane index: {} configured with {} bad regions",
+  log->debug("OmnibusSigProc: plane index: {} input data identifies {} bad regions",
              plane, nbad);
   
 }

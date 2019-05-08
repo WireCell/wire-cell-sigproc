@@ -23,6 +23,7 @@ ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nw
   , max_npeaks(max_npeaks)
   , sigma(sigma)
   , th_percent(th_percent)
+  , log(Log::logger("sigproc"))
 {
   rois_u_tight.resize(nwire_u);
   rois_u_loose.resize(nwire_u);
@@ -1651,11 +1652,14 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
   std::set<int> saved_boundaries;
 
   PeakFinding s(max_npeaks, sigma, th_percent);
-  int nfound = s.find_peak(temp_signal);
+  const int nfound = s.find_peak(temp_signal);
   // TSpectrum *s = new TSpectrum(200);
   // Int_t nfound = s->Search(htemp,2,"nobackground new",0.1);
 
-  //std::cout << nfound << std::endl;
+  if (nfound == max_npeaks) {
+    log->debug("ROI_refinement: local ch index {} (plane {}), found max peaks {} with threshold={}",
+               roi->get_chid(), roi->get_plane(), nfound, th_percent);
+  }
   
   if (nfound > 1){
     int npeaks = s.GetNPeaks();
