@@ -181,6 +181,8 @@ int LedgeIdentify1(WireCell::Waveform::realseq_t& signal, double baseline, int L
 
         if(ledge==1){ // ledge is close to the baseline
             if(averaged.at(tempLedgeEnd/UNIT)-baseline*UNIT>5.*UNIT) ledge = 0;
+
+            if(averaged.at(StartOfLastLedgeCandidate/UNIT)-baseline*UNIT>100*UNIT) ledge = 0; 
         }
 
         if(ledge==1 && StartOfLastLedgeCandidate>1000){ // ledge always follows a pulse
@@ -842,7 +844,7 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
     bool is_partial = m_check_partial(spectrum); // Xin's "IS_RC()"
 
     if(!is_partial){
-        auto const& spec = m_noisedb->rcrc(ch); // rc_layers set to 1 in nf.jsonnet
+        auto const& spec = m_noisedb->rcrc(ch); // rc_layers set to 1 in channel noise db
         WireCell::Waveform::shrink(spectrum, spec);
     }
 
