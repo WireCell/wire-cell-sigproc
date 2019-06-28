@@ -857,6 +857,15 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
     mag.at(0)=0;
     Microboone::RawAdapativeBaselineAlg(mag); // subtract "linear" background in spectrum
 
+
+    // auto const& spec = m_noisedb->noise(ch);
+    // std::cout << "[wgu] " << spec.at(10).real() << std::endl;
+    // std::cout << "[wgu] " << spec.at(148).real() << std::endl;
+    // std::cout << "[wgu] " << spec.at(149).real() << std::endl;
+    // std::cout << "[wgu] " << spec.at(160).real() << std::endl;
+    // std::cout << "[wgu] " << spec.at(161).real() << std::endl;
+    // WireCell::Waveform::scale(spectrum, spec);
+
     for(int i=0; i<57; i++){ // 150 - 3000th freq bin
         int nslice = 50;
         int istart = 150 + nslice*i;
