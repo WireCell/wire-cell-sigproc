@@ -866,6 +866,18 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
     // std::cout << "[wgu] " << spec.at(161).real() << std::endl;
     // WireCell::Waveform::scale(spectrum, spec);
 
+
+    // spec -> freqBins;
+
+    // vector< pair<int,int> > freqBins;
+    // for(auto bin: freqBins){
+    //     int istaart = bin.first();
+    //     int iend = bin.second();
+
+    //     int nslice = iend - istart;
+    // }
+
+    int n_harmonic = 0;
     for(int i=0; i<57; i++){ // 150 - 3000th freq bin
         int nslice = 50;
         int istart = 150 + nslice*i;
@@ -889,6 +901,7 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
                spectrum.at(j).imag(0);
                spectrum.at(mag.size()+1-j).real(0); 
                spectrum.at(mag.size()+1-j).imag(0);
+               n_harmonic ++;
             }
         }
 
@@ -912,6 +925,13 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
         //         spectrum.at(6000+1-j).imag(0); 
         //     }
         // }
+    }
+
+    if (n_harmonic>5){
+        WireCell::Waveform::BinRange temp_harmonic_bins;
+        temp_harmonic_bins.first = 0;
+        temp_harmonic_bins.second = signal.size();
+        ret["harmonic"][ch].push_back(temp_harmonic_bins);
     }
 
     }
