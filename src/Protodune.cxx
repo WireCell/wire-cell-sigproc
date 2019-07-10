@@ -858,7 +858,7 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
     Microboone::RawAdapativeBaselineAlg(mag); // subtract "linear" background in spectrum
 
 
-    // auto const& spec = m_noisedb->noise(ch);
+    auto const& spec = m_noisedb->noise(ch);
     // std::cout << "[wgu] " << spec.at(10).real() << std::endl;
     // std::cout << "[wgu] " << spec.at(148).real() << std::endl;
     // std::cout << "[wgu] " << spec.at(149).real() << std::endl;
@@ -866,41 +866,68 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
     // std::cout << "[wgu] " << spec.at(161).real() << std::endl;
     // WireCell::Waveform::scale(spectrum, spec);
 
-
     // spec -> freqBins;
+    std::vector< std::pair<int,int> > freqBins;
+    for(int i=0; i<(int)spec.size(); i++){
+        float flag_re = spec.at(i).real();
+        // if(i<3000) std::cout << "[wgu] spec # " << i << " : " << flag_re << std::endl;
+        if (flag_re<0.5) { // found a tagged bin
+            if (freqBins.empty()){
+                freqBins.push_back(std::make_pair(i,i));
+            }
+            else if (i == freqBins.back().second +1) {
+                freqBins.back().second = i;
+            }
+            else {
+                freqBins.push_back(std::make_pair(i,i));
+            }
+        }
+    }
 
-    // vector< pair<int,int> > freqBins;
-    // for(auto bin: freqBins){
-    //     int istaart = bin.first();
-    //     int iend = bin.second();
-
-    //     int nslice = iend - istart;
+    // std::cout << "[wgu] freqBins.size(): " << freqBins.size() << std::endl; 
+    // for(auto br: freqBins) {
+    //     std::cout << "[wgu] hibin: " << br.second << " lobin: " << br.first << std::endl; 
     // }
 
+
     int n_harmonic = 0;
-    for(int i=0; i<57; i++){ // 150 - 3000th freq bin
-        int nslice = 50;
-        int istart = 150 + nslice*i;
-        int iend = istart + nslice;
+    for(int iter=0; iter<5; iter++){
+    // std::cout << "[wgu] iter= " << iter << std::endl;
+
+    for(auto bin: freqBins) {
+        int istart = bin.first;
+        int iend = bin.second +1;
+        int nslice = iend - istart;
+        // std::cout << "hibin: " << iend << " lobin: " << istart << std::endl;
+
+    // }
+
+
+    // for(int i=0; i<57; i++){ // 150 - 3000th freq bin
+    //     int nslice = 50;
+    //     int istart = 150 + nslice*i;
+    //     int iend = istart + nslice;
         // std::cerr << istart << " " << iend << std::endl;
         WireCell::Waveform::realseq_t mag_slice(nslice); // slice of magnitude spectrum
         std::copy(mag.begin() + istart, mag.begin() + iend, mag_slice.begin());
         std::pair<double,double> stat = WireCell::Waveform::mean_rms(mag_slice);
         // std::cerr << "[wgu] mean/rms: " << stat.first << " " << stat.second << std::endl;
         double cut = stat.first + 2.7*stat.second;
-        if(i>17){
+        if (istart>1050){ //if(i>17){
             cut = stat.first + 3*stat.second;
         }
         // if(stat.second>1300){
         //     cut = stat.first + stat.second;
         // }
-        for(int j=istart; j<=iend; j++){
+        for(int j=istart; j<iend; j++){
             float content = mag.at(j);
             if(content > cut){
                spectrum.at(j).real(0);
                spectrum.at(j).imag(0);
                spectrum.at(mag.size()+1-j).real(0); 
                spectrum.at(mag.size()+1-j).imag(0);
+               mag.at(j) = 0;
+               mag.at(mag.size()+1-j) = 0;
                n_harmonic ++;
             }
         }
@@ -926,6 +953,7 @@ WireCell::Waveform::ChannelMaskMap Protodune::OneChannelNoise::apply(int ch, sig
         //     }
         // }
     }
+    }   
 
     if (n_harmonic>5){
         WireCell::Waveform::BinRange temp_harmonic_bins;
