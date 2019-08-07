@@ -590,7 +590,7 @@ void OmnibusSigProc::restore_baseline(Array::array_xxf& arr){
       }
     }
     signal.resize(ncount);
-    float baseline = WireCell::Waveform::median_binned(signal);
+    float baseline = WireCell::Waveform::median(signal);
 
     Waveform::realseq_t temp_signal(arr.cols());
     ncount = 0;
@@ -602,7 +602,7 @@ void OmnibusSigProc::restore_baseline(Array::array_xxf& arr){
     }
     temp_signal.resize(ncount);
     
-    baseline = WireCell::Waveform::median_binned(temp_signal);
+    baseline = WireCell::Waveform::median(temp_signal);
     
     for (int j=0;j!=arr.cols();j++){
       if (arr(i,j)!=0)

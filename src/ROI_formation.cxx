@@ -353,9 +353,9 @@ double ROI_formation::cal_RMS(Waveform::realseq_t signal){
   if (signal.size()>0){
     // do quantile ... 
     float par[3];
-    par[0] = WireCell::Waveform::percentile_binned(signal,0.5 - 0.34);
-    par[1] = WireCell::Waveform::percentile_binned(signal,0.5);
-    par[2] = WireCell::Waveform::percentile_binned(signal,0.5 + 0.34);
+    par[0] = WireCell::Waveform::percentile(signal,0.5 - 0.34);
+    par[1] = WireCell::Waveform::percentile(signal,0.5);
+    par[2] = WireCell::Waveform::percentile(signal,0.5 + 0.34);
     float rms = sqrt((pow(par[2]-par[1],2)+pow(par[1]-par[0],2))/2.);
 
     float rms2 = 0;
