@@ -275,9 +275,10 @@ bool L1SPFilter::operator()(const input_pointer& in, output_pointer& out)
       if (ntot_ticks < ntbins)
 	ntot_ticks = ntbins;
       
-      double mean = Waveform::percentile(charges,0.5);
-      double mean_p1sig = Waveform::percentile(charges,0.5+0.34);
-      double mean_n1sig = Waveform::percentile(charges,0.5-0.34);
+      Waveform::realseq_t tmp_charge = charges;
+      double mean = Waveform::percentile(tmp_charge,0.5);
+      double mean_p1sig = Waveform::percentile(tmp_charge,0.5+0.34);
+      double mean_n1sig = Waveform::percentile(tmp_charge,0.5-0.34);
       double cut = raw_ROI_th_nsigma * sqrt((pow(mean_p1sig-mean,2)+pow(mean_n1sig-mean,2))/2.);
       if (cut < raw_ROI_th_adclimit) cut = raw_ROI_th_adclimit;
 
