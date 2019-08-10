@@ -57,7 +57,8 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 				   const WireCell::Waveform::compseq_t& respec,
 				   int res_offset,
 				   std::vector< std::vector<int> >& rois,
-				   float decon_limit1)
+				   float decon_limit1,
+                   float roi_min_max_ratio)
 {
     double ave_coef = 0;
     double_t ave_coef1 = 0;
@@ -94,7 +95,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 	// if (coef > 1.5) coef = 1.5;
 
 	coef_all[ch] = coef;
-	if (coef != 0){
+	if (coef != 0){ // FIXME: expect some fluctuation?
 	    ave_coef += coef;
 	    ave_coef1 ++;
 	}
@@ -180,7 +181,7 @@ bool Microboone::Subtract_WScaling(WireCell::IChannelFilter::channel_signals_t& 
 		//		if (signal.ch==1027)
 		//std::cout << roi.front() << " Xin " << max_val << " " << decon_limit1 << std::endl;
 		
-		if ( max_val > decon_limit1 && fabs(min_val) < max_val * 0.8)
+		if ( max_val > decon_limit1 && fabs(min_val) < max_val * roi_min_max_ratio)
 		    flag_replace[roi.front()] = true;
 	    }
 	    
@@ -897,6 +898,7 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     const float decon_lf_cutoff = m_noisedb->coherent_nf_decon_lf_cutoff(achannel);
     const float adc_limit = m_noisedb->coherent_nf_adc_limit(achannel);//15;
     const float decon_limit1 = m_noisedb->coherent_nf_decon_limit1(achannel);// 0.08; // loose filter
+    const float roi_min_max_ratio = m_noisedb->coherent_nf_roi_min_max_ratio(achannel);// 0.8 default
 
     const float protection_factor = m_noisedb->coherent_nf_protection_factor(achannel);
     const float min_adc_limit = m_noisedb->coherent_nf_min_adc_limit(achannel);
@@ -924,7 +926,7 @@ Microboone::CoherentNoiseSub::apply(channel_signals_t& chansig) const
     //std::cerr <<"\tSigprotection done: " << chansig.size() << " " << medians.size() << " " << medians.at(100) << " " << medians.at(101) << std::endl;
 
     // calculate the scaling coefficient and subtract
-    Microboone::Subtract_WScaling(chansig, medians, respec, res_offset, rois, decon_limit1);
+    Microboone::Subtract_WScaling(chansig, medians, respec, res_offset, rois, decon_limit1, roi_min_max_ratio);
 
     
     // WireCell::IChannelFilter::signal_t& signal = chansig.begin()->second;
