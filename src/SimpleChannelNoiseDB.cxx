@@ -28,6 +28,7 @@ SimpleChannelNoiseDB::SimpleChannelNoiseDB(double tick, int nsamples)
     , m_default_decon_limit1(0.08)
     , m_default_protection_factor(5.0)
     , m_default_min_adc_limit(50)
+    , m_default_roi_min_max_ratio(0.8)
 {
     set_sampling(tick, nsamples);
 }
@@ -154,11 +155,20 @@ float SimpleChannelNoiseDB::coherent_nf_min_adc_limit(int channel) const
 {
     const int ind = chind(channel);
     if (0 <= ind && ind < (int)m_min_adc_limit.size()) {
-	return m_min_adc_limit[ind];
+    return m_min_adc_limit[ind];
     }
     return m_default_min_adc_limit;
 }
 
+
+float SimpleChannelNoiseDB::coherent_nf_roi_min_max_ratio(int channel) const
+{
+    const int ind = chind(channel);
+    if (0 <= ind && ind < (int)m_roi_min_max_ratio.size()) {
+    return m_roi_min_max_ratio[ind];
+    }
+    return m_default_roi_min_max_ratio;
+}
 
 
 const IChannelNoiseDatabase::filter_t& SimpleChannelNoiseDB::get_filter(int channel, const filter_vector_t& fv) const
@@ -447,6 +457,14 @@ void SimpleChannelNoiseDB::set_coherent_nf_min_adc_limit(const std::vector<int>&
     }
 }
 
+void SimpleChannelNoiseDB::set_coherent_nf_roi_min_max_ratio(const std::vector<int>& channels, float roi_min_max_ratio)
+{
+    //std::cerr << "SimpleChannelNoiseDB: set pad window back on " << channels.size() << " channels: " << pad_b << std::endl;
+    for (auto ch : channels) {
+    int ind = chind(ch);
+    set_one(ind, roi_min_max_ratio, m_roi_min_max_ratio, m_default_roi_min_max_ratio);
+    }
+}
 
 void SimpleChannelNoiseDB::set_filter(const std::vector<int>& channels, const multimask_t& masks)
 {
