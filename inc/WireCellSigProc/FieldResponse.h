@@ -28,7 +28,6 @@ namespace WireCell {
         private:
             std::string m_fname;
             Response::Schema::FieldResponse m_fr;
-            double m_delay;
         };
 
     }

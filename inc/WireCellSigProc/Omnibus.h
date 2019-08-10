@@ -19,6 +19,7 @@ namespace WireCell {
         
         class Omnibus : public WireCell::IApplication, public WireCell::IConfigurable {
         public:
+
             Omnibus();
             virtual ~Omnibus();
 

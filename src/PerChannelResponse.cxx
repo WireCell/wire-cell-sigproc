@@ -8,7 +8,7 @@
 
 WIRECELL_FACTORY(PerChannelResponse,
                  WireCell::SigProc::PerChannelResponse,
-                 WireCell::IChannelResponse, WireCell::IConfigurable);
+                 WireCell::IChannelResponse, WireCell::IConfigurable)
 
 using namespace WireCell;
 

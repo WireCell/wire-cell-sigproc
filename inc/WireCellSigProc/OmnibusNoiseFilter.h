@@ -13,6 +13,7 @@
 #include "WireCellIface/IChannelFilter.h"
 
 #include "WireCellUtil/Waveform.h"
+#include "WireCellUtil/Logging.h"
 
 
 #include <vector>
@@ -33,7 +34,7 @@ namespace WireCell {
 	    typedef std::vector< std::vector<int> > grouped_channels_t;
 
 	    /// Create an OmnibusNoiseFilter.
-	    OmnibusNoiseFilter();
+	    OmnibusNoiseFilter(std::string intag="orig", std::string outtag="raw");
 	    virtual ~OmnibusNoiseFilter();
 
 	    /// IFrameFilter interface.
@@ -62,12 +63,15 @@ namespace WireCell {
 	    }
 
 	private:
+            // number of time ticks in the waveforms processed.  Set to 0 and first input trace sets it.
+            size_t m_nticks;
             std::string m_intag, m_outtag;
 	    std::vector<WireCell::IChannelFilter::pointer> m_perchan, m_grouped, m_perchan_status;
 	    WireCell::IChannelNoiseDatabase::pointer m_noisedb;
 
 	    std::map<std::string, std::string> m_maskmap;
 
+            Log::logptr_t log;
 	};
 
     }

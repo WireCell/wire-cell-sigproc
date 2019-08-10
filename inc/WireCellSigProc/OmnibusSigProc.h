@@ -6,19 +6,21 @@
 #include "WireCellIface/IAnodePlane.h"
 #include "WireCellUtil/Waveform.h"
 #include "WireCellUtil/Array.h"
+#include "WireCellUtil/Logging.h"
 
 namespace WireCell {
   namespace SigProc {
     class OmnibusSigProc : public WireCell::IFrameFilter, public WireCell::IConfigurable {
     public:
-      OmnibusSigProc(const std::string anode_tn = "AnodePlane",
+      OmnibusSigProc(const std::string& anode_tn = "AnodePlane",
+                     const std::string& per_chan_resp_tn = "PerChannelResponse",
+                     const std::string& field_response = "FieldResponse",
                      double fine_time_offset = 0.0 * units::microsecond,
                      double coarse_time_offset = -8.0 * units::microsecond,
                      double gain = 14.0 * units::mV/units::fC,
-                     double shaping_time = 2.0 * units::microsecond,
+                     double shaping_time = 2.2 * units::microsecond,
                      double inter_gain = 1.2,
-                     double ADC_mV = 4096/2000.,
-                     bool flag_ch_corr = true,
+                     double ADC_mV = 4096/(2000.*units::mV),
                      float th_factor_ind = 3,
                      float th_factor_col = 5,
                      int pad = 5,
@@ -28,9 +30,12 @@ namespace WireCell {
                      double l_max_th=10000,
                      double l_factor1=0.7,
                      int l_short_length = 3,
+		     int l_jump_one_bin = 0,
                      double r_th_factor = 3.0,
                      double r_fake_signal_low_th = 500,
                      double r_fake_signal_high_th = 1000,
+                     double r_fake_signal_low_th_ind_factor = 1.0,
+                     double r_fake_signal_high_th_ind_factor = 1.0,
                      int r_pad = 5,
                      int r_break_roi_loop = 2,
                      double r_th_peak = 3.0,
@@ -39,7 +44,10 @@ namespace WireCell {
                      int r_max_npeaks = 200,
                      double r_sigma = 2.0,
                      double r_th_percent = 0.1,
-                     int charge_ch_offset = 10000 );
+                     int charge_ch_offset = 10000,
+                     const std::string& wiener_tag = "wiener",
+                     const std::string& wiener_threshold_tag = "threshold",
+                     const std::string& gauss_tag = "gauss" );
       virtual ~OmnibusSigProc();
       
       virtual bool operator()(const input_pointer& in, output_pointer& out);
@@ -48,7 +56,7 @@ namespace WireCell {
       virtual WireCell::Configuration default_configuration() const;
       
     private:
-      
+
       // convert data into Eigen Matrix
       void load_data(const input_pointer& in, int plane);
 
@@ -62,17 +70,37 @@ namespace WireCell {
       void decon_2D_charge(int plane);
       
       // save data into the out frame and collect the indices
-      void save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane);
+      void save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane,
+                     const std::vector<float>& perwire_rmses,
+                     IFrame::trace_summary_t& threshold);
 
       // initialize the overall response function ...
       void init_overall_response(IFrame::pointer frame);
 
       void restore_baseline(WireCell::Array::array_xxf& arr);
+
+      // This little struct is used to map between WCT channel idents
+      // and internal OmnibusSigProc wire/channel numbers.  See
+      // m_channel_map and m_channel_range below.  
+      struct OspChan {
+        int channel;            // between 0 and nwire_u+nwire_v+nwire_w-1
+        int wire;               // between 0 and nwire_{u,v,w,}-1 depending on plane
+        int plane;              // 0,1,2
+        int ident;              // wct ident, opaque non-negative number.  set in wires geom file
+        OspChan(int c=-1, int w=-1, int p=-1, int id=-1) : channel(c), wire(w), plane(p), ident(id) {}
+        std::string str() const;
+      };
+
+      
+      // find if neighbor channels hare masked.
+      bool masked_neighbors(const std::string& cmname, OspChan& ochan, int nnn);
       
       
       // Anode plane for geometry
       std::string m_anode_tn;
       IAnodePlane::pointer m_anode;
+      std::string m_per_chan_resp;
+      std::string m_field_response;
       
       // Overall time offset
       double m_fine_time_offset; // must be positive, between 0-0.5 us, shift the response function to earlier time --> shift the deconvoluted signal to a later time
@@ -83,11 +111,13 @@ namespace WireCell {
       // bins
       double m_period;
       int m_nticks;
+      int m_fft_flag;
+      int m_fft_nwires[3], m_pad_nwires[3];
+      int m_fft_nticks, m_pad_nticks;
       
       // gain, shaping time, other applification factors
       double m_gain, m_shaping_time;
       double m_inter_gain, m_ADC_mV;
-      bool m_flag_ch_corr;
 
       // some parameters for ROI creating
       float m_th_factor_ind;
@@ -99,12 +129,15 @@ namespace WireCell {
       double m_l_max_th;
       double m_l_factor1;
       int m_l_short_length;
+      int m_l_jump_one_bin;
 
 
        // ROI_refinement
       double m_r_th_factor;
       double m_r_fake_signal_low_th;
       double m_r_fake_signal_high_th;
+      double m_r_fake_signal_low_th_ind_factor;
+      double m_r_fake_signal_high_th_ind_factor;
       int m_r_pad;
       int m_r_break_roi_loop;
       double m_r_th_peak;
@@ -114,21 +147,57 @@ namespace WireCell {
       double m_r_sigma;
       double m_r_th_percent;
 
+      // fixme: this is apparently not used:
       // channel offset
       int m_charge_ch_offset;
       
-      // Some global data useful
-      int nwire_u, nwire_v, nwire_w;
-      Waveform::ChannelMaskMap cmm;
-      std::map<int,int> ch_plane_map;
+      // CAUTION: this class was originally written for microboone
+      // which is degenerate in how wires and channels may be
+      // numbered.  DUNE APAs do not have a one-to-one nor simple
+      // mapping between a sequenctial "channel number", "wire number"
+      // and "channel ident".  In OSP and the related ROI code,
+      // wherever you see a "wire" number, it counts the segment-0
+      // wire segment in order of increasing pitch and assuming one
+      // logical plane so it will wrap around for two-faced APAs like
+      // in DUNE.  An OSP "channel" number goes from 0 to
+      // nwire_u+nwire_v+nwire_w-1 over the entire APA.  A WCT "ident"
+      // number is totally opaque, you can't assume anything about it
+      // except that it is nonnegative.  
+      int m_nwires[3];
 
-      // data after decon steps before final ifft ...
-      Array::array_xxf m_r_data; // evil
-      Array::array_xxc m_c_data; // evil
+      // Need to go from WCT channel ident to {OSP channel, wire and plane}
+      std::map<int,OspChan> m_channel_map;
+
+      // Need to go from OSP plane to iterable {OSP channel an wire and WCT ident}
+      std::vector<OspChan> m_channel_range[3];
+
+      // This is the input channel mask map but converted to OSP
+      // channel number indices.  See above.  This is NOT a direct
+      // copy from the IFrame.  It's reindexed by osp channel, not WCT
+      // channel ident!
+      Waveform::ChannelMaskMap m_cmm; 
+
+      // Per-plane temporary working arrays.  Each column is one tick,
+      // each row is indexec by an "OSP wire" number
+      Array::array_xxf m_r_data;
+      Array::array_xxc m_c_data;
       
       //average overall responses
       std::vector<Waveform::realseq_t> overall_resp[3];
+
+      // tag name for traces
+      std::string m_wiener_tag;
+      std::string m_wiener_threshold_tag;
+      std::string m_gauss_tag;
+      std::string m_frame_tag;
+
+      // If true, safe output as a sparse frame.  Traces will only
+      // cover segments of waveforms which have non-zero signal
+      // samples.
+      bool m_sparse;
       
+      Log::logptr_t log;
+
     };
   }
 }

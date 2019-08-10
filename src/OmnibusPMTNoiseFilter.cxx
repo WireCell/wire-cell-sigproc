@@ -12,8 +12,9 @@
 
 #include "FrameUtils.h"
 
-WIRECELL_FACTORY(OmnibusPMTNoiseFilter, WireCell::SigProc::OmnibusPMTNoiseFilter,
-                 WireCell::IFrameFilter, WireCell::IConfigurable);
+WIRECELL_FACTORY(OmnibusPMTNoiseFilter,
+                 WireCell::SigProc::OmnibusPMTNoiseFilter,
+                 WireCell::IFrameFilter, WireCell::IConfigurable)
 
 
 #include "PMTNoiseROI.h"

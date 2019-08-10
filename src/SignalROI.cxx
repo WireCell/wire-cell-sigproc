@@ -31,6 +31,15 @@ SignalROI::SignalROI(SignalROI *roi){
   }
 }
 
+double SignalROI::get_max_height(){
+  double max = -1e9;
+  for (size_t i=0;i!=contents.size();i++){
+    if (max < contents.at(i)) 
+      max = contents.at(i);
+  }
+  return max;
+}
+
 double SignalROI::get_average_heights(){
   double sum1 = 0;
   double sum2 = 0;

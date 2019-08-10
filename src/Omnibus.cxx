@@ -2,14 +2,15 @@
 
 #include "WireCellUtil/Exceptions.h"
 #include "WireCellUtil/NamedFactory.h"
-#include "WireCellUtil/ExecMon.h"
+// #include "WireCellUtil/ExecMon.h"
 
 #include "FrameUtils.h"
 using wct::sigproc::dump_frame;
 
 #include <iostream>
 
-WIRECELL_FACTORY(Omnibus, WireCell::SigProc::Omnibus, WireCell::IApplication, WireCell::IConfigurable);
+WIRECELL_FACTORY(Omnibus, WireCell::SigProc::Omnibus,
+                 WireCell::IApplication, WireCell::IConfigurable)
 
 using namespace WireCell;
 
@@ -59,7 +60,7 @@ void SigProc::Omnibus::configure(const WireCell::Configuration& cfg)
 
 void SigProc::Omnibus::execute()
 {
-    ExecMon em("omnibus starts");
+    // ExecMon em("omnibus starts");
 
     IFrame::pointer frame;
     if (!(*m_input)(frame)) {
@@ -69,17 +70,18 @@ void SigProc::Omnibus::execute()
     if (!frame) {
         std::cerr << "Omnibus: got null frame, forwarding, assuming we have reached EOS\n";
     }
-    if (!frame->traces()->size()) {
-        std::cerr << "Omnibus: got empty input frame, something is busted\n";
-        THROW(RuntimeError() << errmsg{"Omnibus: got empty input frame, something is busted"});
-    }    
-
-    {
-        std::cerr << "Omnibus: got input frame from "<<m_input_tn<<" with " << frame->traces()->size() << " traces\n";
-        dump_frame(frame);
+    else {
+        if (!frame->traces()->size()) {
+            std::cerr << "Omnibus: got empty input frame, something is busted\n";
+                    THROW(RuntimeError() << errmsg{"Omnibus: got empty input frame, something is busted"});
+        }
+        else {
+            std::cerr << "Omnibus: got input frame from "<<m_input_tn<<" with " << frame->traces()->size() << " traces\n";
+            dump_frame(frame);
+        }
     }
-
-    em("sourced frame");
+    
+    //em("sourced frame");
 
     int count = 0;
     for (auto ff : m_filters) {
@@ -96,11 +98,11 @@ void SigProc::Omnibus::execute()
             std::cerr << "Omnibus: filter "<<tn<<" returned a null frame\n";
             THROW(RuntimeError() << errmsg{"filter returned a null frame"});
         }
-        em("filtered frame from " + tn);
+        //em("filtered frame from " + tn);
 
         frame = nextframe;
         nextframe = nullptr;
-        em("dropped input to " + tn);
+        //em("dropped input to " + tn);
 
         if (frame) {
             std::cerr << "Omnibus: got frame from "<<tn<<" with " << frame->traces()->size() << " traces\n";
@@ -114,12 +116,12 @@ void SigProc::Omnibus::execute()
             THROW(RuntimeError() << errmsg{"failed to send output frame"});
         }
     }
-    em("sunk frame");
+    //em("sunk frame");
 
     frame = nullptr;
-    em("dropped output frame");
+    //em("dropped output frame");
 
-    std::cerr << em.summary() << std::endl;
+    //std::cerr << em.summary() << std::endl;
 }
 
 // Local Variables:

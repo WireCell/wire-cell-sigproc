@@ -4,10 +4,14 @@
 #include "WireCellIface/IChannelNoiseDatabase.h"
 #include "WireCellIface/IConfigurable.h"
 #include "WireCellIface/IAnodePlane.h"
+#include "WireCellIface/IFieldResponse.h"
 #include "WireCellIface/WirePlaneId.h"
 
 #include "WireCellUtil/Waveform.h"
 #include "WireCellUtil/Units.h"
+#include "WireCellUtil/String.h"
+#include "WireCellUtil/Exceptions.h"
+#include "WireCellUtil/Logging.h"
 
 #include <vector>
 #include <tuple>
@@ -44,8 +48,13 @@ namespace WireCell {
 	    virtual int pad_window_back(int channel) const;
 
 	    virtual float coherent_nf_decon_limit(int channel) const;
+	    virtual float coherent_nf_decon_lf_cutoff(int channel) const;
+	    virtual float coherent_nf_decon_limit1(int channel) const;
 	    virtual float coherent_nf_adc_limit(int channel) const;
-
+	    virtual float coherent_nf_protection_factor(int channel) const;
+	    virtual float coherent_nf_min_adc_limit(int channel) const;
+	    virtual float coherent_nf_roi_min_max_ratio(int channel) const;
+	    
 	    virtual const filter_t& rcrc(int channel) const;
 	    virtual const filter_t& config(int channel) const;
 	    virtual const filter_t& noise(int channel) const;
@@ -58,6 +67,9 @@ namespace WireCell {
 	    }
 	    virtual channel_group_t bad_channels() const {
 		return m_bad_channels;
+	    }
+	    virtual channel_group_t miscfg_channels() const {
+		return m_miscfg_channels;
 	    }
 
 
@@ -89,6 +101,8 @@ namespace WireCell {
             double m_tick;
             int m_nsamples;
             IAnodePlane::pointer m_anode;
+            IFieldResponse::pointer m_fr;
+            int m_rc_layers;
 
 	    typedef std::shared_ptr<filter_t> shared_filter_t;
 	    typedef std::vector<shared_filter_t> filter_vector_t;
@@ -102,7 +116,12 @@ namespace WireCell {
                 int pad_window_front, pad_window_back;
 		
 		float decon_limit;
+		float decon_lf_cutoff;
 		float adc_limit;
+		float decon_limit1;
+		float protection_factor;
+		float min_adc_limit;
+		float roi_min_max_ratio;
 		
                 // parameters
     
@@ -112,28 +131,33 @@ namespace WireCell {
                 ChannelInfo();
             };
 
-            std::vector<ChannelInfo> m_db;
+            //std::vector<ChannelInfo> m_db;
             //std::unordered_map<int, ChannelInfo*> m_db;
+            std::unordered_map<int, ChannelInfo> m_db;
 
             const ChannelInfo& dbget(int ch) const {
-                // auto it = m_db.find(ch);
-                // if (it == m_db.end()) {
-                //     it = m_db.find(defch);
-                //     return *(it->second);
-                // }
-                // return *(it->second);
-                return m_db.at(ch);
+                 auto it = m_db.find(ch);
+                 if (it == m_db.end()) {
+                     //it = m_db.find(defch);
+                     //return *(it->second);
+                     // m_db.insert(std::make_pair(ch, new ChannelInfo));
+                     // return *(m_db[ch]);
+                 	THROW(KeyError() << errmsg{String::format("no db info for channel %d", ch)});
+                 }
+                 return it->second;
+                //return m_db.at(ch);
             }
 
 	    std::vector< channel_group_t > m_channel_groups;
 	    channel_group_t m_bad_channels;
+	    channel_group_t m_miscfg_channels;
 
             // JSON parsing.  Exhausting.
             std::vector<int> parse_channels(const Json::Value& jchannels);
             shared_filter_t make_filter(std::complex<float> defval = std::complex<float>(1,0));
             shared_filter_t default_filter();
             shared_filter_t parse_freqmasks(Json::Value jfm);
-            shared_filter_t parse_rcrc(Json::Value jrcrc);
+            shared_filter_t parse_rcrc(Json::Value jrcrc, int nrc);
             double parse_gain(Json::Value jreconfig);
             shared_filter_t parse_reconfig(Json::Value jreconfig);
 	    shared_filter_t get_reconfig(double from_gain, double from_shaping,
@@ -155,6 +179,7 @@ namespace WireCell {
             // lookup by WirePlaneId::ident()
             std::unordered_map<int, shared_filter_t> m_response_cache;
 
+            Log::logptr_t log;
 	};
     }
 

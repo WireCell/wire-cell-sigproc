@@ -6,13 +6,15 @@
 using namespace WireCell;
 using namespace WireCell::SigProc;
 
-ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th, int pad, int break_roi_loop, float th_peak, float sep_peak, float low_peak_sep_threshold_pre, int max_npeaks, float sigma, float th_percent)
+ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor, float fake_signal_low_th, float fake_signal_high_th, float fake_signal_low_th_ind_factor, float fake_signal_high_th_ind_factor, int pad, int break_roi_loop, float th_peak, float sep_peak, float low_peak_sep_threshold_pre, int max_npeaks, float sigma, float th_percent)
   : nwire_u(nwire_u)
   , nwire_v(nwire_v)
   , nwire_w(nwire_w)
   , th_factor(th_factor)
   , fake_signal_low_th(fake_signal_low_th)
   , fake_signal_high_th(fake_signal_high_th)
+  , fake_signal_low_th_ind_factor(fake_signal_low_th_ind_factor)
+  , fake_signal_high_th_ind_factor(fake_signal_high_th_ind_factor)
   , pad(pad)
   , break_roi_loop(break_roi_loop)
   , th_peak(th_peak)
@@ -21,6 +23,7 @@ ROI_refinement::ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nw
   , max_npeaks(max_npeaks)
   , sigma(sigma)
   , th_percent(th_percent)
+  , log(Log::logger("sigproc"))
 {
   rois_u_tight.resize(nwire_u);
   rois_u_loose.resize(nwire_u);
@@ -160,6 +163,17 @@ void ROI_refinement::apply_roi(int plane, Array::array_xxf& r_data){
     for (int irow = 0 ; irow != r_data.rows(); irow++){
       //refresh ... 
       Waveform::realseq_t signal(r_data.cols(),0);
+
+      // if (irow==69){
+      // 	std::cout << "Xin: " << rois_w_tight.at(irow).size() << " " << std::endl;
+      // 	for (auto it = rois_w_tight.at(irow).begin(); it!= rois_w_tight.at(irow).end(); it++){
+      // 	  SignalROI *roi =  *it;
+      // 	  int start_bin = roi->get_ext_start_bin();
+      // 	  int end_bin = roi->get_ext_end_bin();
+      // 	  std::cout << "Xin: " << start_bin << " " << end_bin << std::endl;
+      // 	}
+      // }
+      
       // loop ROIs and assign data
       for (auto it = rois_w_tight.at(irow).begin(); it!= rois_w_tight.at(irow).end(); it++){
 	SignalROI *roi =  *it;
@@ -649,6 +663,7 @@ void ROI_refinement::CleanUpROIs(int plane){
       for (auto it = to_be_removed.begin(); it!= to_be_removed.end(); it++){
 	auto it1 = find(rois_u_loose.at(i).begin(), rois_u_loose.at(i).end(),*it);
 	rois_u_loose.at(i).erase(it1);
+	delete (*it);
       }
     }
   }else if (plane==1){
@@ -727,6 +742,7 @@ void ROI_refinement::CleanUpROIs(int plane){
       for (auto it = to_be_removed.begin(); it!= to_be_removed.end(); it++){
 	auto it1 = find(rois_v_loose.at(i).begin(), rois_v_loose.at(i).end(),*it);
 	rois_v_loose.at(i).erase(it1);
+	delete (*it);
       }
     }
   }
@@ -1044,6 +1060,7 @@ void ROI_refinement::CleanUpCollectionROIs(){
   for (int i=0;i!=nwire_w;i++){
     for (auto it = rois_w_tight.at(i).begin();it!=rois_w_tight.at(i).end();it++){
       SignalROI* roi = *it;
+      //std::cout << "Xin: " << roi->get_max_height() << " " << roi->get_average_heights() << std::endl;
       if (roi->get_above_threshold(threshold).size()!=0 || roi->get_average_heights() > mean_threshold)
 	Good_ROIs.insert(roi);
     }
@@ -1122,12 +1139,15 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
   // focus on the isolated ones first
   float mean_threshold = fake_signal_low_th;
   float threshold = fake_signal_high_th;
+  mean_threshold *= fake_signal_low_th_ind_factor;
+  threshold *= fake_signal_high_th_ind_factor;
   
   std::list<SignalROI*> Bad_ROIs;
   if (plane==0){
     for (int i=0;i!=nwire_u;i++){
       for (auto it = rois_u_loose.at(i).begin();it!=rois_u_loose.at(i).end();it++){
 	SignalROI* roi = *it;
+	//std::cout << "Xin: " << roi->get_max_height() << " " << roi->get_average_heights() << std::endl;
 	if (front_rois.find(roi)==front_rois.end() && back_rois.find(roi)==back_rois.end()){
 	  if (roi->get_above_threshold(threshold).size()==0 && roi->get_average_heights() < mean_threshold)
 	    Bad_ROIs.push_back(roi);
@@ -1166,6 +1186,7 @@ void ROI_refinement::CleanUpInductionROIs(int plane){
     for (int i=0;i!=nwire_v;i++){
       for (auto it = rois_v_loose.at(i).begin();it!=rois_v_loose.at(i).end();it++){
 	SignalROI* roi = *it;
+	//	std::cout << "Xin: " << roi->get_max_height() << " " << roi->get_average_heights() << std::endl;
 	if (front_rois.find(roi)==front_rois.end() && back_rois.find(roi)==back_rois.end()){
 	  if (roi->get_above_threshold(threshold).size()==0 && roi->get_average_heights() < mean_threshold)
 	    Bad_ROIs.push_back(roi);
@@ -1631,21 +1652,24 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
   std::set<int> saved_boundaries;
 
   PeakFinding s(max_npeaks, sigma, th_percent);
-  int nfound = s.find_peak(temp_signal);
+  const int nfound = s.find_peak(temp_signal);
   // TSpectrum *s = new TSpectrum(200);
   // Int_t nfound = s->Search(htemp,2,"nobackground new",0.1);
 
-  //std::cout << nfound << std::endl;
+  if (nfound == max_npeaks) {
+    log->debug("ROI_refinement: local ch index {} (plane {}), found max peaks {} with threshold={}",
+               roi->get_chid(), roi->get_plane(), nfound, th_percent);
+  }
   
   if (nfound > 1){
     int npeaks = s.GetNPeaks();
     double *peak_pos = s.GetPositionX();
     double  *peak_height = s.GetPositionY();
-    const int temp_length = max_npeaks + 5;
-    int order_peak_pos[temp_length];
+    //const int temp_length = max_npeaks + 5;
+    std::vector<int> order_peak_pos;
     int npeaks_threshold = 0;
     for (int j=0;j!=npeaks;j++){
-      order_peak_pos[j] = *(peak_pos+j) + start_bin;
+      order_peak_pos.push_back(*(peak_pos+j) + start_bin);
       if (*(peak_height+j)>th_peak*rms){
    	npeaks_threshold ++;
       }
@@ -1654,7 +1678,7 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
     
     
     if (npeaks_threshold >1){
-      std::sort(order_peak_pos,order_peak_pos + npeaks);
+      std::sort(order_peak_pos.begin(),order_peak_pos.end());
       float valley_pos[205];
       valley_pos[0] = start_bin;
 
@@ -1667,7 +1691,10 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
 	}
       }
       if (valley_pos[0] != start_bin){
-   	for (int j=npeaks-1;j>=0;j--){
+	// temporarily push n a value ...
+	order_peak_pos.push_back(0);
+	//
+	for (int j=npeaks-1;j>=0;j--){
    	  order_peak_pos[j+1] = order_peak_pos[j];
    	}
    	npeaks ++;
@@ -1713,7 +1740,9 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
       if (valley_pos[npeaks]!=end_bin){
    	npeaks ++;
    	valley_pos[npeaks] = end_bin;
-   	order_peak_pos[npeaks-1] = end_bin;
+	// temporarily add an elements ...
+	order_peak_pos.push_back(end_bin);
+	//	order_peak_pos[npeaks-1] = end_bin;
    	for (int j=valley_pos[npeaks-1];j!=valley_pos[npeaks];j++){
    	  if (temp_signal.at(j-start_bin) > temp_signal.at(order_peak_pos[npeaks-1] -start_bin))
 	    order_peak_pos[npeaks-1] = j;
@@ -1927,7 +1956,8 @@ void ROI_refinement::BreakROI(SignalROI *roi, float rms){
     // std::cout << "kaka5 " << std::endl;
     // test
     
-    if (saved_b.size() >=0){
+    //    if (saved_b.size() >=0){
+    {
       Waveform::realseq_t temp1_signal = temp_signal;
       temp_signal.clear();
       temp_signal.resize(temp1_signal.size(),0);
@@ -2120,11 +2150,16 @@ void ROI_refinement::BreakROIs(int plane, ROI_formation& roi_form){
 
 
 void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
+
+  //if (plane==2) std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
+  
   //std::cout << "Clean up loose ROIs" << std::endl;
   CleanUpROIs(plane);
   //std::cout << "Generate more loose ROIs from isolated good tight ROIs" << std::endl;
   generate_merge_ROIs(plane);
 
+  // if (plane==2)  std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
+  
   for (int qx = 0; qx!=break_roi_loop; qx++){
     // std::cout << "Break loose ROIs" << std::endl;
     BreakROIs(plane, roi_form);
@@ -2132,7 +2167,8 @@ void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
     CheckROIs(plane, roi_form);
     CleanUpROIs(plane);
   }
-  
+
+  // if (plane==2)  std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
   
   
   //  std::cout << "Shrink ROIs" << std::endl;
@@ -2141,6 +2177,7 @@ void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
   CheckROIs(plane, roi_form);
   CleanUpROIs(plane);
 
+  //  if (plane==2)  std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
 
   // Further reduce fake hits
   // std::cout << "Remove fake hits " << std::endl;
@@ -2152,7 +2189,7 @@ void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
 
   ExtendROIs();
   //TestROIs();
-  
+  //if (plane==2)  std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
 }
 
 void ROI_refinement::TestROIs(){
@@ -2392,3 +2429,7 @@ void ROI_refinement::ExtendROIs(){
 
 
 
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:

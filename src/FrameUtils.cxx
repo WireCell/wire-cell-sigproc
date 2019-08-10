@@ -68,7 +68,7 @@ void wct::sigproc::raster(WireCell::Array::array_xxf& block,
         const size_t nsamples = samples.size();
         const size_t tbin = trace->tbin();        
 
-        if (tbin >= ncols || tbin+nsamples < 0) {
+        if (tbin >= ncols) {	// underflow impossible as they are unsigned.
             continue;           // trace is off screen
         }
 

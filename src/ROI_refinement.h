@@ -5,6 +5,7 @@
 #include "ROI_formation.h"
 #include "WireCellUtil/Array.h"
 #include "WireCellUtil/Waveform.h"
+#include "WireCellUtil/Logging.h"
 
 #include <vector>
 #include <map>
@@ -16,7 +17,7 @@ namespace WireCell{
     
     class ROI_refinement{
     public:
-      ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor = 3.0, float fake_signal_low_th = 500, float fake_signal_high_th = 1000, int pad = 5, int break_roi_loop = 2, float th_peak = 3.0, float sep_peak = 6.0, float low_peak_sep_threshold_pre = 1200, int max_npeaks = 200, float sigma = 2, float th_percent = 0.1); 
+      ROI_refinement(Waveform::ChannelMaskMap& cmm,int nwire_u, int nwire_v, int nwire_w, float th_factor = 3.0, float fake_signal_low_th = 500, float fake_signal_high_th = 1000, float fake_signal_low_th_ind_factor=1.0, float fake_signal_high_th_ind_factor=1.0, int pad = 5, int break_roi_loop = 2, float th_peak = 3.0, float sep_peak = 6.0, float low_peak_sep_threshold_pre = 1200, int max_npeaks = 200, float sigma = 2, float th_percent = 0.1); 
       ~ROI_refinement();
 
       void Clear();
@@ -39,6 +40,8 @@ namespace WireCell{
       float th_factor;
       float fake_signal_low_th;
       float fake_signal_high_th;
+      float fake_signal_low_th_ind_factor;
+      float fake_signal_high_th_ind_factor;
       int pad;
       int break_roi_loop;
       float th_peak;
@@ -84,7 +87,12 @@ namespace WireCell{
       SignalROIMap back_rois;
       SignalROIMap contained_rois;
       
+      Log::logptr_t log;
     };
   }
 }
 #endif
+// Local Variables:
+// mode: c++
+// c-basic-offset: 2
+// End:
