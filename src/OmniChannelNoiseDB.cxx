@@ -523,7 +523,7 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
         float val = cfg["roi_min_max_ratio"].asDouble();
         dump_cfg("roiminmaxratio", chans, val);
         for (int ch : chans) {
-            get_ci(ch).min_adc_limit = val;
+            get_ci(ch).roi_min_max_ratio = val;
         }
     }
     
