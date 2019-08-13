@@ -42,6 +42,7 @@ OmniChannelNoiseDB::ChannelInfo::ChannelInfo()
     , decon_limit1(0.08)
     , protection_factor(5.0)
     , min_adc_limit(50)
+    , roi_min_max_ratio(0.8)
     , rcrc(nullptr)
     , config(nullptr)
     , noise(nullptr)
@@ -518,6 +519,13 @@ void OmniChannelNoiseDB::update_channels(Json::Value cfg)
             get_ci(ch).min_adc_limit = val;
         }
     }
+    if (cfg.isMember("roi_min_max_ratio")) {
+        float val = cfg["roi_min_max_ratio"].asDouble();
+        dump_cfg("roiminmaxratio", chans, val);
+        for (int ch : chans) {
+            get_ci(ch).min_adc_limit = val;
+        }
+    }
     
     {
         auto jfilt = cfg["rcrc"];
@@ -705,6 +713,10 @@ float OmniChannelNoiseDB::coherent_nf_min_adc_limit(int channel) const
     return dbget(channel).min_adc_limit;
 }
 
+float OmniChannelNoiseDB::coherent_nf_roi_min_max_ratio(int channel) const
+{
+    return dbget(channel).roi_min_max_ratio;
+}
 
 const IChannelNoiseDatabase::filter_t& OmniChannelNoiseDB::rcrc(int channel) const
 {
