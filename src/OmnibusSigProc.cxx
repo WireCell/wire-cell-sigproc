@@ -388,8 +388,8 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& in
       const float q = m_r_data(och.wire, itick);
       // charge.at(itick) = q > 0.0 ? q : 0.0;
       //charge.at(itick) = q ;
-      if (m_use_roi_debug_mode) charge.at(itick) = q ; // default: use_roi_debug_mode=false
-      else charge.at(itick) = q > 0.0 ? q : 0.0;
+      if (m_use_roi_debug_mode) charge.at(itick) = q ; // debug mode: save all decons
+      else charge.at(itick) = q > 0.0 ? q : 0.0; // default mode: only save positive
     }
     {
       auto& bad = m_cmm["bad"];
@@ -1028,6 +1028,49 @@ void OmnibusSigProc::decon_2D_looseROI(int plane){
   restore_baseline(m_r_data);
 }
 
+// similar as decon_2D_looseROI() but without tightLF 
+void OmnibusSigProc::decon_2D_looseROI_debug_mode(int plane){
+  // apply software filter on time
+  if (plane == 2) {
+    return;                     // don't filter colleciton
+  }
+
+  Waveform::realseq_t roi_hf_filter_wf;
+  if (plane ==0){
+    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_U");
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
+    auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_loose_lf");
+    auto temp_filter = ncr2->filter_waveform(m_c_data.cols());
+    for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
+      roi_hf_filter_wf.at(i) *= temp_filter.at(i);
+    }
+  }else if (plane==1){
+    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_V");
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
+    auto ncr2 = Factory::find<IFilterWaveform>("LfFilter","ROI_loose_lf");
+    auto temp_filter = ncr2->filter_waveform(m_c_data.cols());
+    for(size_t i=0;i!=roi_hf_filter_wf.size();i++){
+      roi_hf_filter_wf.at(i) *= temp_filter.at(i);
+    }
+  }else{
+    auto ncr1 = Factory::find<IFilterWaveform>("HfFilter","Wiener_tight_W");
+    roi_hf_filter_wf = ncr1->filter_waveform(m_c_data.cols());
+  }
+
+  Array::array_xxc c_data_afterfilter(m_c_data.rows(),m_c_data.cols());
+  for (int irow=0; irow<m_c_data.rows(); ++irow) {
+    for (int icol=0; icol<m_c_data.cols(); ++icol) {
+      c_data_afterfilter(irow,icol) = m_c_data(irow,icol) * roi_hf_filter_wf.at(icol);
+    }
+  }
+  
+  //do the second round of inverse FFT on wire
+  Array::array_xxf tm_r_data = Array::idft_cr(c_data_afterfilter,0);
+  m_r_data = tm_r_data.block(m_pad_nwires[plane],0,m_nwires[plane],m_nticks);
+  restore_baseline(m_r_data);
+
+
+}
 
 // return true if any channels w/in +/- nnn, inclusive, of the channel has the mask.
 bool OmnibusSigProc::masked_neighbors(const std::string& cmname, OspChan& ochan, int nnn)
@@ -1203,16 +1246,19 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
 
     // Form loose ROIs
     if (iplane != 2){
-      decon_2D_looseROI(iplane);
-
       // [wgu] save decon result after loose LF
-      if (m_use_roi_debug_mode) save_data(*itraces, loose_lf_traces, iplane, perwire_rmses, dummy);
+      if (m_use_roi_debug_mode) {
+        decon_2D_looseROI_debug_mode(iplane);
+        save_data(*itraces, loose_lf_traces, iplane, perwire_rmses, dummy);
+      }
 
+      decon_2D_looseROI(iplane);
       roi_form.find_ROI_loose(iplane,m_r_data);
       decon_2D_ROI_refine(iplane);
     }
 
-    // [wgu] save decon result after loose LF
+    // [wgu] collection plane does not need loose LF
+    // but save something to be consistent
     if (m_use_roi_debug_mode and iplane==2) save_data(*itraces, loose_lf_traces, iplane, perwire_rmses, dummy);
 
     // Refine ROIs

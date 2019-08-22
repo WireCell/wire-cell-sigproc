@@ -80,6 +80,8 @@ namespace WireCell {
       void decon_2D_looseROI(int plane);
       void decon_2D_hits(int plane);
       void decon_2D_charge(int plane);
+
+      void decon_2D_looseROI_debug_mode(int plane);
       
       // save data into the out frame and collect the indices
       void save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane,
