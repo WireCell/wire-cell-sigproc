@@ -60,7 +60,15 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
                                int charge_ch_offset,
                                const std::string& wiener_tag,
                                const std::string& wiener_threshold_tag,
-                               const std::string& gauss_tag )
+                               const std::string& gauss_tag,
+                               bool use_roi_debug_mode,
+                               const std::string& tight_lf_tag,
+                               const std::string& loose_lf_tag,
+                               const std::string& cleanup_roi_tag,
+                               const std::string& break_roi_loop1_tag,
+                               const std::string& break_roi_loop2_tag,
+                               const std::string& shrink_roi_tag,
+                               const std::string& extend_roi_tag )
   : m_anode_tn (anode_tn)
   , m_per_chan_resp(per_chan_resp_tn)
   , m_field_response(field_response)
@@ -101,6 +109,14 @@ OmnibusSigProc::OmnibusSigProc(const std::string& anode_tn,
   , m_wiener_threshold_tag(wiener_threshold_tag)
   , m_gauss_tag(gauss_tag) 
   , m_frame_tag("sigproc")
+  , m_use_roi_debug_mode(use_roi_debug_mode)
+  , m_tight_lf_tag(tight_lf_tag)
+  , m_loose_lf_tag(loose_lf_tag)
+  , m_cleanup_roi_tag(cleanup_roi_tag)
+  , m_break_roi_loop1_tag(break_roi_loop1_tag)
+  , m_break_roi_loop2_tag(break_roi_loop2_tag)
+  , m_shrink_roi_tag(shrink_roi_tag)
+  , m_extend_roi_tag(extend_roi_tag)
   , m_sparse(false)
   , log(Log::logger("sigproc"))
 {
@@ -182,6 +198,14 @@ void OmnibusSigProc::configure(const WireCell::Configuration& config)
   m_gauss_tag = get(config,"gauss_tag",m_gauss_tag);  
   m_frame_tag = get(config,"frame_tag",m_frame_tag);  
 
+  m_use_roi_debug_mode = get(config,"use_roi_debug_mode",m_use_roi_debug_mode);
+  m_tight_lf_tag = get(config,"tight_lf_tag",m_tight_lf_tag);
+  m_loose_lf_tag = get(config,"loose_lf_tag",m_loose_lf_tag);
+  m_cleanup_roi_tag = get(config,"cleanup_roi_tag",m_cleanup_roi_tag);
+  m_break_roi_loop1_tag = get(config,"break_roi_loop1_tag",m_break_roi_loop1_tag);
+  m_break_roi_loop2_tag = get(config,"break_roi_loop2_tag",m_break_roi_loop2_tag);
+  m_shrink_roi_tag = get(config,"shrink_roi_tag",m_shrink_roi_tag);
+  m_extend_roi_tag = get(config,"extend_roi_tag",m_extend_roi_tag);
 
   // this throws if not found
   m_anode = Factory::find_tn<IAnodePlane>(m_anode_tn);
@@ -284,6 +308,15 @@ WireCell::Configuration OmnibusSigProc::default_configuration() const
   cfg["wiener_threshold_tag"] = m_wiener_threshold_tag;
   cfg["gauss_tag"] = m_gauss_tag;
   cfg["frame_tag"] = m_frame_tag;
+
+  cfg["use_roi_debug_mode"] = m_use_roi_debug_mode; // default false
+  cfg["tight_lf_tag"] = m_tight_lf_tag;
+  cfg["loose_lf_tag"] = m_loose_lf_tag;
+  cfg["cleanup_roi_tag"] = m_cleanup_roi_tag;
+  cfg["break_roi_loop1_tag"] = m_break_roi_loop1_tag;
+  cfg["break_roi_loop2_tag"] = m_break_roi_loop2_tag;
+  cfg["shrink_roi_tag"] = m_shrink_roi_tag;
+  cfg["extend_roi_tag"] = m_extend_roi_tag;
   
   cfg["sparse"] = false;
 
@@ -353,8 +386,10 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& in
     // fixme: better if we move this outside of save_data().
     for (int itick=0;itick!=m_nticks;itick++){
       const float q = m_r_data(och.wire, itick);
-      charge.at(itick) = q > 0.0 ? q : 0.0;
+      // charge.at(itick) = q > 0.0 ? q : 0.0;
       //charge.at(itick) = q ;
+      if (m_use_roi_debug_mode) charge.at(itick) = q ; // default: use_roi_debug_mode=false
+      else charge.at(itick) = q > 0.0 ? q : 0.0;
     }
     {
       auto& bad = m_cmm["bad"];
@@ -419,6 +454,84 @@ void OmnibusSigProc::save_data(ITrace::vector& itraces, IFrame::trace_list_t& in
   }  
 }
 
+// save ROI into the out frame
+void OmnibusSigProc::save_roi(ITrace::vector& itraces, IFrame::trace_list_t& indices,
+                              int plane, std::vector<std::list<SignalROI*> >& roi_channel_list)
+{
+  // reuse this temporary vector to hold charge for a channel.
+  ITrace::ChargeSequence charge(m_nticks, 0.0);
+
+   for (auto och : m_channel_range[plane]) { // ordered by osp channel
+
+     // std::cout << "[wgu] wire: " << och.wire << " roi_channel_list.size(): " << roi_channel_list.size() << std::endl;
+
+     std::fill(charge.begin(), charge.end(), 0);
+
+     // for (auto it = roi_channel_list.at(och.wire).begin(); it!= roi_channel_list.at(och.wire).end(); it++){
+     //   SignalROI *roi =  *it;
+     //   int start = roi->get_start_bin();
+     //   int end = roi->get_end_bin();
+     //   std::cout << "[wgu] wire: " << och.wire << " ROI: " << start << " " << end << " channel: " << roi->get_chid() << " plane: " << roi->get_plane() << std::endl;      
+     // }
+
+     int prev_roi_end = -1;
+     for (auto signal_roi: roi_channel_list.at(och.wire) ) {
+         int start = signal_roi->get_start_bin();
+         int end = signal_roi->get_end_bin();
+         // if (och.wire==732) 
+        //   std::cout << "[wgu] OmnibusSigProc::save_roi() wire: " << och.wire << " channel: " << och.channel << " ROI: " << start << " " << end << " channel: " << signal_roi->get_chid() << " plane: " << signal_roi->get_plane() << " max height: " << signal_roi->get_max_height() <<  std::endl;
+         if (start<0 or end<0) continue;
+         for (int i=start; i<=end; i++) {
+           if (i-prev_roi_end<2) continue; // skip one bin for visibility of two adjacent ROIs
+           charge.at(i) = 10.; // arbitary constant number for ROI display
+         }
+         prev_roi_end = end;
+     }
+
+     {
+      auto& bad = m_cmm["bad"];
+      auto badit = bad.find(och.channel);
+      if (badit != bad.end()) {
+        for (auto bad : badit->second) {
+          for (int itick=bad.first; itick < bad.second; ++itick) {
+            charge.at(itick) = 0.0;
+          }
+        }
+      }
+     }
+
+
+     // actually save out
+    if (m_sparse) {
+      // Save waveform sparsely by finding contiguous, positive samples.
+      std::vector<float>::const_iterator beg=charge.begin(), end=charge.end();
+      auto i1 = std::find_if(beg, end, ispositive); // first start
+      while (i1 != end) {
+        // stop at next zero or end and make little temp vector
+        auto i2 = std::find_if(i1, end, isZero);
+        const std::vector<float> q(i1,i2);
+
+         // save out
+        const int tbin = i1 - beg;
+        SimpleTrace *trace = new SimpleTrace(och.ident, tbin, q);
+        const size_t trace_index = itraces.size();
+        indices.push_back(trace_index);
+        itraces.push_back(ITrace::pointer(trace));
+        // if (och.wire==67) std::cout << "[wgu] och channel: " << och.channel << " wire: " << och.wire << " plane: " << och.plane << " ident: " << och.ident << " tbin: " << tbin << " len: " << i2-i1 << std::endl;
+
+         // find start for next loop
+        i1 = std::find_if(i2, end, ispositive);
+      }
+    }
+    else {
+      // Save the waveform densely, including zeros.
+      SimpleTrace *trace = new SimpleTrace(och.ident, 0, charge);
+      const size_t trace_index = itraces.size();
+      indices.push_back(trace_index);
+      itraces.push_back(ITrace::pointer(trace));
+    }
+  }
+}
 
 void OmnibusSigProc::init_overall_response(IFrame::pointer frame)
 {
@@ -1046,6 +1159,8 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   ITrace::vector* itraces = new ITrace::vector; // will become shared_ptr.
   IFrame::trace_summary_t thresholds;
   IFrame::trace_list_t wiener_traces, gauss_traces, perframe_traces[3];
+  // here are some trace lists for debug mode
+  IFrame::trace_list_t tight_lf_traces, loose_lf_traces, cleanup_roi_traces, break_roi_loop1_traces, break_roi_loop2_traces, shrink_roi_traces, extend_roi_traces;
 
   // initialize the overall response function ... 
   init_overall_response(in);
@@ -1082,17 +1197,52 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
       roi_form.find_ROI_by_decon_itself(iplane, m_r_data);
     }
     
+    // [wgu] save decon result after tight LF
+    std::vector<double> dummy;
+    if (m_use_roi_debug_mode) save_data(*itraces, tight_lf_traces, iplane, perwire_rmses, dummy);
+
     // Form loose ROIs
     if (iplane != 2){
       decon_2D_looseROI(iplane);
+
+      // [wgu] save decon result after loose LF
+      if (m_use_roi_debug_mode) save_data(*itraces, loose_lf_traces, iplane, perwire_rmses, dummy);
 
       roi_form.find_ROI_loose(iplane,m_r_data);
       decon_2D_ROI_refine(iplane);
     }
 
+    // [wgu] save decon result after loose LF
+    if (m_use_roi_debug_mode and iplane==2) save_data(*itraces, loose_lf_traces, iplane, perwire_rmses, dummy);
+
     // Refine ROIs
     roi_refine.load_data(iplane, m_r_data, roi_form);
-    roi_refine.refine_data(iplane, roi_form);
+    // roi_refine.refine_data(iplane, roi_form);
+    if (not m_use_roi_debug_mode) // default: use_roi_debug_mode=false
+      roi_refine.refine_data(iplane, roi_form);
+    else { // CAVEAT: ONLY USE ME FOR DEBUGGING
+
+      std::cout << "[wgu] CleanUpROIs ..." << std::endl;
+      roi_refine.refine_data_debug_mode(iplane, roi_form, "CleanUpROIs");
+      save_roi(*itraces, cleanup_roi_traces, iplane, roi_refine.get_rois_by_plane(iplane));
+
+      std::cout << "[wgu] BreakROIs ..." << std::endl;
+      roi_refine.refine_data_debug_mode(iplane, roi_form, "BreakROIs");
+      save_roi(*itraces, break_roi_loop1_traces, iplane, roi_refine.get_rois_by_plane(iplane));
+
+      std::cout << "[wgu] BreakROIs_2 ..." << std::endl;
+      roi_refine.refine_data_debug_mode(iplane, roi_form, "BreakROIs");
+      save_roi(*itraces, break_roi_loop2_traces, iplane, roi_refine.get_rois_by_plane(iplane));
+
+      std::cout << "[wgu] ShrinkROIs ..." << std::endl;
+      roi_refine.refine_data_debug_mode(iplane, roi_form, "ShrinkROIs");
+      save_roi(*itraces, shrink_roi_traces, iplane, roi_refine.get_rois_by_plane(iplane));
+
+      std::cout << "[wgu] ExtendROIs ..." << std::endl;
+      roi_refine.refine_data_debug_mode(iplane, roi_form, "ExtendROIs");
+      save_roi(*itraces, extend_roi_traces, iplane, roi_refine.get_rois_by_plane(iplane));
+    }
+
 
     // merge results ...
     decon_2D_hits(iplane);
@@ -1133,6 +1283,16 @@ bool OmnibusSigProc::operator()(const input_pointer& in, output_pointer& out)
   sframe->tag_traces(m_wiener_tag, wiener_traces);
   sframe->tag_traces(m_wiener_threshold_tag, wiener_traces, thresholds);
   sframe->tag_traces(m_gauss_tag, gauss_traces);
+
+  if (m_use_roi_debug_mode) {
+    sframe->tag_traces(m_tight_lf_tag, tight_lf_traces);
+    sframe->tag_traces(m_loose_lf_tag, loose_lf_traces);
+    sframe->tag_traces(m_cleanup_roi_tag, cleanup_roi_traces);
+    sframe->tag_traces(m_break_roi_loop1_tag, break_roi_loop1_traces);
+    sframe->tag_traces(m_break_roi_loop2_tag, break_roi_loop2_traces);
+    sframe->tag_traces(m_shrink_roi_tag, shrink_roi_traces);
+    sframe->tag_traces(m_extend_roi_tag, extend_roi_traces);
+  }
 
   log->debug("OmnibusSigProc: produce {} traces: {} {}, {} {}, frame tag: {}",
              itraces->size(),

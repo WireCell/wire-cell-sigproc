@@ -198,6 +198,13 @@ void ROI_refinement::apply_roi(int plane, Array::array_xxf& r_data){
   }
 }
 
+// helper function for getting ROIs
+SignalROIChList& ROI_refinement::get_rois_by_plane(int plane)
+{
+  if (plane==0) return get_u_rois();
+  else if (plane==1) return get_v_rois();
+  else return get_w_rois();
+}
 
 void ROI_refinement::unlink(SignalROI* prev_roi, SignalROI* next_roi){
   if (front_rois.find(prev_roi)!=front_rois.end()){
@@ -2191,6 +2198,48 @@ void ROI_refinement::refine_data(int plane, ROI_formation& roi_form){
   //TestROIs();
   //if (plane==2)  std::cout << "Xin: " << rois_w_tight.at(69).size() << " " << std::endl;
 }
+
+// Basically rewrite the refine_data()
+// But now do the ROI operation step by step
+void ROI_refinement::refine_data_debug_mode(int plane, ROI_formation& roi_form, const std::string& cmd){
+
+  if (cmd=="CleanUpROIs") {
+    // std::cout << "Clean up loose ROIs" << std::endl;
+    CleanUpROIs(plane);
+    //std::cout << "Generate more loose ROIs from isolated good tight ROIs" << std::endl;
+    generate_merge_ROIs(plane);
+  }
+
+  else if (cmd=="BreakROIs") {
+    // std::cout << "Break loose ROIs" << std::endl;
+    BreakROIs(plane, roi_form);
+    // std::cout << "Clean up ROIs 2nd time" << std::endl;
+    CheckROIs(plane, roi_form);
+    CleanUpROIs(plane);
+  }
+
+  else if (cmd=="ShrinkROIs") {
+    //  std::cout << "Shrink ROIs" << std::endl;
+    ShrinkROIs(plane, roi_form);
+    // std::cout << "Clean up ROIs 3rd time" << std::endl;
+    CheckROIs(plane, roi_form);
+    CleanUpROIs(plane);
+  }
+
+  else if (cmd=="ExtendROIs") {
+    // Further reduce fake hits
+    // std::cout << "Remove fake hits " << std::endl;
+    if (plane==2){
+      CleanUpCollectionROIs();
+    }else{
+      CleanUpInductionROIs(plane);
+    }
+
+    ExtendROIs();
+    //TestROIs();
+  }
+
+ }
 
 void ROI_refinement::TestROIs(){
   
