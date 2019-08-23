@@ -8,8 +8,12 @@
 #include "WireCellUtil/Array.h"
 #include "WireCellUtil/Logging.h"
 
+#include <list>
+
 namespace WireCell {
   namespace SigProc {
+
+    class SignalROI; //forward declaration
     class OmnibusSigProc : public WireCell::IFrameFilter, public WireCell::IConfigurable {
     public:
       OmnibusSigProc(const std::string& anode_tn = "AnodePlane",
@@ -47,7 +51,15 @@ namespace WireCell {
                      int charge_ch_offset = 10000,
                      const std::string& wiener_tag = "wiener",
                      const std::string& wiener_threshold_tag = "threshold",
-                     const std::string& gauss_tag = "gauss" );
+                     const std::string& gauss_tag = "gauss",
+                     bool use_roi_debug_mode = false,
+                     const std::string& tight_lf_tag = "tight_lf",
+                     const std::string& loose_lf_tag = "loose_lf",
+                     const std::string& cleanup_roi_tag = "cleanup_roi",
+                     const std::string& break_roi_loop1_tag = "break_roi_1st",
+                     const std::string& break_roi_loop2_tag = "break_roi_2nd",
+                     const std::string& shrink_roi_tag = "shrink_roi",
+                     const std::string& extend_roi_tag = "extend_roi" );
       virtual ~OmnibusSigProc();
       
       virtual bool operator()(const input_pointer& in, output_pointer& out);
@@ -68,11 +80,17 @@ namespace WireCell {
       void decon_2D_looseROI(int plane);
       void decon_2D_hits(int plane);
       void decon_2D_charge(int plane);
+
+      void decon_2D_looseROI_debug_mode(int plane);
       
       // save data into the out frame and collect the indices
       void save_data(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane,
                      const std::vector<float>& perwire_rmses,
                      IFrame::trace_summary_t& threshold);
+
+      // save ROI into the out frame (set use_roi_debug_mode=true)
+      void save_roi(ITrace::vector& itraces, IFrame::trace_list_t& indices, int plane,
+                    std::vector<std::list<SignalROI*> >& roi_channel_list);
 
       // initialize the overall response function ...
       void init_overall_response(IFrame::pointer frame);
@@ -190,6 +208,15 @@ namespace WireCell {
       std::string m_wiener_threshold_tag;
       std::string m_gauss_tag;
       std::string m_frame_tag;
+
+      bool m_use_roi_debug_mode;
+      std::string m_tight_lf_tag;
+      std::string m_loose_lf_tag;
+      std::string m_cleanup_roi_tag;
+      std::string m_break_roi_loop1_tag;
+      std::string m_break_roi_loop2_tag;
+      std::string m_shrink_roi_tag;
+      std::string m_extend_roi_tag;
 
       // If true, safe output as a sparse frame.  Traces will only
       // cover segments of waveforms which have non-zero signal

@@ -25,12 +25,14 @@ namespace WireCell{
       // initialize the ROIs
       void load_data(int plane, const Array::array_xxf& r_data, ROI_formation& roi_form);
       void refine_data(int plane, ROI_formation& roi_form);
+      void refine_data_debug_mode(int plane, ROI_formation& roi_form, const std::string& cmd);
 
       void apply_roi(int plane, Array::array_xxf& r_data);
       
       SignalROIChList& get_u_rois(){return rois_u_loose;};
       SignalROIChList& get_v_rois(){return rois_v_loose;};
       SignalROIChList& get_w_rois(){return rois_w_tight;};
+      SignalROIChList& get_rois_by_plane(int plane);
       
     private:
       int nwire_u;
